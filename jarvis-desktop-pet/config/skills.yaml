@@ -1,0 +1,11 @@
+skills:
+  registered: []
+  disabled: []
+  versioning: true
+  max_dynamic_per_session: 20
+governance:
+  dynamic_skill_creation:
+    enabled: true
+    require_approval_high_risk: true
+    auto_register_low_risk: true
+    audit_all: true

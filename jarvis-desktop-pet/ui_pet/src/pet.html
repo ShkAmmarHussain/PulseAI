@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Jarvis Pet</title>
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    html, body { background: transparent; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12c0 4-4 7-9 7-1.2 0-2.3-.2-3.3-.5L4 20l1.2-3.3C4.4 15.4 4 13.7 4 12c0-4 4-7 9-7s8 3 8 7z"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></symbol>
+      <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+    </defs>
+  </svg>
+
+  <div id="pet-page">
+    <div id="bubble"></div>
+    <div id="approval">
+      <div class="msg"></div>
+      <div class="btns">
+        <button class="allow">Allow</button>
+        <button class="deny">Deny</button>
+      </div>
+    </div>
+    <div id="pet-row" data-tauri-drag-region>
+      <div id="pet" data-mood="idle"></div>
+      <div id="mini-btns">
+        <button id="btn-mic" title="Talk to Jarvis"><svg class="ic"><use href="#i-mic"/></svg></button>
+        <button id="btn-chat" title="Open chat"><svg class="ic"><use href="#i-chat"/></svg></button>
+        <button id="btn-settings" title="Settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
+      </div>
+    </div>
+  </div>
+  <script src="ws.js"></script>
+  <script src="pet.js"></script>
+  <script type="module" src="pet3d.js"></script>
+</body>
+</html>

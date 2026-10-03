@@ -1,0 +1,39 @@
+# Core
+pydantic>=2.9
+pyyaml>=6.0.2
+aiofiles>=24.1.0
+
+# IPC/async
+asyncio-mqtt>=0.16.2  # optional, not needed; we use in-proc queues
+
+# LLM/clients (LM Studio OpenAI compatible)
+httpx>=0.27.2
+openai>=1.52.0
+
+# Agents
+smolagents>=1.2.2
+
+# Voice
+faster-whisper>=1.0.3
+kokoro>=0.9.2
+sounddevice>=0.5.0
+numpy>=1.26.4
+openwakeword>=0.6.0
+
+# Vision
+mss>=9.0.2
+rapidocr-onnxruntime>=1.4.4
+Pillow>=10.4.0
+
+# Memory
+chromadb>=0.5.15
+
+# PC Control (Windows)
+pyautogui>=0.9.54
+pynput>=1.7.7
+pywin32>=306; platform_system == 'Windows'
+
+# Utils
+rich>=13.9.2
+loguru>=0.7.2
+python-dotenv>=1.0.1

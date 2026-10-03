@@ -1,0 +1,85 @@
+import asyncio
+import logging
+
+from core.bus import MessageBus, Event, create_event
+from core.config import load_config
+from core.resources import ResourceTransitionManager
+from core.state import GlobalState
+from agents.registry import AGENTS
+
+logger = logging.getLogger("backend")
+
+
+class App:
+    def __init__(self):
+        self.cfg = load_config()
+        self.bus = MessageBus(max_queue_size=self.cfg["config"].get("ipc", {}).get("max_queue_size", 1000))
+        rm_cfg = self.cfg["config"].get("resource_manager", {})
+        self.rtm = ResourceTransitionManager(
+            vision_timeout_ms=rm_cfg.get("vision_timeout_ms", 20000),
+            unload_idle_ms=rm_cfg.get("unload_idle_ms", 60000),
+            cooldown_ms=rm_cfg.get("cooldown_ms", 2000),
+        )
+        self.state = GlobalState()
+        self.agents = {}
+        self.bridge = None
+
+    async def start(self):
+        for name, cls in AGENTS.items():
+            inst = cls(self.bus)
+            for attr, val in (("rtm", self.rtm), ("state", self.state), ("cfg", self.cfg)):
+                if hasattr(inst, attr):
+                    setattr(inst, attr, val)
+            self.agents[name] = inst
+            await inst.start()
+
+        async def on_input(ev: Event):
+            await self.bus.publish(
+                create_event(
+                    "orchestrator.input", "input", ev.payload,
+                    correlation_id=ev.correlation_id, source=ev.source or "perception",
+                )
+            )
+
+        self.bus.subscribe("input.text", on_input)
+        self.bus.subscribe("input.voice", on_input)
+
+        async def on_settings(ev: Event):
+            self.cfg = load_config()
+            for a in self.agents.values():
+                a.cfg = self.cfg
+            if self.bridge:
+                await self.bridge.broadcast("ui.state", {"settings_saved": True}, ev.correlation_id)
+
+        self.bus.subscribe("settings.updated", on_settings)
+
+        # WS bridge + server (pet/chat/settings windows connect here)
+        from backend.ws_bridge import WSBridge
+        from backend.voice_service import VoiceService
+
+        self.voice = VoiceService(self.bus, self.cfg)
+        self.bridge = WSBridge(self.bus, voice=self.voice)
+        self.bridge.wire_bus()
+        await self.voice.start()
+        self.bus.start()
+
+        from aiohttp import web
+
+        app = web.Application()
+        app.router.add_get("/ws", self.bridge.handle_ws)
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, "127.0.0.1", 8765)
+        await site.start()
+        logger.info("WS server on ws://127.0.0.1:8765/ws")
+
+
+async def main():
+    app = App()
+    await app.start()
+    print("Jarvis Desktop App - all systems running")
+    await asyncio.Event().wait()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

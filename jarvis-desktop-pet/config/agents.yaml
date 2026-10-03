@@ -1,0 +1,76 @@
+agent_roles:
+  orchestrator:
+    role: Supervisor/Router
+    model_id: qwen3-8b
+    quant: Q5_K_M
+    temperature: 0.1
+    max_tokens: 2048
+    always_on: false
+  planner:
+    role: Strategy/Long-horizon
+    model_id: qwen3-8b
+    quant: Q5_K_M
+    temperature: 0.1
+    max_tokens: 2048
+    always_on: false
+  tool_control:
+    role: Execution/PC Control
+    model_id: qwen2.5-coder-7b-instruct
+    quant: Q5_K_M
+    temperature: 0
+    max_tokens: 1024
+    tool_calling: true
+    always_on: false
+  vision:
+    role: Vision (on-demand)
+    model_id: qwen2.5-vl-7b-instruct
+    quant: Q5_K_M
+    temperature: 0
+    max_tokens: 512
+    always_on: false
+    on_demand: true
+    lazy_load: true
+    unload_after_ms: 30000
+    unload_idle_ms: 60000
+  pet_ux:
+    role: Personality/Emotions
+    model_id: llama-3.2-3b-instruct
+    quant: Q5_K_M
+    temperature: 0.8
+    max_tokens: 256
+    always_on: true
+  perception:
+    role: Input routing
+    model_id: llama-3.2-3b-instruct
+    quant: Q5_K_M
+    temperature: 0.1
+    max_tokens: 256
+    always_on: true
+  memory_agent:
+    role: Knowledge/RAG
+    model_id: llama-3.2-3b-instruct
+    quant: Q5_K_M
+    temperature: 0.1
+    max_tokens: 256
+    always_on: true
+  safety:
+    role: Guardrails/veto
+    model_id: llama-3.2-3b-instruct
+    quant: Q5_K_M
+    temperature: 0
+    max_tokens: 256
+    always_on: true
+  voice_tts:
+    role: Voice output
+    model_id: llama-3.2-3b-instruct
+    quant: Q5_K_M
+    temperature: 0.3
+    max_tokens: 128
+    always_on: true
+  spawner:
+    role: Dynamic agent/skill creation
+    model_id: qwen3-8b
+    quant: Q5_K_M
+    temperature: 0.1
+    max_tokens: 2048
+    always_on: false

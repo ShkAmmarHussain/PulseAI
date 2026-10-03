@@ -1,0 +1,35 @@
+lm_studio:
+  base_url: http://localhost:1234/v1
+  api_key: dummy
+  timeout_ms: 30000
+  max_retries: 3
+runtime:
+  mode: local
+  debug: false
+  pet_enabled: true
+ipc:
+  use_inproc: true
+  max_queue_size: 1000
+  event_ttl_ms: 60000
+voice:
+  enabled: true
+  stt_model: base
+  language: null
+  vad_threshold: 0.012
+  silence_sec: 1.2
+  max_sec: 15
+  wake:
+    enabled: true
+    threshold: 0.5
+  tts_engine: kokoro
+  tts_voice: af_heart
+  tts_speed: 1
+resource_manager:
+  enforce_invariants: true
+  vision_mutex: true
+  unload_after_ms: 30000
+  unload_idle_ms: 60000
+  cooldown_ms: 2000
+  max_active_subagents: 4
+  max_spawn_depth: 6
+  vision_timeout_ms: 20000

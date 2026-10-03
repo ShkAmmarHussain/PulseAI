@@ -1,0 +1,29 @@
+﻿[project]
+name = "jarvis-desktop-pet"
+version = "0.1.0"
+description = "Jarvis Desktop Pet - Local multi-agent desktop assistant"
+requires-python = ">=3.10"
+dependencies = [
+  "pydantic>=2.9",
+  "pyyaml>=6.0.2",
+  "aiofiles>=24.1.0",
+  "httpx>=0.27.2",
+  "openai>=1.52.0",
+  "smolagents>=1.2.2",
+  "faster-whisper>=1.0.3",
+  "kokoro>=0.9.2",
+  "sounddevice>=0.5.0",
+  "numpy>=1.26.4",
+  "openwakeword>=0.6.0",
+  "mss>=9.0.2",
+  "rapidocr-onnxruntime>=1.4.4",
+  "Pillow>=10.4.0",
+  "chromadb>=0.5.15",
+  "pyautogui>=0.9.54",
+  "pynput>=1.7.7",
+  "pywin32>=306; platform_system=='Windows'",
+  "rich>=13.9.2",
+  "loguru>=0.7.2",
+  "python-dotenv>=1.0.1",
+  "aiohttp>=3.10.5",
+]

@@ -1,0 +1,3 @@
+WS server on ws://127.0.0.1:8765/ws
+[VOICE] I recall context for: hello there
+[VOICE] I recall context for: hello there

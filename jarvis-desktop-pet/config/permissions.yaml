@@ -1,0 +1,28 @@
+permissions:
+  default_policy: conservative
+  session_grants:
+    enabled: true
+    scope: app
+    expiry_minutes: 30
+    revoke_on_focus_loss: false
+    revoke_on_app_close: true
+    persist_across_restart: false
+  approvals:
+    timeout_ms: 45000
+    single_in_flight: true
+  shell:
+    allowlist: []
+    denylist: []
+  files:
+    safe_paths: []
+    allow_delete: false
+    require_backup_or_trash: true
+  input_control:
+    require_approval: true
+    max_rate_per_sec: 20
+  vision:
+    read_only: true
+    discard_after_task: true
+default_policy: conservative
+approvals:
+  timeout_ms: 45000

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Jarvis</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12c0 4-4 7-9 7-1.2 0-2.3-.2-3.3-.5L4 20l1.2-3.3C4.4 15.4 4 13.7 4 12c0-4 4-7 9-7s8 3 8 7z"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></symbol>
+      <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3L10.5 13.5M21 3l-6.8 18-3.7-8.5L2 8.8 21 3z"/></symbol>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></symbol>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7z"/></symbol>
+      <symbol id="i-face" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="13" rx="5"/><circle cx="12" cy="3.4" r="1.5"/><path d="M12 4.9V6"/><circle cx="9.4" cy="12" r="1.05" fill="currentColor" stroke="none"/><circle cx="14.6" cy="12" r="1.05" fill="currentColor" stroke="none"/></symbol>
+      <symbol id="i-wave" viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></symbol>
+    </defs>
+  </svg>
+
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <div class="logo"><svg class="ic"><use href="#i-face"/></svg></div>
+        <div class="brand-text">
+          <span class="name">Jarvis</span>
+          <span class="status" id="conn">connecting...</span>
+        </div>
+      </div>
+      <nav id="tabs">
+        <button class="tab active" data-tab="chat"><svg class="ic"><use href="#i-chat"/></svg>Chat</button>
+        <button class="tab" data-tab="settings"><svg class="ic"><use href="#i-sliders"/></svg>Settings</button>
+      </nav>
+      <button id="pet-toggle" class="icon-btn active" title="Show / hide floating pet"><svg class="ic"><use href="#i-eye"/></svg></button>
+    </header>
+
+    <main id="pane-chat" class="pane active">
+      <div id="msgs">
+        <div id="empty-state">
+          <div class="logo"><svg class="ic"><use href="#i-face"/></svg></div>
+          <div class="es-title">How can I help?</div>
+          <div class="es-sub">Type a message, press the mic, or just say <kbd>Hey Jarvis</kbd> anytime.</div>
+        </div>
+        <div id="typing" class="msg-row" hidden>
+          <div class="avatar"><svg class="ic"><use href="#i-face"/></svg></div>
+          <div class="msg assistant typing-bubble"><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <div id="chat-input-row">
+        <input id="chat-input" type="text" placeholder="Talk to Jarvis, or just say &ldquo;Hey Jarvis&rdquo;&hellip;" autocomplete="off" />
+        <button id="mic" title="Click to talk"><svg class="ic"><use href="#i-mic"/></svg></button>
+        <button id="send" title="Send"><svg class="ic"><use href="#i-send"/></svg><span>Send</span></button>
+      </div>
+    </main>
+
+    <main id="pane-settings" class="pane">
+      <div class="section">
+        <h3><svg class="ic"><use href="#i-wave"/></svg>Voice</h3>
+        <div class="field switch-field">
+          <label>Always listen for &ldquo;Hey Jarvis&rdquo;</label>
+          <label class="switch">
+            <input type="checkbox" id="v-wake" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="field"><label>Wake threshold</label><input id="v-threshold" type="number" min="0.1" max="0.95" step="0.05" /></div>
+        <div class="field"><label>Speech engine</label>
+          <select id="v-engine">
+            <option value="kokoro">Kokoro &mdash; natural neural voice</option>
+            <option value="sapi">Windows &mdash; fast, robotic</option>
+          </select>
+        </div>
+        <div class="field"><label>Voice</label>
+          <select id="v-voice">
+            <option value="af_heart">af_heart &mdash; warm female</option>
+            <option value="af_bella">af_bella &mdash; bright female</option>
+            <option value="af_nicole">af_nicole &mdash; soft female</option>
+            <option value="af_sarah">af_sarah &mdash; calm female</option>
+            <option value="af_sky">af_sky &mdash; light female</option>
+            <option value="af_alloy">af_alloy &mdash; neutral female</option>
+            <option value="am_michael">am_michael &mdash; professional male</option>
+            <option value="am_fenrir">am_fenrir &mdash; strong male</option>
+            <option value="am_puck">am_puck &mdash; expressive male</option>
+            <option value="am_echo">am_echo &mdash; deep male</option>
+            <option value="am_onyx">am_onyx &mdash; dark male</option>
+            <option value="am_adam">am_adam &mdash; friendly male</option>
+            <option value="bf_emma">bf_emma &mdash; British female</option>
+            <option value="bm_george">bm_george &mdash; British male</option>
+            <option value="bm_lewis">bm_lewis &mdash; British young male</option>
+          </select>
+        </div>
+        <div class="field"><label>Speech speed</label><input id="v-speed" type="range" min="0.5" max="1.8" step="0.05" /><span class="range-val" id="v-speed-val">1.0</span></div>
+        <p class="hint">Say &ldquo;Hey Jarvis&rdquo; anytime, or press the mic to talk. Wake word runs locally (mic stays in use while enabled).</p>
+      </div>
+
+      <div class="section">
+        <h3>Pet</h3>
+        <div class="field switch-field">
+          <label>Show floating pet on desktop</label>
+          <label class="switch">
+            <input type="checkbox" id="pet-enabled" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <p class="hint">When off, Jarvis lives only in this window and the tray icon.</p>
+        <div class="field"><label>Assistant name</label><input id="p-name" /></div>
+        <div class="field"><label>Voice style</label><input id="p-voice" /></div>
+        <div class="field"><label>Wake word label</label><input id="p-wake" /></div>
+      </div>
+
+      <div class="section">
+        <h3>LM Studio</h3>
+        <div class="field"><label>Endpoint URL</label><input id="lm-url" /></div>
+        <div class="field"><label>API key</label><input id="lm-key" placeholder="not required locally" /></div>
+        <div class="field"><label>Timeout (ms)</label><input id="lm-timeout" type="number" /></div>
+      </div>
+
+      <div class="section">
+        <h3>Models (role mapping)</h3>
+        <div class="field"><label>Orchestrator</label><input id="m-orchestrator" /></div>
+        <div class="field"><label>Planner</label><input id="m-planner" /></div>
+        <div class="field"><label>Tool / PC Control</label><input id="m-tool_control" /></div>
+        <div class="field"><label>Vision (on-demand)</label><input id="m-vision" /></div>
+        <div class="field"><label>Small agents (3B)</label><input id="m-small" /></div>
+      </div>
+
+      <div class="section">
+        <h3>Safety</h3>
+        <div class="field">
+          <label>Mode</label>
+          <select id="safety-mode">
+            <option value="conservative">Conservative (ask for risky actions)</option>
+            <option value="smart">Smart (session grants)</option>
+          </select>
+        </div>
+        <div class="field"><label>Approval timeout (ms)</label><input id="approval-timeout" type="number" /></div>
+      </div>
+
+      <div class="section">
+        <h3>Resource Manager (VRAM)</h3>
+        <div class="field"><label>Vision timeout (ms)</label><input id="rm-vision-timeout" type="number" /></div>
+        <div class="field"><label>Unload idle (ms)</label><input id="rm-unload-idle" type="number" /></div>
+        <div class="field"><label>Cooldown (ms)</label><input id="rm-cooldown" type="number" /></div>
+      </div>
+
+      <div id="settings-actions">
+        <button id="save" class="primary">Save Settings</button>
+        <button id="tts-test"><svg class="ic"><use href="#i-play"/></svg>Preview Voice</button>
+        <button id="test">Test LM Studio</button>
+        <div id="settings-note">Loading...</div>
+      </div>
+    </main>
+  </div>
+  <script src="ws.js"></script>
+  <script src="chat.js"></script>
+  <script src="settings.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
