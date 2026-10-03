@@ -45,6 +45,7 @@ function fill(s) {
     (voice.tts_speed == null ? 1 : voice.tts_speed).toFixed(2);
   note.textContent = "Loaded. Edit and press Save.";
   note.classList.remove("ok");
+  Jarvis.voiceDevices();
   if (window.onSettingsLoaded) window.onSettingsLoaded(s);
 }
 
@@ -103,6 +104,44 @@ Jarvis.on("settings_saved", (d) => {
   note.classList.add("ok");
 });
 
+// ---- microphone selection + live input level ----
+Jarvis.on("voice_devices", (d) => {
+  const sel = document.getElementById("v-device");
+  const p = d.payload || {};
+  const devices = p.devices || [];
+  const current = sel.value || p.current || "";
+  sel.innerHTML = '<option value="">System default input</option>';
+  devices.forEach((dev) => {
+    const o = document.createElement("option");
+    o.value = dev.name;
+    o.textContent = dev.name + (dev.default ? " (default)" : "") + (dev.rate ? " - " + dev.rate + " Hz" : "");
+    sel.appendChild(o);
+  });
+  const names = devices.map((x) => x.name);
+  sel.value = names.includes(current) ? current : "";
+});
+Jarvis.on("voice_device_set", (d) => {
+  const p = d.payload || {};
+  note.textContent = p.ok ? "Microphone set: " + (p.device || "system default") : "Could not open that microphone.";
+  note.classList.toggle("ok", !!p.ok);
+  Jarvis.voiceDevices();
+});
+Jarvis.on("ui.mic_level", (d) => {
+  const p = d.payload || {};
+  const bar = document.getElementById("v-level");
+  if (!bar) return;
+  const meter = bar.parentElement;
+  const pct = Math.max(0, Math.min(100, ((p.level || 0) / 0.25) * 100));
+  bar.style.width = pct.toFixed(1) + "%";
+  meter.classList.toggle("hot", (p.level || 0) > 0.03);
+  meter.classList.toggle("clip", (p.peak || 0) > 0.98);
+  const nm = document.getElementById("v-level-name");
+  if (nm) {
+    const dev = (p.device || "").replace(/^Microphone \((.*)\)$/, "$1");
+    nm.textContent = p.active ? (dev || "default") : "paused";
+  }
+});
+
 document.getElementById("save").onclick = () => {
   note.textContent = "Saving...";
   Jarvis.saveSettings(collect());
@@ -121,6 +160,11 @@ document.getElementById("v-wake").addEventListener("change", (e) => {
   Jarvis.voiceWake(e.target.checked);
   note.textContent = e.target.checked ? "Wake word on." : "Wake word off (mic released).";
   note.classList.add("ok");
+});
+document.getElementById("v-device").addEventListener("change", (e) => {
+  note.textContent = "Switching microphone...";
+  note.classList.remove("ok");
+  Jarvis.voiceDevice(e.target.value);
 });
 document.getElementById("tts-test").onclick = () => {
   const voice = val("v-voice");

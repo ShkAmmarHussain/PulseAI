@@ -108,6 +108,26 @@ class WSBridge:
         elif et == "voice_wake":
             if self.voice:
                 self.voice.set_wake_enabled(bool(payload.get("enabled", True)))
+        elif et == "voice_devices":
+            devices = self.voice.list_devices() if self.voice else []
+            current = self.voice.current_device() if self.voice else "default"
+            await self._send(
+                ws,
+                {"type": "voice_devices", "payload": {"devices": devices, "current": current}, "correlation_id": cid},
+            )
+        elif et == "voice_device":
+            name = payload.get("device") or None
+            cfg = _read_yaml("config.yaml") or {}
+            v = cfg.get("voice") or {}
+            v["device"] = name
+            cfg["voice"] = v
+            _write_yaml("config.yaml", cfg)
+            ok = self.voice.set_device(name) if self.voice else False
+            await self.bus.publish(create_event("settings.updated", "updated", get_settings(), correlation_id=cid))
+            await self._send(
+                ws,
+                {"type": "voice_device_set", "payload": {"device": name, "ok": ok}, "correlation_id": cid},
+            )
         elif et == "tts_test":
             from core.bus import create_event as _ce
 
@@ -133,5 +153,5 @@ class WSBridge:
         async def fwd_ui(ev):
             await self.broadcast(ev.topic, ev.payload, ev.correlation_id)
 
-        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "tts_state"):
+        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "tts_state"):
             self.bus.subscribe(t, fwd_ui)

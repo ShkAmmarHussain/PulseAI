@@ -187,6 +187,27 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 .avatar .ic { width: 18px; height: 18px; }
 
+.mic-meter {
+  flex: 1;
+  height: 10px;
+  min-width: 130px;
+  background: #0a1622;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.mic-meter > div {
+  height: 100%;
+  width: 0%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #2f9fd0, var(--accent));
+  transition: width 90ms linear;
+}
+.mic-meter.hot > div { background: linear-gradient(90deg, var(--accent), #4ade80); }
+.mic-meter.clip > div { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+.meter-field label { display: flex; gap: 6px; align-items: baseline; }
+.meter-field .hint { font-size: 11px; opacity: 0.75; font-weight: 400; }
+
 .msg {
   padding: 9px 13px;
   border-radius: 14px;

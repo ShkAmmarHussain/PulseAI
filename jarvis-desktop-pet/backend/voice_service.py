@@ -38,6 +38,7 @@ class VoiceService:
         self._speech_started = False
         self._silent_blocks = 0
         self._model = None
+        self._level_t = 0.0
 
     def _read_cfg(self, cfg=None):
         if cfg is not None:
@@ -52,6 +53,7 @@ class VoiceService:
         self.vad_threshold = float(vcfg.get("vad_threshold", 0.012))
         self.silence_sec = float(vcfg.get("silence_sec", 1.2))
         self.max_sec = float(vcfg.get("max_sec", 15.0))
+        self.device = vcfg.get("device") or None
 
     # ---------- state ----------
 
@@ -89,6 +91,7 @@ class VoiceService:
 
     async def _on_settings(self, ev):
         was_wake = self.wake_enabled
+        old_device = self.device
         self._read_cfg(ev.payload)
         if not self.enabled:
             self._close_stream()
@@ -104,6 +107,12 @@ class VoiceService:
             if self._mode == "wake":
                 self._close_stream()
                 self._set_state("idle")
+        if self._stream is not None and self.device != old_device:
+            logger.info("mic device changed (%s -> %s): reopening stream", old_device, self.device)
+            mode = "listen" if self._mode == "listen" else "wake"
+            self._close_stream()
+            if self.wake_enabled or mode == "listen":
+                self._open_stream(mode)
 
     def set_wake_enabled(self, on: bool):
         self.wake_enabled = bool(on)
@@ -170,6 +179,75 @@ class VoiceService:
         finally:
             self._wake_loading = False
 
+    # ---------- device selection ----------
+
+    def _resolve_device(self):
+        """Configured device name -> sounddevice index, or None for system default."""
+        if not self.device:
+            return None
+        import sounddevice as sd
+
+        for i, d in enumerate(sd.query_devices()):
+            if d.get("max_input_channels", 0) > 0 and d.get("name") == self.device:
+                return i
+        logger.warning("configured mic '%s' not found, using system default", self.device)
+        return None
+
+    @staticmethod
+    def list_devices() -> list:
+        try:
+            import sounddevice as sd
+        except Exception:
+            return []
+        try:
+            devs = sd.query_devices()
+            default_idx = sd.default.device[0]
+            default_name = devs[default_idx]["name"] if default_idx is not None and 0 <= default_idx < len(devs) else None
+        except Exception:
+            logger.exception("mic device enumeration failed")
+            return []
+        out, seen = [], set()
+        for i, d in enumerate(devs):
+            if d.get("max_input_channels", 0) <= 0:
+                continue
+            name = d.get("name")
+            if name in seen:
+                continue
+            seen.add(name)
+            out.append(
+                {
+                    "name": name,
+                    "index": i,
+                    "rate": int(d.get("default_samplerate") or 0),
+                    "default": name == default_name,
+                }
+            )
+        return out
+
+    def set_device(self, name) -> bool:
+        """Switch capture device; reopens the live stream when it changes."""
+        name = (name or "").strip() or None
+        if name == self.device:
+            return self._stream is not None
+        self.device = name
+        if self._stream is None:
+            return True
+        mode = "listen" if self._mode == "listen" else "wake"
+        self._close_stream()
+        if not self.enabled or (mode == "wake" and not self.wake_enabled):
+            return True
+        return self._open_stream(mode)
+
+    def current_device(self) -> str:
+        import sounddevice as sd
+
+        if self.device:
+            return self.device
+        try:
+            return str(sd.query_devices(kind="input").get("name") or "default")
+        except Exception:
+            return "default"
+
     # ---------- stream ----------
 
     def _open_stream(self, mode: str) -> bool:
@@ -179,10 +257,11 @@ class VoiceService:
         import sounddevice as sd
 
         try:
-            dev = sd.query_devices(kind="input")
+            dev_idx = self._resolve_device()
+            dev = sd.query_devices(dev_idx) if dev_idx is not None else sd.query_devices(kind="input")
             logger.info(
-                "mic device: '%s' (native rate=%s, ch=%s), opening @%d/%d",
-                dev.get("name"), dev.get("default_samplerate"),
+                "mic device: '%s' (idx=%s, native rate=%s, ch=%s), opening @%d/%d",
+                dev.get("name"), dev_idx, dev.get("default_samplerate"),
                 dev.get("max_input_channels"), SAMPLE_RATE, BLOCK_SAMPLES,
             )
             self._stream = sd.InputStream(
@@ -190,6 +269,7 @@ class VoiceService:
                 channels=1,
                 dtype="float32",
                 blocksize=BLOCK_SAMPLES,
+                device=dev_idx,
                 callback=self._callback,
             )
             self._stream.start()
@@ -225,15 +305,35 @@ class VoiceService:
     # ---------- audio routing ----------
 
     def _callback(self, indata, frames, time_info, status):
+        block = indata[:, 0]
+        self._publish_level(block)
         if self._suppress:
             return
-        block = indata[:, 0]
         mode = self._mode
         if mode == "wake":
             self._wake_frame(block)
         elif mode == "listen":
             self._capture_frame(block)
         # transcribe/off: drop
+
+    def _publish_level(self, block):
+        """Throttled live input level -> UI (level meter + mic diagnostics)."""
+        now = time.monotonic()
+        if now - self._level_t < 0.1:
+            return
+        self._level_t = now
+        rms = float(np.sqrt(np.mean(np.square(block)))) if block.size else 0.0
+        peak = float(np.abs(block).max()) if block.size else 0.0
+        payload = {
+            "level": round(rms, 4),
+            "peak": round(peak, 4),
+            "device": self.current_device(),
+            "active": not self._suppress and self._mode in ("wake", "listen"),
+        }
+        asyncio.run_coroutine_threadsafe(
+            self.bus.publish(create_event("ui.mic_level", "mic_level", payload, source="voice")),
+            self.loop,
+        )
 
     def _wake_frame(self, block: np.ndarray):
         m = self._wake_model

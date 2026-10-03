@@ -55,6 +55,8 @@ window.Jarvis = (function () {
     setPet: (enabled) => send({ type: "set_pet", payload: { enabled } }),
     voiceListen: (on) => send({ type: "voice_listen", payload: { on: !!on } }),
     voiceWake: (enabled) => send({ type: "voice_wake", payload: { enabled: !!enabled } }),
+    voiceDevices: () => send({ type: "voice_devices" }),
+    voiceDevice: (device) => send({ type: "voice_device", payload: { device } }),
     ttsTest: (voice, text) => send({ type: "tts_test", payload: { voice, text } }),
   };
 })();
