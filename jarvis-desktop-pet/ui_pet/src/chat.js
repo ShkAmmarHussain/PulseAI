@@ -4,17 +4,45 @@ const sendBtn = document.getElementById("send");
 const conn = document.getElementById("conn");
 const typingEl = document.getElementById("typing");
 const emptyEl = document.getElementById("empty-state");
+const voiceStatus = document.getElementById("voice-status");
+const voiceText = document.getElementById("vs-text");
 let typingTimer = null;
+let stickBottom = true;
 
 function hideEmpty() {
   if (emptyEl) emptyEl.remove();
+}
+
+msgs.addEventListener("scroll", () => {
+  stickBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 60;
+  if (stickBottom && jumpBtn) jumpBtn.hidden = true;
+});
+
+let jumpBtn = null;
+function ensureJumpBtn() {
+  if (jumpBtn) return;
+  jumpBtn = document.createElement("button");
+  jumpBtn.id = "jump-latest";
+  jumpBtn.type = "button";
+  jumpBtn.hidden = true;
+  jumpBtn.textContent = "New messages \u2193";
+  jumpBtn.onclick = () => {
+    msgs.scrollTop = msgs.scrollHeight;
+    jumpBtn.hidden = true;
+    stickBottom = true;
+  };
+  document.getElementById("pane-chat").appendChild(jumpBtn);
+}
+function scrollLatest(force) {
+  if (force || stickBottom) msgs.scrollTop = msgs.scrollHeight;
+  else ensureJumpBtn(), (jumpBtn.hidden = false);
 }
 
 function showTyping() {
   hideEmpty();
   typingEl.hidden = false;
   msgs.appendChild(typingEl);
-  msgs.scrollTop = msgs.scrollHeight;
+  scrollLatest(true);
   clearTimeout(typingTimer);
   typingTimer = setTimeout(hideTyping, 60000);
 }
@@ -51,26 +79,64 @@ function addMsg(role, text) {
     node.textContent = text;
   }
   msgs.insertBefore(node, typingEl);
-  msgs.scrollTop = msgs.scrollHeight;
+  scrollLatest();
 }
+
+// ---- composer ----
+function autogrow() {
+  input.style.height = "auto";
+  input.style.height = Math.min(input.scrollHeight, 148) + "px";
+}
+input.addEventListener("input", autogrow);
 
 function send() {
   const t = input.value.trim();
   if (!t) return;
+  if (!typingEl.hidden) return; // one in-flight request at a time
   input.value = "";
+  autogrow();
   showTyping();
   Jarvis.text(t);
 }
 sendBtn.onclick = send;
-input.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
+});
 
+// welcome action chips fill the composer (prompt suggestions, not auto-send)
+document.querySelectorAll("#empty-state .chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    input.value = chip.dataset.prompt || "";
+    autogrow();
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  });
+});
+
+// ---- microphone / voice states ----
 const micBtn = document.getElementById("mic");
 let micOn = false;
 function setMic(on) {
   micOn = on;
   micBtn.classList.toggle("rec", on);
+  micBtn.title = on ? "Stop listening" : "Click to talk";
+  micBtn.setAttribute("aria-pressed", String(on));
+}
+function setVoiceStatus(text, mode) {
+  if (!voiceStatus) return;
+  if (text) {
+    voiceStatus.hidden = false;
+    voiceText.textContent = text;
+    voiceStatus.classList.toggle("transcribing", mode === "transcribing");
+  } else {
+    voiceStatus.hidden = true;
+  }
 }
 micBtn.onclick = () => {
+  if (micBtn.disabled) return;
   const next = !micOn;
   setMic(next);
   Jarvis.voiceListen(next);
@@ -78,9 +144,19 @@ micBtn.onclick = () => {
 Jarvis.on("ui.voice_state", (d) => {
   const st = (d.payload || {}).state || "idle";
   micBtn.classList.remove("busy");
-  if (st === "listening") { setMic(true); showTyping(); }
-  else if (st === "transcribing") { setMic(false); micBtn.classList.add("busy"); }
-  else setMic(false);
+  micBtn.disabled = false;
+  if (st === "listening") {
+    setMic(true);
+    setVoiceStatus("Listening\u2026", "listening");
+  } else if (st === "transcribing") {
+    setMic(false);
+    micBtn.classList.add("busy");
+    micBtn.disabled = true;
+    setVoiceStatus("Transcribing\u2026", "transcribing");
+  } else {
+    setMic(false);
+    setVoiceStatus("");
+  }
   if (st === "error") addMsg("system", "Voice: " + ((d.payload || {}).error || "unknown error"));
 });
 
@@ -89,6 +165,8 @@ Jarvis.on("ui.chat", (d) => {
   if (d.payload.role === "assistant") hideTyping();
   addMsg(d.payload.role || "assistant", d.payload.text || "");
 });
+
+// ---- approvals ----
 Jarvis.on("ui.approval", (d) => {
   hideTyping();
   const p = d.payload || {};
@@ -99,13 +177,13 @@ Jarvis.on("ui.approval", (d) => {
   text.textContent = p.message || "Approval needed";
   const risk = document.createElement("span");
   risk.className = "risk";
-  risk.textContent = "risk " + (p.risk || "?") + "/10";
+  risk.textContent = "Risk level " + (p.risk == null ? "?" : p.risk) + "/10 \u2014 confirmation required";
   text.appendChild(risk);
   const btns = document.createElement("div");
   btns.className = "ac-btns";
   const allow = document.createElement("button");
   allow.className = "allow";
-  allow.textContent = "Allow";
+  allow.textContent = "Allow once";
   const deny = document.createElement("button");
   deny.className = "deny";
   deny.textContent = "Deny";
@@ -119,12 +197,12 @@ Jarvis.on("ui.approval", (d) => {
     wrap.remove();
     addMsg("system", "Action denied.");
   };
-  btns.appendChild(allow);
   btns.appendChild(deny);
+  btns.appendChild(allow);
   wrap.appendChild(text);
   wrap.appendChild(btns);
   msgs.insertBefore(wrap, typingEl);
-  msgs.scrollTop = msgs.scrollHeight;
+  scrollLatest(true);
 });
 
 document.addEventListener("jarvis:connected", () => {

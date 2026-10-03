@@ -25,7 +25,7 @@ function showApproval(data, cid) {
   pendingApproval = { payload: data.payload || data, cid: cid || data.correlation_id };
   approval.querySelector(".msg").innerHTML =
     (pendingApproval.payload.message || "Approve?") +
-    ' <span class="risk">risk ' + (pendingApproval.payload.risk || "?") + "/10</span>";
+    ' <span class="risk">Risk level ' + (pendingApproval.payload.risk == null ? "?" : pendingApproval.payload.risk) + "/10</span>";
   approval.style.display = "block";
   bubble.style.display = "none";
   setMood("concerned");

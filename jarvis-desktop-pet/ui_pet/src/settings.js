@@ -2,6 +2,26 @@ const note = document.getElementById("settings-note");
 const val = (id) => document.getElementById(id).value;
 const setv = (id, v) => { document.getElementById(id).value = v == null ? "" : v; };
 let current = {};
+let dirty = false;
+const saveBtn = document.getElementById("save");
+function setDirty(on) {
+  on = !!on;
+  if (dirty === on) return;
+  dirty = on;
+  saveBtn.disabled = !on;
+  if (on) {
+    note.textContent = "Unsaved changes.";
+    note.classList.remove("ok");
+  }
+}
+// controls that apply immediately (not via Save)
+const IMMEDIATE_IDS = ["v-wake", "v-device", "v-autostart", "v-speed", "wake-test", "tts-test", "test", "save"];
+const sc = document.getElementById("settings-content");
+if (sc) {
+  const mark = (e) => { if (e.target && !IMMEDIATE_IDS.includes(e.target.id)) setDirty(true); };
+  sc.addEventListener("input", mark);
+  sc.addEventListener("change", mark);
+}
 
 function fill(s) {
   current = s;
@@ -9,7 +29,7 @@ function fill(s) {
   const lm = cfg.lm_studio || {};
   setv("lm-url", lm.base_url);
   setv("lm-key", lm.api_key);
-  setv("lm-timeout", lm.timeout_ms);
+  setv("lm-timeout", lm.timeout_ms == null ? 30 : lm.timeout_ms / 1000);
 
   const ar = s.agents && s.agents.agent_roles ? s.agents.agent_roles : {};
   setv("m-orchestrator", (ar.orchestrator || {}).model_id);
@@ -21,7 +41,7 @@ function fill(s) {
   const perm = s.permissions || {};
   setv("safety-mode", perm.default_policy || "conservative");
   const appr = (perm.approvals || {});
-  setv("approval-timeout", appr.timeout_ms);
+  setv("approval-timeout", appr.timeout_ms == null ? 45 : appr.timeout_ms / 1000);
 
   const pers = s.personality || {};
   const ident = pers.identity || {};
@@ -30,9 +50,9 @@ function fill(s) {
   setv("p-voice", ident.voice_style);
 
   const rm = (cfg.resource_manager || {});
-  setv("rm-vision-timeout", rm.vision_timeout_ms);
-  setv("rm-unload-idle", rm.unload_idle_ms);
-  setv("rm-cooldown", rm.cooldown_ms);
+  setv("rm-vision-timeout", rm.vision_timeout_ms == null ? 20 : rm.vision_timeout_ms / 1000);
+  setv("rm-unload-idle", rm.unload_idle_ms == null ? 60 : rm.unload_idle_ms / 1000);
+  setv("rm-cooldown", rm.cooldown_ms == null ? 2 : rm.cooldown_ms / 1000);
 
   const voice = cfg.voice || {};
   const wake = voice.wake || {};
@@ -49,6 +69,7 @@ function fill(s) {
     (voice.tts_speed == null ? 1 : voice.tts_speed).toFixed(2);
   note.textContent = "Loaded. Edit and press Save.";
   note.classList.remove("ok");
+  setDirty(false);
   Jarvis.voiceDevices();
   if (window.onSettingsLoaded) window.onSettingsLoaded(s);
 }
@@ -59,11 +80,11 @@ function collect() {
   s.config.lm_studio = s.config.lm_studio || {};
   s.config.lm_studio.base_url = val("lm-url");
   s.config.lm_studio.api_key = val("lm-key");
-  s.config.lm_studio.timeout_ms = Number(val("lm-timeout")) || 30000;
+  s.config.lm_studio.timeout_ms = (Number(val("lm-timeout")) || 30) * 1000;
   s.config.resource_manager = s.config.resource_manager || {};
-  s.config.resource_manager.vision_timeout_ms = Number(val("rm-vision-timeout")) || 20000;
-  s.config.resource_manager.unload_idle_ms = Number(val("rm-unload-idle")) || 60000;
-  s.config.resource_manager.cooldown_ms = Number(val("rm-cooldown")) || 2000;
+  s.config.resource_manager.vision_timeout_ms = (Number(val("rm-vision-timeout")) || 20) * 1000;
+  s.config.resource_manager.unload_idle_ms = (Number(val("rm-unload-idle")) || 60) * 1000;
+  s.config.resource_manager.cooldown_ms = (Number(val("rm-cooldown")) || 2) * 1000;
 
   s.agents = s.agents || {};
   const ar = s.agents.agent_roles = s.agents.agent_roles || {};
@@ -83,7 +104,7 @@ function collect() {
   s.permissions = s.permissions || {};
   s.permissions.default_policy = val("safety-mode");
   s.permissions.approvals = s.permissions.approvals || {};
-  s.permissions.approvals.timeout_ms = Number(val("approval-timeout")) || 45000;
+  s.permissions.approvals.timeout_ms = (Number(val("approval-timeout")) || 45) * 1000;
 
   s.personality = s.personality || {};
   s.personality.identity = s.personality.identity || {};
@@ -151,6 +172,8 @@ Jarvis.on("ui.mic_level", (d) => {
 
 document.getElementById("save").onclick = () => {
   note.textContent = "Saving...";
+  dirty = false;
+  saveBtn.disabled = true;
   Jarvis.saveSettings(collect());
 };
 document.getElementById("test").onclick = () => {
@@ -285,3 +308,27 @@ Jarvis.on("lm_test", (d) => {
 
 Jarvis.getSettings();
 document.addEventListener("jarvis:connected", () => Jarvis.getSettings());
+
+// ---- settings index nav (scroll to section + active highlight) ----
+const secNav = document.getElementById("settings-index");
+if (secNav) {
+  const navBtns = Array.prototype.slice.call(secNav.querySelectorAll("button[data-sec]"));
+  navBtns.forEach((b) => {
+    b.addEventListener("click", () => {
+      const el = document.getElementById(b.dataset.sec);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+  const setActive = (id) => navBtns.forEach((b) => b.classList.toggle("active", b.dataset.sec === id));
+  const root = document.getElementById("pane-settings");
+  if (root && window.IntersectionObserver) {
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (vis.length) setActive(vis[0].target.id);
+      },
+      { root: root, threshold: [0.25, 0.6], rootMargin: "-72px 0px -55% 0px" }
+    );
+    navBtns.forEach((b) => { const el = document.getElementById(b.dataset.sec); if (el) obs.observe(el); });
+  }
+}

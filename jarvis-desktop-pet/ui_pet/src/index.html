@@ -16,6 +16,8 @@
       <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l12-7z"/></symbol>
       <symbol id="i-face" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="13" rx="5"/><circle cx="12" cy="3.4" r="1.5"/><path d="M12 4.9V6"/><circle cx="9.4" cy="12" r="1.05" fill="currentColor" stroke="none"/><circle cx="14.6" cy="12" r="1.05" fill="currentColor" stroke="none"/></symbol>
       <symbol id="i-wave" viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></symbol>
+      <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.8-7 10-4-2.2-7-5.5-7-10V6l7-3z"/></symbol>
     </defs>
   </svg>
 
@@ -40,22 +42,44 @@
         <div id="empty-state">
           <div class="logo"><svg class="ic"><use href="#i-face"/></svg></div>
           <div class="es-title">How can I help?</div>
-          <div class="es-sub">Type a message, press the mic, or just say <kbd>Hey Jarvis</kbd> anytime.</div>
+          <div class="es-sub">Type a request or talk to Jarvis.</div>
+          <div class="chips">
+            <button class="chip" type="button" data-prompt="Help me open an app ">Open an app</button>
+            <button class="chip" type="button" data-prompt="Help me find a file on this PC ">Find a file</button>
+            <button class="chip" type="button" data-prompt="Summarize what is on my screen ">Summarize my screen</button>
+            <button class="chip" type="button" data-prompt="Run this routine for me: ">Run a routine</button>
+          </div>
+          <div class="es-hint">Say <kbd>Hey Jarvis</kbd> anytime, or press <kbd>Ctrl+Alt+J</kbd> to talk from anywhere.</div>
         </div>
         <div id="typing" class="msg-row" hidden>
           <div class="avatar"><svg class="ic"><use href="#i-face"/></svg></div>
-          <div class="msg assistant typing-bubble"><i></i><i></i><i></i></div>
+          <div class="msg assistant typing-bubble"><i></i><i></i><i></i><span class="tb-text">Thinking&hellip;</span></div>
         </div>
       </div>
       <div id="chat-input-row">
-        <input id="chat-input" type="text" placeholder="Talk to Jarvis, or just say &ldquo;Hey Jarvis&rdquo;&hellip;" autocomplete="off" />
-        <button id="mic" title="Click to talk"><svg class="ic"><use href="#i-mic"/></svg></button>
-        <button id="send" title="Send"><svg class="ic"><use href="#i-send"/></svg><span>Send</span></button>
+        <div id="composer-col">
+          <div id="voice-status" role="status" aria-live="polite" hidden>
+            <span class="vs-dot"></span><span id="vs-text">Listening&hellip;</span>
+          </div>
+          <div class="composer-main">
+            <textarea id="chat-input" rows="1" placeholder="Ask Jarvis to do something&hellip;" autocomplete="off" aria-label="Message Jarvis"></textarea>
+            <button id="mic" title="Click to talk" aria-label="Toggle microphone"><svg class="ic"><use href="#i-mic"/></svg></button>
+            <button id="send" title="Send (Enter)" aria-label="Send message"><svg class="ic"><use href="#i-send"/></svg><span>Send</span></button>
+          </div>
+        </div>
       </div>
     </main>
 
     <main id="pane-settings" class="pane">
-      <div class="section">
+      <nav id="settings-index" aria-label="Settings sections">
+        <button type="button" data-sec="sec-voice" class="active">Voice</button>
+        <button type="button" data-sec="sec-assistant">Assistant &amp; pet</button>
+        <button type="button" data-sec="sec-models">Models &amp; connection</button>
+        <button type="button" data-sec="sec-safety">Safety &amp; permissions</button>
+        <button type="button" data-sec="sec-performance">Performance</button>
+      </nav>
+      <div id="settings-content">
+      <div class="section" id="sec-voice">
         <h3><svg class="ic"><use href="#i-wave"/></svg>Voice</h3>
         <div class="field switch-field">
           <label>Always listen for &ldquo;Hey Jarvis&rdquo;</label>
@@ -93,6 +117,7 @@
           <span id="wake-test-out" class="hint">Press, then say the wake word.</span>
         </div>
         <div class="field"><label>Wake threshold</label><input id="v-threshold" type="number" min="0.1" max="0.95" step="0.05" /></div>
+        <p class="hint">Lower = easier to trigger the wake word; raise it if Jarvis wakes too often on background speech.</p>
         <div class="field"><label>Speech engine</label>
           <select id="v-engine">
             <option value="kokoro">Kokoro &mdash; natural neural voice</option>
@@ -119,6 +144,11 @@
           </select>
         </div>
         <div class="field"><label>Speech speed</label><input id="v-speed" type="range" min="0.5" max="1.8" step="0.05" /><span class="range-val" id="v-speed-val">1.0</span></div>
+        <div class="field test-field">
+          <label>Spoken responses</label>
+          <button id="tts-test" class="small"><svg class="ic"><use href="#i-play"/></svg>Preview Voice</button>
+          <span class="hint">Plays a sample with the selected voice.</span>
+        </div>
         <div class="field"><label>Push-to-talk hotkey</label>
           <input id="v-hotkey" type="text" spellcheck="false" placeholder="ctrl+alt+j" />
           <p class="hint">Global shortcut that starts/stops listening. E.g. ctrl+alt+j, alt+space, ctrl+f9. Empty disables; applies on save.</p>
@@ -126,8 +156,8 @@
         <p class="hint">Say &ldquo;Hey Jarvis&rdquo; anytime, or press the mic to talk. Wake word runs locally (mic stays in use while enabled).</p>
       </div>
 
-      <div class="section">
-        <h3><svg class="ic"><use href="#i-face"/></svg>Desktop</h3>
+      <div class="section" id="sec-assistant">
+        <h3><svg class="ic"><use href="#i-face"/></svg>Assistant &amp; pet</h3>
         <div class="field switch-field">
           <label>Start with Windows (chat hidden)</label>
           <label class="switch">
@@ -136,10 +166,6 @@
           </label>
         </div>
         <p class="hint">Opens Jarvis at login with the chat window hidden &mdash; the pet and tray stay available. Changes apply immediately.</p>
-      </div>
-
-      <div class="section">
-        <h3>Pet</h3>
         <div class="field switch-field">
           <label>Show floating pet on desktop</label>
           <label class="switch">
@@ -153,24 +179,31 @@
         <div class="field"><label>Wake word label</label><input id="p-wake" /></div>
       </div>
 
-      <div class="section">
-        <h3>LM Studio</h3>
+      <div class="section" id="sec-models">
+        <h3><svg class="ic"><use href="#i-cpu"/></svg>Models &amp; connection</h3>
         <div class="field"><label>Endpoint URL</label><input id="lm-url" /></div>
         <div class="field"><label>API key</label><input id="lm-key" placeholder="not required locally" /></div>
-        <div class="field"><label>Timeout (ms)</label><input id="lm-timeout" type="number" /></div>
+        <div class="field test-field">
+          <label>Connection</label>
+          <button id="test" class="small">Test LM Studio</button>
+          <span class="hint">Checks the endpoint and lists loaded models.</span>
+        </div>
+        <details class="adv">
+          <summary>Advanced</summary>
+          <div class="adv-body">
+            <div class="field"><label>Timeout (s)</label><input id="lm-timeout" type="number" min="1" step="1" /></div>
+            <div class="field"><label>Orchestrator model ID</label><input id="m-orchestrator" /></div>
+            <div class="field"><label>Planner model ID</label><input id="m-planner" /></div>
+            <div class="field"><label>Tool / PC Control model ID</label><input id="m-tool_control" /></div>
+            <div class="field"><label>Vision model ID (on-demand)</label><input id="m-vision" /></div>
+            <div class="field"><label>Small agents model ID (3B)</label><input id="m-small" /></div>
+            <p class="hint">Model IDs must match names listed in LM Studio. Leave blank to fall back to the default model.</p>
+          </div>
+        </details>
       </div>
 
-      <div class="section">
-        <h3>Models (role mapping)</h3>
-        <div class="field"><label>Orchestrator</label><input id="m-orchestrator" /></div>
-        <div class="field"><label>Planner</label><input id="m-planner" /></div>
-        <div class="field"><label>Tool / PC Control</label><input id="m-tool_control" /></div>
-        <div class="field"><label>Vision (on-demand)</label><input id="m-vision" /></div>
-        <div class="field"><label>Small agents (3B)</label><input id="m-small" /></div>
-      </div>
-
-      <div class="section">
-        <h3>Safety</h3>
+      <div class="section" id="sec-safety">
+        <h3><svg class="ic"><use href="#i-shield"/></svg>Safety &amp; permissions</h3>
         <div class="field">
           <label>Mode</label>
           <select id="safety-mode">
@@ -178,21 +211,29 @@
             <option value="smart">Smart (session grants)</option>
           </select>
         </div>
-        <div class="field"><label>Approval timeout (ms)</label><input id="approval-timeout" type="number" /></div>
+        <p class="hint">High-risk actions (deleting files, sending messages, financial sites) always ask for confirmation. Smart mode remembers approvals for the session.</p>
+        <div class="field"><label>Approval prompt timeout (s)</label><input id="approval-timeout" type="number" min="5" step="5" /></div>
+        <p class="hint">How long the approval prompt waits before treating the action as denied.</p>
       </div>
 
-      <div class="section">
-        <h3>Resource Manager (VRAM)</h3>
-        <div class="field"><label>Vision timeout (ms)</label><input id="rm-vision-timeout" type="number" /></div>
-        <div class="field"><label>Unload idle (ms)</label><input id="rm-unload-idle" type="number" /></div>
-        <div class="field"><label>Cooldown (ms)</label><input id="rm-cooldown" type="number" /></div>
+      <div class="section" id="sec-performance">
+        <h3><svg class="ic"><use href="#i-wave"/></svg>Performance</h3>
+        <p class="hint">Tune how long models stay loaded and how often vision runs. Defaults suit most PCs.</p>
+        <details class="adv">
+          <summary>Advanced</summary>
+          <div class="adv-body">
+            <div class="field"><label>Vision timeout (s)</label><input id="rm-vision-timeout" type="number" min="1" step="1" /></div>
+            <div class="field"><label>Unload idle after (s)</label><input id="rm-unload-idle" type="number" min="5" step="5" /></div>
+            <div class="field"><label>Load cooldown (s)</label><input id="rm-cooldown" type="number" min="0.5" step="0.5" /></div>
+            <p class="hint">Smaller idle values free video memory (VRAM) sooner; very small values can cause model reload stutter.</p>
+          </div>
+        </details>
       </div>
 
       <div id="settings-actions">
-        <button id="save" class="primary">Save Settings</button>
-        <button id="tts-test"><svg class="ic"><use href="#i-play"/></svg>Preview Voice</button>
-        <button id="test">Test LM Studio</button>
+        <button id="save" class="primary" disabled>Save changes</button>
         <div id="settings-note">Loading...</div>
+      </div>
       </div>
     </main>
   </div>
