@@ -26,29 +26,52 @@ function showApproval(data, cid) {
   approval.querySelector(".msg").innerHTML =
     (pendingApproval.payload.message || "Approve?") +
     ' <span class="risk">Risk level ' + (pendingApproval.payload.risk == null ? "?" : pendingApproval.payload.risk) + "/10</span>";
+  const a = approval.querySelector(".allow");
+  const dn = approval.querySelector(".deny");
+  a.disabled = false;
+  dn.disabled = false;
+  a.textContent = "Allow once";
+  dn.textContent = "Deny";
+  delete approval.dataset.pending;
   approval.style.display = "block";
   bubble.style.display = "none";
   setMood("concerned");
   clearTimeout(moodTimer);
 }
 
+// selection is only a request; the card stays in a pending state until the
+// backend reports the outcome (or the prompt expires)
+function settleApproval(btn, label) {
+  if (!pendingApproval) return;
+  approval.dataset.pending = "1";
+  approval.querySelector(".allow").disabled = true;
+  approval.querySelector(".deny").disabled = true;
+  btn.textContent = label;
+  showBubble("Working\u2026", 8000);
+  setMood("thinking");
+  clearTimeout(moodTimer);
+  setTimeout(() => {
+    if (approval.dataset.pending === "1") {
+      approval.style.display = "none";
+      delete approval.dataset.pending;
+      pendingApproval = null;
+      approval.querySelector(".allow").disabled = false;
+      approval.querySelector(".deny").disabled = false;
+    }
+  }, 90000);
+}
+
 approval.querySelector(".allow").onclick = () => {
   if (pendingApproval) {
     Jarvis.approval(true, { action: pendingApproval.payload.action }, pendingApproval.cid);
+    settleApproval(approval.querySelector(".allow"), "Allowing\u2026");
   }
-  approval.style.display = "none";
-  pendingApproval = null;
-  showBubble("Approved.", 2500);
-  moodTemp("happy", 2500);
 };
 approval.querySelector(".deny").onclick = () => {
   if (pendingApproval) {
     Jarvis.approval(false, { action: pendingApproval.payload.action }, pendingApproval.cid);
+    settleApproval(approval.querySelector(".deny"), "Denying\u2026");
   }
-  approval.style.display = "none";
-  pendingApproval = null;
-  showBubble("Denied.", 2500);
-  setMood("idle");
 };
 
 Jarvis.on("ui.pet_state", (d) => {
@@ -56,6 +79,20 @@ Jarvis.on("ui.pet_state", (d) => {
 });
 Jarvis.on("ui.chat", (d) => {
   if (!d.payload) return;
+  // answered approval (here or in the main window): hide the card, the
+  // message is the outcome
+  if (d.correlation_id && pendingApproval &&
+      String(pendingApproval.cid) === String(d.correlation_id)) {
+    approval.style.display = "none";
+    delete approval.dataset.pending;
+    pendingApproval = null;
+    const a = approval.querySelector(".allow");
+    const dn = approval.querySelector(".deny");
+    a.disabled = false;
+    dn.disabled = false;
+    a.textContent = "Allow once";
+    dn.textContent = "Deny";
+  }
   if (d.payload.role === "assistant" && d.payload.text) {
     showBubble(d.payload.text);
     if (petEl.dataset.mood !== "speaking") moodTemp("happy", 2200);
@@ -69,7 +106,14 @@ Jarvis.on("ui.approval", (d) => showApproval(d, d.correlation_id));
 Jarvis.on("ui.approval_cancelled", (d) => {
   if (pendingApproval && d.correlation_id && String(pendingApproval.cid) === String(d.correlation_id)) {
     approval.style.display = "none";
+    delete approval.dataset.pending;
     pendingApproval = null;
+    const a = approval.querySelector(".allow");
+    const dn = approval.querySelector(".deny");
+    a.disabled = false;
+    dn.disabled = false;
+    a.textContent = "Allow once";
+    dn.textContent = "Deny";
     showBubble("Timed out \u2014 denied.", 3500);
   }
 });

@@ -165,6 +165,13 @@ Jarvis.on("ui.voice_state", (d) => {
 Jarvis.on("ui.chat", (d) => {
   if (!d.payload) return;
   if (d.payload.role === "assistant") hideTyping();
+  // any ui.chat carrying an approval's cid is that approval's outcome -
+  // clears the card even when the user answered it in the other window
+  if (d.correlation_id) {
+    document.querySelectorAll(".approval-card").forEach((card) => {
+      if (card.dataset.cid && String(card.dataset.cid) === String(d.correlation_id)) card.remove();
+    });
+  }
   addMsg(d.payload.role || "assistant", d.payload.text || "");
 });
 
@@ -197,15 +204,21 @@ Jarvis.on("ui.approval", (d) => {
   const deny = document.createElement("button");
   deny.className = "deny";
   deny.textContent = "Deny";
+  const settle = (btn, label) => {
+    wrap.dataset.pending = "1";
+    [allow, deny].forEach((b) => { b.disabled = true; });
+    btn.textContent = label;
+    showTyping();
+    // safety: never leave a stuck pending card around
+    setTimeout(() => wrap.remove(), 90000);
+  };
   allow.onclick = () => {
     Jarvis.approval(true, { action: p.action }, d.correlation_id);
-    wrap.remove();
-    showTyping();
+    settle(allow, "Allowing\u2026");
   };
   deny.onclick = () => {
     Jarvis.approval(false, { action: p.action }, d.correlation_id);
-    wrap.remove();
-    addMsg("system", "Action denied.");
+    settle(deny, "Denying\u2026");
   };
   btns.appendChild(deny);
   btns.appendChild(allow);

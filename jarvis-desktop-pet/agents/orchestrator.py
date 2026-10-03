@@ -1,3 +1,5 @@
+import uuid
+
 from agents.base import BaseAgent
 from core.bus import Event, create_event
 from core.guardrails import risk_score
@@ -8,6 +10,8 @@ class OrchestratorAgent(BaseAgent):
         super().__init__("orchestrator", bus)
         self._approval_timers = {}
         self._approval_expired = set()
+        self._approval_settled = set()
+        self._approval_steps = {}
 
     def _approval_timeout_s(self) -> float:
         perms = (self.cfg or {}).get("permissions") or {}
@@ -20,12 +24,17 @@ class OrchestratorAgent(BaseAgent):
     def _arm_approval(self, cid):
         if not cid or cid in self._approval_timers:
             return
+        if len(self._approval_settled) > 128:
+            self._approval_settled.clear()
+        if len(self._approval_expired) > 128:
+            self._approval_expired.clear()
         import asyncio
 
         async def _expire():
             await asyncio.sleep(self._approval_timeout_s())
             if self._approval_timers.pop(cid, None) is None:
                 return
+            self._approval_steps.pop(cid, None)
             self._approval_expired.add(cid)
             await self.bus.publish(
                 create_event("ui.approval_cancelled", "approval_cancelled", {"reason": "timeout"}, correlation_id=cid)
@@ -41,14 +50,25 @@ class OrchestratorAgent(BaseAgent):
         self._approval_timers[cid] = asyncio.get_event_loop().create_task(_expire())
 
     def _settle_approval(self, cid) -> bool:
-        """Returns True if this response is still valid (not expired)."""
+        """True only for the first valid response to a still-pending approval.
+
+        Duplicate answers (both main and pet window clicked), responses to
+        expired prompts and responses for never-armed correlation ids are all
+        rejected - the old code executed the tool again for any of these.
+        """
+        if not cid:
+            return False
+        if cid in self._approval_settled:
+            return False
         t = self._approval_timers.pop(cid, None)
         if t is not None:
             t.cancel()
+            self._approval_settled.add(cid)
+            return True
         if cid in self._approval_expired:
             self._approval_expired.discard(cid)
-            return False
-        return True
+            self._approval_settled.add(cid)
+        return False
 
     async def start(self):
         await super().start()
@@ -97,6 +117,10 @@ class OrchestratorAgent(BaseAgent):
                     create_event("tool.execute", "execute", {"steps": steps}, correlation_id=cid)
                 )
             else:
+                if not cid:
+                    # voice/hotkey inputs can arrive without a correlation id;
+                    # approvals must always have one so they can be answered
+                    cid = uuid.uuid4().hex
                 risk = payload.get("risk", 5)
                 await self.bus.publish(
                     create_event(
@@ -110,17 +134,31 @@ class OrchestratorAgent(BaseAgent):
                         correlation_id=cid,
                     )
                 )
+                self._approval_steps[cid] = steps
                 self._arm_approval(cid)
+                # no correlation id here: clients treat any ui.chat carrying
+                # the approval cid as its outcome and would hide the fresh card
                 await self.bus.publish(
-                    create_event("ui.chat", "chat", {"role": "assistant", "text": "I need your approval for that action."}, correlation_id=cid)
+                    create_event("ui.chat", "chat", {"role": "assistant", "text": "I need your approval for that action."})
                 )
 
         elif et == "approval_response":
             if not self._settle_approval(cid):
-                return  # expired - already treated as denied
+                # duplicate / expired / unknown answer: never re-execute;
+                # re-sync clients in case a card is stuck in pending state
+                if cid:
+                    await self.bus.publish(
+                        create_event(
+                            "ui.approval_cancelled", "approval_cancelled", {"reason": "already_answered"}, correlation_id=cid
+                        )
+                    )
+                return
             allowed = payload.get("allow", False)
-            action = payload.get("action", {})
-            steps = payload.get("all_steps", [action])
+            # execute the steps safety reviewed at prompt time - never steps
+            # supplied by the responding client
+            steps = self._approval_steps.pop(cid, None)
+            if not steps:
+                return
             if allowed:
                 await self.bus.publish(create_event("tool.execute", "execute", {"steps": steps}, correlation_id=cid))
             else:

@@ -34,7 +34,7 @@
         <button class="tab active" data-tab="chat"><svg class="ic"><use href="#i-chat"/></svg>Chat</button>
         <button class="tab" data-tab="settings"><svg class="ic"><use href="#i-sliders"/></svg>Settings</button>
       </nav>
-      <button id="pet-toggle" class="icon-btn active" title="Show / hide floating pet"><svg class="ic"><use href="#i-eye"/></svg></button>
+      <button id="pet-toggle" class="icon-btn active" title="Show / hide floating pet" aria-label="Show or hide floating pet"><svg class="ic"><use href="#i-eye"/></svg></button>
     </header>
 
     <main id="pane-chat" class="pane active">
@@ -115,7 +115,7 @@
         <div class="field test-field">
           <label>Wake word test</label>
           <button id="wake-test" class="small"><svg class="ic"><use href="#i-mic"/></svg>Test &ldquo;Hey Jarvis&rdquo;</button>
-          <span id="wake-test-out" class="hint">Press, then say the wake word.</span>
+          <span id="wake-test-out" class="hint" aria-live="polite">Press, then say the wake word.</span>
         </div>
         <div class="field"><label>Wake threshold</label><input id="v-threshold" type="number" min="0.1" max="0.95" step="0.05" /></div>
         <p class="hint">Lower = easier to trigger the wake word; raise it if Jarvis wakes too often on background speech.</p>
@@ -147,7 +147,7 @@
         </div>
         <div class="field"><label>Speech speed</label><input id="v-speed" type="range" min="0.5" max="1.8" step="0.05" /><span class="range-val" id="v-speed-val">1.0</span></div>
         <div class="field test-field">
-          <label>Spoken responses</label>
+          <label>Preview</label>
           <button id="tts-test" class="small"><svg class="ic"><use href="#i-play"/></svg>Preview Voice</button>
           <span class="hint">Plays a sample with the selected voice.</span>
         </div>
