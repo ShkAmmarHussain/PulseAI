@@ -18,6 +18,9 @@ voice:
   vad_threshold: 0.012
   silence_sec: 1.2
   max_sec: 15
+  agc: true
+  noise_gate: true
+  gain_max: 10
   wake:
     enabled: true
     threshold: 0.35

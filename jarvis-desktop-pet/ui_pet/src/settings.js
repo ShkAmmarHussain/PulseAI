@@ -38,6 +38,8 @@ function fill(s) {
   const wake = voice.wake || {};
   document.getElementById("v-wake").checked = wake.enabled !== false;
   setv("v-threshold", wake.threshold == null ? 0.35 : wake.threshold);
+  document.getElementById("v-agc").checked = voice.agc !== false;
+  document.getElementById("v-gate").checked = voice.noise_gate !== false;
   setv("v-engine", voice.tts_engine || "kokoro");
   setv("v-voice", voice.tts_voice || "af_heart");
   setv("v-speed", voice.tts_speed == null ? 1 : voice.tts_speed);
@@ -94,6 +96,8 @@ function collect() {
   s.config.voice.tts_engine = val("v-engine") || "kokoro";
   s.config.voice.tts_voice = val("v-voice") || "af_heart";
   s.config.voice.tts_speed = Number(val("v-speed")) || 1;
+  s.config.voice.agc = document.getElementById("v-agc").checked;
+  s.config.voice.noise_gate = document.getElementById("v-gate").checked;
   return s;
 }
 

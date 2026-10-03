@@ -19,6 +19,7 @@ kokoro>=0.9.2
 sounddevice>=0.5.0
 numpy>=1.26.4
 openwakeword>=0.6.0
+pycaw>=20240210
 
 # Vision
 mss>=9.0.2

@@ -43,6 +43,9 @@ class VoiceService:
         self._test_max = 0.0
         self._test_level = 0.0
         self._test_pub_t = 0.0
+        self._noise_floor = 0.004
+        self._gain = 1.0
+        self._gain_rms = 0.0
 
     def _read_cfg(self, cfg=None):
         if cfg is not None:
@@ -58,6 +61,9 @@ class VoiceService:
         self.silence_sec = float(vcfg.get("silence_sec", 1.2))
         self.max_sec = float(vcfg.get("max_sec", 15.0))
         self.device = vcfg.get("device") or None
+        self.agc = bool(vcfg.get("agc", True))
+        self.noise_gate = bool(vcfg.get("noise_gate", True))
+        self.gain_max = float(vcfg.get("gain_max", 10.0))
 
     # ---------- state ----------
 
@@ -292,33 +298,77 @@ class VoiceService:
 
     @staticmethod
     def list_devices() -> list:
-        try:
-            import sounddevice as sd
-        except Exception:
-            return []
-        try:
-            devs = sd.query_devices()
-            default_idx = sd.default.device[0]
-            default_name = devs[default_idx]["name"] if default_idx is not None and 0 <= default_idx < len(devs) else None
-        except Exception:
-            logger.exception("mic device enumeration failed")
-            return []
+        """Connected + usable capture mics: Windows-active endpoints that PortAudio
+        can open at 16 kHz, excluding virtual/duplicate entries."""
+        import sounddevice as sd
+
+        VIRTUAL = ("microsoft sound mapper", "primary sound capture driver", "midi (wave)")
+        norm = lambda s: " ".join(str(s or "").split())
         out, seen = [], set()
-        for i, d in enumerate(devs):
-            if d.get("max_input_channels", 0) <= 0:
-                continue
-            name = d.get("name")
-            if name in seen:
-                continue
-            seen.add(name)
-            out.append(
-                {
-                    "name": name,
-                    "index": i,
-                    "rate": int(d.get("default_samplerate") or 0),
-                    "default": name == default_name,
-                }
-            )
+
+        live_names = []
+        try:
+            from pycaw.pycaw import AudioUtilities
+
+            for d in AudioUtilities.GetAllDevices(data_flow=1, device_state=1):
+                n = norm(d.FriendlyName)
+                if n and n.lower() not in VIRTUAL:
+                    live_names.append(n)
+        except Exception:
+            logger.exception("windows endpoint enumeration failed; falling back to portaudio")
+
+        sd_ins = [
+            (i, norm(d["name"]), int(d.get("default_samplerate") or 0))
+            for i, d in enumerate(sd.query_devices())
+            if d.get("max_input_channels", 0) > 0
+        ]
+        try:
+            default_idx = sd.default.device[0]
+            default_name = norm(sd.query_devices()[default_idx]["name"]) if default_idx is not None and default_idx >= 0 else ""
+        except Exception:
+            default_name = ""
+
+        def usable(idx):
+            try:
+                sd.check_input_settings(device=idx, samplerate=SAMPLE_RATE, channels=1, dtype="float32")
+                return True
+            except Exception:
+                return False
+
+        if live_names:
+            for name in live_names:
+                if name in seen:
+                    continue
+                match = next((s for s in sd_ins if s[1].lower() == name.lower()), None)
+                if match is None:
+                    match = next(
+                        (s for s in sd_ins if name.lower() in s[1].lower() or s[1].lower() in name.lower()),
+                        None,
+                    )
+                if match is None or not usable(match[0]):
+                    continue
+                seen.add(name)
+                out.append(
+                    {
+                        "name": name,
+                        "index": match[0],
+                        "rate": match[2],
+                        "default": bool(default_name) and name.lower() == default_name.lower(),
+                    }
+                )
+        else:
+            for idx, name, rate in sd_ins:
+                if name in seen or name.lower() in VIRTUAL or not usable(idx):
+                    continue
+                seen.add(name)
+                out.append({"name": name, "index": idx, "rate": rate, "default": name == default_name})
+
+        if not out:
+            for idx, name, rate in sd_ins:
+                if name in seen:
+                    continue
+                seen.add(name)
+                out.append({"name": name, "index": idx, "rate": rate, "default": name == default_name})
         return out
 
     def set_device(self, name) -> bool:
@@ -370,6 +420,9 @@ class VoiceService:
                 callback=self._callback,
             )
             self._stream.start()
+            self._noise_floor = 0.004
+            self._gain = 1.0
+            self._gain_rms = 0.0
             logger.info("mic stream opened (actual rate=%s)", self._stream.samplerate)
         except Exception as e:
             self._stream = None
@@ -402,7 +455,7 @@ class VoiceService:
     # ---------- audio routing ----------
 
     def _callback(self, indata, frames, time_info, status):
-        block = indata[:, 0]
+        block = self._process(indata[:, 0])
         self._publish_level(block)
         if self._suppress:
             return
@@ -415,6 +468,34 @@ class VoiceService:
             self._capture_frame(block)
         # transcribe/off: drop
 
+    def _process(self, block: np.ndarray) -> np.ndarray:
+        """Noise gate + slow automatic gain so quiet mics arrive clear and loud.
+
+        Output is fed to wake model, VAD and whisper - one consistent signal.
+        """
+        rms = float(np.sqrt(np.mean(np.square(block)))) if block.size else 0.0
+        # adaptive noise floor: only follows quiet signal, never rises with speech
+        if rms < self._noise_floor * 1.6:
+            self._noise_floor = max(1e-5, self._noise_floor * 0.995 + rms * 0.005)
+        gate = max(self._noise_floor * 2.5, 0.0015)
+
+        g = 1.0
+        if self.noise_gate and rms < gate:
+            g = min(1.0, max(0.06, rms / gate if gate else 1.0)) ** 2
+
+        if self.agc:
+            self._gain_rms = self._gain_rms * 0.9 + rms * 0.1
+            if self._gain_rms >= gate:
+                desired = min(0.10 / max(self._gain_rms, 0.004), self.gain_max)
+            else:
+                desired = 1.0
+            self._gain += (desired - self._gain) * 0.06
+            g *= self._gain
+
+        if g == 1.0:
+            return block
+        return np.clip(block * g, -1.0, 1.0)
+
     def _publish_level(self, block):
         """Throttled live input level -> UI (level meter + mic diagnostics)."""
         now = time.monotonic()
@@ -425,9 +506,10 @@ class VoiceService:
         peak = float(np.abs(block).max()) if block.size else 0.0
         payload = {
             "level": round(rms, 4),
-            "peak": round(peak, 4),
+            "peak": round(float(np.abs(block).max()) if block.size else 0.0, 4),
+            "gain": round(self._gain, 2),
             "device": self.current_device(),
-            "active": not self._suppress and self._mode in ("wake", "listen"),
+            "active": not self._suppress and self._mode in ("wake", "listen", "test"),
         }
         asyncio.run_coroutine_threadsafe(
             self.bus.publish(create_event("ui.mic_level", "mic_level", payload, source="voice")),

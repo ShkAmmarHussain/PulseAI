@@ -73,6 +73,20 @@
           <label>Input level <span id="v-level-name" class="hint"></span></label>
           <div class="mic-meter"><div id="v-level"></div></div>
         </div>
+        <div class="field switch-field">
+          <label>Auto gain &mdash; boost quiet mics</label>
+          <label class="switch">
+            <input type="checkbox" id="v-agc" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="field switch-field">
+          <label>Noise gate &mdash; cut background hiss</label>
+          <label class="switch">
+            <input type="checkbox" id="v-gate" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
         <div class="field test-field">
           <label>Wake word test</label>
           <button id="wake-test" class="small"><svg class="ic"><use href="#i-mic"/></svg>Test &ldquo;Hey Jarvis&rdquo;</button>

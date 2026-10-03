@@ -7,7 +7,7 @@ project = Path('.')
 
 extra_datas, extra_bins, extra_hidden = [], [], []
 for pkg in ('ctranslate2', 'faster_whisper', 'sounddevice', 'ddgs', 'primp', 'huggingface_hub', 'tokenizers',
-            'kokoro_onnx', 'phonemizer', 'espeakng_loader', 'openwakeword', 'onnxruntime'):
+            'kokoro_onnx', 'phonemizer', 'espeakng_loader', 'openwakeword', 'onnxruntime', 'pycaw', 'comtypes'):
     try:
         d, b, h = collect_all(pkg)
         extra_datas += d
