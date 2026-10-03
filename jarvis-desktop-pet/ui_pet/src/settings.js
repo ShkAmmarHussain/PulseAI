@@ -40,6 +40,8 @@ function fill(s) {
   setv("v-threshold", wake.threshold == null ? 0.35 : wake.threshold);
   document.getElementById("v-agc").checked = voice.agc !== false;
   document.getElementById("v-gate").checked = voice.noise_gate !== false;
+  setv("v-hotkey", voice.hotkey || "");
+  Jarvis.autostartState();
   setv("v-engine", voice.tts_engine || "kokoro");
   setv("v-voice", voice.tts_voice || "af_heart");
   setv("v-speed", voice.tts_speed == null ? 1 : voice.tts_speed);
@@ -98,6 +100,7 @@ function collect() {
   s.config.voice.tts_speed = Number(val("v-speed")) || 1;
   s.config.voice.agc = document.getElementById("v-agc").checked;
   s.config.voice.noise_gate = document.getElementById("v-gate").checked;
+  s.config.voice.hotkey = val("v-hotkey").trim();
   return s;
 }
 
@@ -234,6 +237,40 @@ Jarvis.on("ui.wake_test", (d) => {
     }
   }
 });
+
+// ---- autostart with Windows ----
+let pendingAutostart = null;
+Jarvis.on("autostart_state", (d) => {
+  const p = d.payload || {};
+  const cb = document.getElementById("v-autostart");
+  if (!cb) return;
+  cb.checked = !!p.enabled;
+  cb.disabled = p.available === false;
+  const sec = cb.closest(".section");
+  const hint = sec && sec.querySelector(".hint");
+  if (hint && p.available === false) {
+    hint.textContent = "Autostart is only available in the installed app.";
+  }
+  if (pendingAutostart !== null) {
+    const ok = p.available !== false && p.enabled === pendingAutostart;
+    note.textContent = ok
+      ? pendingAutostart
+        ? "Jarvis will start with Windows (chat hidden)."
+        : "Autostart off."
+      : "Could not change autostart.";
+    note.classList.toggle("ok", ok);
+    pendingAutostart = null;
+  }
+});
+const asCb = document.getElementById("v-autostart");
+if (asCb) {
+  asCb.addEventListener("change", (e) => {
+    pendingAutostart = e.target.checked;
+    note.textContent = e.target.checked ? "Enabling autostart..." : "Disabling autostart...";
+    note.classList.remove("ok");
+    Jarvis.autostart(e.target.checked);
+  });
+}
 
 Jarvis.on("lm_test", (d) => {
   const p = d.payload || {};

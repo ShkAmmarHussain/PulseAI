@@ -84,6 +84,11 @@ fn main() {
                 }
             }
             position_pet(app);
+            if std::env::args().any(|a| a == "--hidden") {
+                if let Some(w) = app.get_window("main") {
+                    let _ = w.hide();
+                }
+            }
             Ok(())
         })
         .on_window_event(|event| {

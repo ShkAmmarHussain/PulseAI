@@ -48,6 +48,8 @@ class App:
             self.cfg = load_config()
             for a in self.agents.values():
                 a.cfg = self.cfg
+            if getattr(self, "hotkey", None):
+                self.hotkey.start((self.cfg.get("config", {}).get("voice") or {}).get("hotkey"))
             if self.bridge:
                 await self.bridge.broadcast("ui.state", {"settings_saved": True}, ev.correlation_id)
 
@@ -61,6 +63,12 @@ class App:
         self.bridge = WSBridge(self.bus, voice=self.voice)
         self.bridge.wire_bus()
         await self.voice.start()
+
+        from backend.hotkey_service import HotkeyService
+
+        self.hotkey = HotkeyService(self.voice)
+        self.hotkey.start((self.cfg.get("config", {}).get("voice") or {}).get("hotkey"))
+
         self.bus.start()
 
         from aiohttp import web

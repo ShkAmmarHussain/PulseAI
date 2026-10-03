@@ -59,5 +59,7 @@ window.Jarvis = (function () {
     voiceDevice: (device) => send({ type: "voice_device", payload: { device } }),
     wakeTest: (seconds) => send({ type: "wake_test", payload: { seconds } }),
     ttsTest: (voice, text) => send({ type: "tts_test", payload: { voice, text } }),
+    autostart: (enabled) => send({ type: "autostart", payload: { enabled: !!enabled } }),
+    autostartState: () => send({ type: "autostart_state" }),
   };
 })();

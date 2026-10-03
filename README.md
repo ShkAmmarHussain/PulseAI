@@ -9,6 +9,8 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 ## What it does
 
 - **Wake word** — always-on local detection of "Hey Jarvis" (openWakeWord, ONNX, ~0 ms cloud).
+- **Push-to-talk hotkey** — a global shortcut (default `Ctrl+Alt+J`, configurable in Settings → Voice) starts/stops listening from any app.
+- **Start with Windows** — optional autostart (Settings → Desktop) opens Jarvis at login with the chat hidden; the pet and tray stay available.
 - **Speech-to-text** — faster-whisper runs locally and transcribes what you say.
 - **Local LLM** — answers come from a model you host in LM Studio (`http://localhost:1234`).
 - **Neural text-to-speech** — Kokoro TTS (natural voices like `af_heart`), with Windows SAPI as a fast fallback.
@@ -179,6 +181,7 @@ Settings can also be edited live in the app (**Settings** tab) — changes are w
 4. Press **Test "Hey Jarvis"** — it listens for 8 seconds and reports the wake model's peak score against your threshold, so you can tune with real numbers.
 5. Adjust **Wake threshold** if it triggers too often (raise) or not at all (lower, e.g. `0.35`).
 6. Press **Preview Voice** to confirm TTS works.
+7. Optionally set a **Push-to-talk hotkey** (e.g. `ctrl+alt+j`) to toggle listening from anywhere, and enable **Start with Windows** under Settings → Desktop.
 
 ---
 
@@ -192,6 +195,7 @@ Run from `jarvis-desktop-pet\` with the virtualenv active.
 | Agent loop | `python tests\agent_e2e.py` | backend running |
 | Voice pipeline | `python tests\voice_e2e.py` | **port 8765 free** (self-hosts) |
 | Wake state machine | `python tests\wake_e2e.py` | **port 8765 free** (self-hosts) |
+| Hotkey + autostart | `python tests\hotkey_e2e.py` | backend running (injects real keystrokes) |
 | Smoke / WS ping | `python tests\smoke_test.py`, `python tests\ws_ping.py` | backend running |
 
 `voice_e2e` and `wake_e2e` bind port `8765` themselves — stop any running backend first, and never run them in parallel.

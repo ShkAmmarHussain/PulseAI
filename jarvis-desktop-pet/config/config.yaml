@@ -24,6 +24,7 @@ voice:
   wake:
     enabled: true
     threshold: 0.35
+  hotkey: ctrl+alt+j
   tts_engine: kokoro
   tts_voice: af_heart
   tts_speed: 1

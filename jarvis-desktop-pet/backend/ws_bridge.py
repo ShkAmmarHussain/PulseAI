@@ -138,6 +138,15 @@ class WSBridge:
         elif et == "wake_test":
             ok = self.voice.start_wake_test(payload.get("seconds", 8)) if self.voice else False
             await self._send(ws, {"type": "wake_test_ack", "payload": {"ok": ok}, "correlation_id": cid})
+        elif et == "autostart":
+            from core.autostart import set_autostart
+
+            res = set_autostart(bool(payload.get("enabled", False)))
+            await self._send(ws, {"type": "autostart_state", "payload": res, "correlation_id": cid})
+        elif et == "autostart_state":
+            from core.autostart import get_autostart
+
+            await self._send(ws, {"type": "autostart_state", "payload": get_autostart(), "correlation_id": cid})
 
     async def _send(self, ws, obj):
         try:
