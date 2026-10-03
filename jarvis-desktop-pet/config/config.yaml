@@ -20,7 +20,7 @@ voice:
   max_sec: 15
   wake:
     enabled: true
-    threshold: 0.5
+    threshold: 0.35
   tts_engine: kokoro
   tts_voice: af_heart
   tts_speed: 1

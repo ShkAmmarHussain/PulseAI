@@ -135,6 +135,9 @@ class WSBridge:
             await self.bus.publish(
                 _ce("voice.say", "say", {"text": text, "voice": payload.get("voice")}, correlation_id=cid)
             )
+        elif et == "wake_test":
+            ok = self.voice.start_wake_test(payload.get("seconds", 8)) if self.voice else False
+            await self._send(ws, {"type": "wake_test_ack", "payload": {"ok": ok}, "correlation_id": cid})
 
     async def _send(self, ws, obj):
         try:
@@ -153,5 +156,5 @@ class WSBridge:
         async def fwd_ui(ev):
             await self.broadcast(ev.topic, ev.payload, ev.correlation_id)
 
-        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "tts_state"):
+        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state"):
             self.bus.subscribe(t, fwd_ui)

@@ -176,8 +176,9 @@ Settings can also be edited live in the app (**Settings** tab) — changes are w
 1. Open **Settings → Voice**.
 2. Pick your actual **Microphone** — Windows' *default* input is often a quiet/unplugged jack while you speak into a headset or webcam mic.
 3. Watch the **Input level** meter while you talk: the bar must jump. (Green = voice detected.)
-4. Adjust **Wake threshold** if it triggers too often (raise) or not at all (lower, e.g. `0.35`).
-5. Press **Preview Voice** to confirm TTS works.
+4. Press **Test "Hey Jarvis"** — it listens for 8 seconds and reports the wake model's peak score against your threshold, so you can tune with real numbers.
+5. Adjust **Wake threshold** if it triggers too often (raise) or not at all (lower, e.g. `0.35`).
+6. Press **Preview Voice** to confirm TTS works.
 
 ---
 

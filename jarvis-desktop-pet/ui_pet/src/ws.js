@@ -57,6 +57,7 @@ window.Jarvis = (function () {
     voiceWake: (enabled) => send({ type: "voice_wake", payload: { enabled: !!enabled } }),
     voiceDevices: () => send({ type: "voice_devices" }),
     voiceDevice: (device) => send({ type: "voice_device", payload: { device } }),
+    wakeTest: (seconds) => send({ type: "wake_test", payload: { seconds } }),
     ttsTest: (voice, text) => send({ type: "tts_test", payload: { voice, text } }),
   };
 })();

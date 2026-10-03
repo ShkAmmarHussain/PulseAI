@@ -73,6 +73,11 @@
           <label>Input level <span id="v-level-name" class="hint"></span></label>
           <div class="mic-meter"><div id="v-level"></div></div>
         </div>
+        <div class="field test-field">
+          <label>Wake word test</label>
+          <button id="wake-test" class="small"><svg class="ic"><use href="#i-mic"/></svg>Test &ldquo;Hey Jarvis&rdquo;</button>
+          <span id="wake-test-out" class="hint">Press, then say the wake word.</span>
+        </div>
         <div class="field"><label>Wake threshold</label><input id="v-threshold" type="number" min="0.1" max="0.95" step="0.05" /></div>
         <div class="field"><label>Speech engine</label>
           <select id="v-engine">

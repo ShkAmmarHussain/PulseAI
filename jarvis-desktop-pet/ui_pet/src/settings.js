@@ -37,7 +37,7 @@ function fill(s) {
   const voice = cfg.voice || {};
   const wake = voice.wake || {};
   document.getElementById("v-wake").checked = wake.enabled !== false;
-  setv("v-threshold", wake.threshold == null ? 0.5 : wake.threshold);
+  setv("v-threshold", wake.threshold == null ? 0.35 : wake.threshold);
   setv("v-engine", voice.tts_engine || "kokoro");
   setv("v-voice", voice.tts_voice || "af_heart");
   setv("v-speed", voice.tts_speed == null ? 1 : voice.tts_speed);
@@ -90,7 +90,7 @@ function collect() {
   s.config.voice = s.config.voice || {};
   s.config.voice.wake = s.config.voice.wake || {};
   s.config.voice.wake.enabled = document.getElementById("v-wake").checked;
-  s.config.voice.wake.threshold = Number(val("v-threshold")) || 0.5;
+  s.config.voice.wake.threshold = Number(val("v-threshold")) || 0.35;
   s.config.voice.tts_engine = val("v-engine") || "kokoro";
   s.config.voice.tts_voice = val("v-voice") || "af_heart";
   s.config.voice.tts_speed = Number(val("v-speed")) || 1;
@@ -172,6 +172,64 @@ document.getElementById("tts-test").onclick = () => {
   note.classList.add("ok");
   Jarvis.ttsTest(voice, "Hello, I am Jarvis. This is how I will sound.");
 };
+
+// ---- wake word / mic test ----
+const wtBtn = document.getElementById("wake-test");
+const wtOut = document.getElementById("wake-test-out");
+let wtTimer = null;
+wtBtn.addEventListener("click", () => {
+  wtBtn.disabled = true;
+  wtOut.classList.remove("ok", "bad");
+  wtOut.textContent = "Listening... say “Hey Jarvis”";
+  Jarvis.wakeTest(8);
+  clearTimeout(wtTimer);
+  wtTimer = setTimeout(() => {
+    if (wtBtn.disabled) {
+      wtBtn.disabled = false;
+      wtOut.classList.add("bad");
+      wtOut.textContent = "No response from backend.";
+    }
+  }, 12000);
+});
+Jarvis.on("wake_test_ack", (d) => {
+  if (!(d.payload || {}).ok) {
+    wtBtn.disabled = false;
+    clearTimeout(wtTimer);
+    wtOut.classList.add("bad");
+    wtOut.textContent = "Mic busy (transcribing or listening). Retry.";
+  }
+});
+Jarvis.on("ui.wake_test", (d) => {
+  const p = d.payload || {};
+  if (p.phase === "start") {
+    wtOut.classList.remove("ok", "bad");
+    wtOut.textContent = "Listening... say “Hey Jarvis” (" + Math.round(p.seconds) + "s, threshold " + p.threshold + ")";
+    if (!p.model_ready) wtOut.textContent = "Loading wake model...";
+  } else if (p.phase === "run") {
+    wtOut.classList.remove("ok", "bad");
+    wtOut.textContent = "score " + p.score.toFixed(2) + " (max " + p.max.toFixed(2) + "/" + p.threshold + ") · level " + p.level.toFixed(3);
+    const bar = document.getElementById("v-level");
+    if (bar) {
+      bar.style.width = Math.max(0, Math.min(100, (p.level / 0.25) * 100)).toFixed(1) + "%";
+      bar.parentElement.classList.toggle("hot", p.level > 0.03);
+    }
+  } else if (p.phase === "done") {
+    wtBtn.disabled = false;
+    clearTimeout(wtTimer);
+    if (p.error) {
+      wtOut.classList.add("bad");
+      wtOut.textContent = "Error: " + p.error;
+    } else if (p.detected) {
+      wtOut.classList.add("ok");
+      wtOut.textContent = "Detected! max " + p.max_score.toFixed(2) + " >= " + p.threshold;
+    } else {
+      wtOut.classList.add("bad");
+      wtOut.textContent =
+        "Not detected (max " + p.max_score.toFixed(2) + " < " + p.threshold + ")" +
+        (p.level > 0.02 ? " - lower the threshold or speak closer." : " - no voice detected; check the mic/meter.");
+    }
+  }
+});
 
 Jarvis.on("lm_test", (d) => {
   const p = d.payload || {};

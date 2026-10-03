@@ -207,6 +207,15 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 .mic-meter.clip > div { background: linear-gradient(90deg, #f59e0b, #ef4444); }
 .meter-field label { display: flex; gap: 6px; align-items: baseline; }
 .meter-field .hint { font-size: 11px; opacity: 0.75; font-weight: 400; }
+.test-field { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.test-field button.small {
+  padding: 6px 12px;
+  font-size: 12px;
+  -webkit-app-region: no-drag;
+}
+.test-field .hint { font-size: 11px; opacity: 0.8; }
+#wake-test-out.ok { color: #4ade80; opacity: 1; }
+#wake-test-out.bad { color: #f87171; opacity: 1; }
 
 .msg {
   padding: 9px 13px;

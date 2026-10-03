@@ -39,6 +39,10 @@ class VoiceService:
         self._silent_blocks = 0
         self._model = None
         self._level_t = 0.0
+        self._test_until = 0.0
+        self._test_max = 0.0
+        self._test_level = 0.0
+        self._test_pub_t = 0.0
 
     def _read_cfg(self, cfg=None):
         if cfg is not None:
@@ -47,7 +51,7 @@ class VoiceService:
         self.enabled = bool(vcfg.get("enabled", True))
         wcfg = vcfg.get("wake") or {}
         self.wake_enabled = bool(wcfg.get("enabled", True))
-        self.wake_threshold = float(wcfg.get("threshold", 0.5))
+        self.wake_threshold = float(wcfg.get("threshold", 0.35))
         self.stt_model_name = str(vcfg.get("stt_model", "base"))
         self.language = vcfg.get("language") or None
         self.vad_threshold = float(vcfg.get("vad_threshold", 0.012))
@@ -147,6 +151,99 @@ class VoiceService:
         else:
             if self._mode == "listen" and not self._busy:
                 await self._finish_capture(force_idle=True)
+
+    # ---------- wake test (user-facing mic/wake diagnostics) ----------
+
+    def start_wake_test(self, seconds: float = 8.0) -> bool:
+        """Score live mic audio against the wake model for N seconds and report."""
+        if self._busy or self._state == "listening":
+            return False
+        seconds = max(3.0, min(20.0, float(seconds or 8.0)))
+        if self._wake_model is None:
+            self._load_wake_async()
+        if self._stream is None and not self._open_stream("test"):
+            self._publish_wake_test({"phase": "done", "detected": False, "error": "mic unavailable"})
+            return False
+        self._mode = "test"
+        self._test_until = time.monotonic() + seconds
+        self._test_max = 0.0
+        self._test_level = 0.0
+        self._test_pub_t = 0.0
+        logger.info(
+            "wake test started (%.0fs, threshold=%.2f, device=%s)",
+            seconds, self.wake_threshold, self.current_device(),
+        )
+        self._publish_wake_test(
+            {
+                "phase": "start",
+                "seconds": seconds,
+                "threshold": self.wake_threshold,
+                "device": self.current_device(),
+                "model_ready": self._wake_model is not None,
+            }
+        )
+        return True
+
+    def _test_frame(self, block: np.ndarray):
+        rms = float(np.sqrt(np.mean(np.square(block)))) if block.size else 0.0
+        self._test_level = max(self._test_level, rms)
+        score = 0.0
+        m = self._wake_model
+        if m is not None:
+            pcm = (np.clip(block, -1.0, 1.0) * 32767.0).astype(np.int16)
+            try:
+                preds = m.predict(pcm)
+                score = max(preds.values()) if preds else 0.0
+            except Exception:
+                logger.exception("wake test predict failed")
+        self._test_max = max(self._test_max, score)
+        now = time.monotonic()
+        if now - self._test_pub_t >= 0.15:
+            self._test_pub_t = now
+            self._publish_wake_test(
+                {
+                    "phase": "run",
+                    "score": round(score, 3),
+                    "max": round(self._test_max, 3),
+                    "level": round(rms, 4),
+                    "threshold": self.wake_threshold,
+                }
+            )
+        if now >= self._test_until:
+            self._finish_wake_test()
+
+    def _finish_wake_test(self):
+        detected = self._test_max >= self.wake_threshold
+        logger.info(
+            "wake test finished: detected=%s max=%.3f level=%.4f threshold=%.2f",
+            detected, self._test_max, self._test_level, self.wake_threshold,
+        )
+        if self._wake_model is not None:
+            try:
+                self._wake_model.reset()
+            except Exception:
+                pass
+        if self.wake_enabled and self._stream is not None:
+            self._set_mode("wake")
+        else:
+            self._close_stream()
+        self._publish_wake_test(
+            {
+                "phase": "done",
+                "detected": detected,
+                "max_score": round(self._test_max, 3),
+                "level": round(self._test_level, 4),
+                "threshold": self.wake_threshold,
+                "device": self.current_device(),
+                "model_ready": self._wake_model is not None,
+            }
+        )
+
+    def _publish_wake_test(self, payload: dict):
+        asyncio.run_coroutine_threadsafe(
+            self.bus.publish(create_event("ui.wake_test", "wake_test", payload, source="voice")),
+            self.loop,
+        )
 
     # ---------- wake model ----------
 
@@ -312,6 +409,8 @@ class VoiceService:
         mode = self._mode
         if mode == "wake":
             self._wake_frame(block)
+        elif mode == "test":
+            self._test_frame(block)
         elif mode == "listen":
             self._capture_frame(block)
         # transcribe/off: drop
