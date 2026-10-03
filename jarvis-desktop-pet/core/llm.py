@@ -28,16 +28,32 @@ def _model_name(model_id: str) -> str:
     return (model_id or "").strip().removesuffix("-gguf")
 
 
+_lifecycle = None
+
+
+def set_lifecycle(lc) -> None:
+    """Installed by the app so chat calls load/offload models on demand."""
+    global _lifecycle
+    _lifecycle = lc
+
+
 def chat_sync(cfg: dict, model_id: str, messages: list, temperature: float = 0.7, max_tokens: int = 256) -> str:
     lm = (cfg.get("config") or {}).get("lm_studio") or {}
-    client = _client(lm)
-    resp = client.chat.completions.create(
-        model=_model_name(model_id),
-        messages=messages,
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
-    return (resp.choices[0].message.content or "").strip()
+    name = _model_name(model_id)
+    if _lifecycle:
+        _lifecycle.before_chat(name)
+    try:
+        client = _client(lm)
+        resp = client.chat.completions.create(
+            model=name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        return (resp.choices[0].message.content or "").strip()
+    finally:
+        if _lifecycle:
+            _lifecycle.after_chat(name)
 
 
 async def chat(cfg: dict, model_id: str, messages: list, temperature: float = 0.7, max_tokens: int = 256) -> str:

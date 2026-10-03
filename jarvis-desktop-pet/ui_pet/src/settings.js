@@ -71,6 +71,7 @@ function fill(s) {
   note.classList.remove("ok");
   setDirty(false);
   Jarvis.voiceDevices();
+  Jarvis.rmState();
   if (window.onSettingsLoaded) window.onSettingsLoaded(s);
 }
 
@@ -152,6 +153,8 @@ Jarvis.on("voice_device_set", (d) => {
   const p = d.payload || {};
   note.textContent = p.ok ? "Microphone set: " + (p.device || "system default") : "Could not open that microphone.";
   note.classList.toggle("ok", !!p.ok);
+  const dh = document.getElementById("v-device-hint");
+  if (dh) { dh.textContent = p.ok ? "Active input: " + (p.device || "system default") : "Could not open that microphone \u2014 check it is connected and not in use."; dh.classList.toggle("bad", !p.ok); }
   Jarvis.voiceDevices();
 });
 Jarvis.on("ui.mic_level", (d) => {
@@ -332,3 +335,47 @@ if (secNav) {
     navBtns.forEach((b) => { const el = document.getElementById(b.dataset.sec); if (el) obs.observe(el); });
   }
 }
+
+// ---- model memory (live load/offload status from the lifecycle manager) ----
+function renderRmStatus(s) {
+  const el = document.getElementById("rm-status");
+  if (!el) return;
+  if (!s || !Array.isArray(s.loaded)) { el.textContent = "Model status unavailable."; return; }
+  if (!s.auto_manage) {
+    el.textContent = "Automatic model memory is off. Loaded: " +
+      (s.loaded.map((m) => m.id).join(", ") || "none") + ".";
+    return;
+  }
+  const hint = document.getElementById("rm-hint");
+  if (hint) {
+    hint.textContent = "Models load when a task needs them and unload after " +
+      s.unload_idle_s + "s idle (max " + s.max_concurrent + " at once), so memory stays free.";
+  }
+  if (!s.loaded.length) {
+    el.textContent = "All models idle-unloaded \u2014 memory fully free. The next task loads its model on demand.";
+    return;
+  }
+  el.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "rm-head";
+  head.textContent = "In memory (" + s.loaded.length + "):";
+  el.appendChild(head);
+  s.loaded.forEach((m) => {
+    const row = document.createElement("div");
+    row.className = "rm-row";
+    const badge = document.createElement("span");
+    badge.className = "rm-badge" + (m.in_use > 0 ? " busy" : "");
+    badge.textContent = m.in_use > 0 ? "using" : "idle";
+    const idn = document.createElement("span");
+    idn.className = "rm-id";
+    idn.textContent = m.id;
+    const idle = document.createElement("span");
+    idle.className = "rm-idle";
+    idle.textContent = m.in_use > 0 ? "active now" : m.idle_s + "s";
+    row.appendChild(badge);
+    row.appendChild(idn);
+    row.appendChild(idle);
+    el.appendChild(row);
+  });
+}
+Jarvis.on("rm_state", (d) => renderRmStatus(d.payload));

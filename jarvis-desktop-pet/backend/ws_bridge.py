@@ -147,6 +147,12 @@ class WSBridge:
             from core.autostart import get_autostart
 
             await self._send(ws, {"type": "autostart_state", "payload": get_autostart(), "correlation_id": cid})
+        elif et == "rm_state":
+            from core.model_lifecycle import get_lifecycle
+
+            lc = get_lifecycle()
+            snap = lc.snapshot() if lc else {"auto_manage": False, "loaded": [], "not_loaded": []}
+            await self._send(ws, {"type": "rm_state", "payload": snap, "correlation_id": cid})
 
     async def _send(self, ws, obj):
         try:
@@ -165,5 +171,5 @@ class WSBridge:
         async def fwd_ui(ev):
             await self.broadcast(ev.topic, ev.payload, ev.correlation_id)
 
-        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state"):
+        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled"):
             self.bus.subscribe(t, fwd_ui)

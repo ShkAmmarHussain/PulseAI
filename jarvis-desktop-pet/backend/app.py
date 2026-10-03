@@ -20,6 +20,15 @@ class App:
             unload_idle_ms=rm_cfg.get("unload_idle_ms", 60000),
             cooldown_ms=rm_cfg.get("cooldown_ms", 2000),
         )
+        from core.model_lifecycle import ModelLifecycle
+
+        self.lifecycle = ModelLifecycle(
+            self.cfg["config"].get("lm_studio") or {},
+            rm_cfg,
+        )
+        from core import llm
+
+        llm.set_lifecycle(self.lifecycle)
         self.state = GlobalState()
         self.agents = {}
         self.bridge = None
@@ -48,10 +57,15 @@ class App:
             self.cfg = load_config()
             for a in self.agents.values():
                 a.cfg = self.cfg
+            self.lifecycle.update_config(
+                self.cfg["config"].get("lm_studio") or {},
+                self.cfg["config"].get("resource_manager") or {},
+            )
             if getattr(self, "hotkey", None):
                 self.hotkey.start((self.cfg.get("config", {}).get("voice") or {}).get("hotkey"))
             if self.bridge:
                 await self.bridge.broadcast("ui.state", {"settings_saved": True}, ev.correlation_id)
+                await self.lifecycle.notify_now()
 
         self.bus.subscribe("settings.updated", on_settings)
 
@@ -62,6 +76,13 @@ class App:
         self.voice = VoiceService(self.bus, self.cfg)
         self.bridge = WSBridge(self.bus, voice=self.voice)
         self.bridge.wire_bus()
+
+        async def rm_changed(snap: dict):
+            if self.bridge:
+                await self.bridge.broadcast("rm_state", snap)
+
+        self.lifecycle.on_change = rm_changed
+        self._lifecycle_task = asyncio.create_task(self.lifecycle.run())
         await self.voice.start()
 
         from backend.hotkey_service import HotkeyService

@@ -127,6 +127,8 @@ function setMic(on) {
 }
 function setVoiceStatus(text, mode) {
   if (!voiceStatus) return;
+  const col = document.getElementById("composer-col");
+  if (col) col.classList.toggle("listening", mode === "listening");
   if (text) {
     voiceStatus.hidden = false;
     voiceText.textContent = text;
@@ -166,12 +168,20 @@ Jarvis.on("ui.chat", (d) => {
   addMsg(d.payload.role || "assistant", d.payload.text || "");
 });
 
+// spoken responses: mirror TTS activity as a labelled state
+Jarvis.on("tts_state", (d) => {
+  const speaking = !!(d.payload && d.payload.speaking);
+  if (speaking) setVoiceStatus("Speaking\u2026", "speaking");
+  else if (voiceText && voiceText.textContent === "Speaking\u2026") setVoiceStatus("");
+});
+
 // ---- approvals ----
 Jarvis.on("ui.approval", (d) => {
   hideTyping();
   const p = d.payload || {};
   const wrap = document.createElement("div");
   wrap.className = "approval-card";
+  if (d.correlation_id) wrap.dataset.cid = d.correlation_id;
   const text = document.createElement("div");
   text.className = "ac-text";
   text.textContent = p.message || "Approval needed";
@@ -203,6 +213,14 @@ Jarvis.on("ui.approval", (d) => {
   wrap.appendChild(btns);
   msgs.insertBefore(wrap, typingEl);
   scrollLatest(true);
+});
+
+// backend expired the approval (treated as denied) - remove the pending card
+Jarvis.on("ui.approval_cancelled", (d) => {
+  const cid = d.correlation_id;
+  document.querySelectorAll(".approval-card").forEach((card) => {
+    if (cid && card.dataset.cid === String(cid)) card.remove();
+  });
 });
 
 document.addEventListener("jarvis:connected", () => {

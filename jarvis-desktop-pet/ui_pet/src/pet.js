@@ -66,6 +66,13 @@ Jarvis.on("ui.chat", (d) => {
   }
 });
 Jarvis.on("ui.approval", (d) => showApproval(d, d.correlation_id));
+Jarvis.on("ui.approval_cancelled", (d) => {
+  if (pendingApproval && d.correlation_id && String(pendingApproval.cid) === String(d.correlation_id)) {
+    approval.style.display = "none";
+    pendingApproval = null;
+    showBubble("Timed out \u2014 denied.", 3500);
+  }
+});
 
 Jarvis.on("tts_state", (d) => {
   const speaking = !!(d.payload && d.payload.speaking);
@@ -140,6 +147,7 @@ Jarvis.on("ui.voice_state", (d) => {
   micBtn.classList.toggle("rec", st === "listening");
   micBtn.classList.toggle("busy", st === "transcribing");
   micOn = st === "listening";
+  document.body.classList.toggle("dock-show", st === "listening" || st === "transcribing");
 });
 
 setTimeout(() => showBubble("Hi, I'm Jarvis.", 4000), 800);

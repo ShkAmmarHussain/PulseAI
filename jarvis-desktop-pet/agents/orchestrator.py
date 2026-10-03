@@ -6,6 +6,49 @@ from core.guardrails import risk_score
 class OrchestratorAgent(BaseAgent):
     def __init__(self, bus):
         super().__init__("orchestrator", bus)
+        self._approval_timers = {}
+        self._approval_expired = set()
+
+    def _approval_timeout_s(self) -> float:
+        perms = (self.cfg or {}).get("permissions") or {}
+        appr = perms.get("approvals") or {}
+        try:
+            return max(5.0, float(appr.get("timeout_ms", 45000))) / 1000.0
+        except Exception:
+            return 45.0
+
+    def _arm_approval(self, cid):
+        if not cid or cid in self._approval_timers:
+            return
+        import asyncio
+
+        async def _expire():
+            await asyncio.sleep(self._approval_timeout_s())
+            if self._approval_timers.pop(cid, None) is None:
+                return
+            self._approval_expired.add(cid)
+            await self.bus.publish(
+                create_event("ui.approval_cancelled", "approval_cancelled", {"reason": "timeout"}, correlation_id=cid)
+            )
+            await self.bus.publish(
+                create_event(
+                    "ui.chat", "chat",
+                    {"role": "system", "text": "Approval timed out \u2014 treated as denied. Nothing was changed."},
+                    correlation_id=cid,
+                )
+            )
+
+        self._approval_timers[cid] = asyncio.get_event_loop().create_task(_expire())
+
+    def _settle_approval(self, cid) -> bool:
+        """Returns True if this response is still valid (not expired)."""
+        t = self._approval_timers.pop(cid, None)
+        if t is not None:
+            t.cancel()
+        if cid in self._approval_expired:
+            self._approval_expired.discard(cid)
+            return False
+        return True
 
     async def start(self):
         await super().start()
@@ -67,11 +110,14 @@ class OrchestratorAgent(BaseAgent):
                         correlation_id=cid,
                     )
                 )
+                self._arm_approval(cid)
                 await self.bus.publish(
                     create_event("ui.chat", "chat", {"role": "assistant", "text": "I need your approval for that action."}, correlation_id=cid)
                 )
 
         elif et == "approval_response":
+            if not self._settle_approval(cid):
+                return  # expired - already treated as denied
             allowed = payload.get("allow", False)
             action = payload.get("action", {})
             steps = payload.get("all_steps", [action])

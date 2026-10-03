@@ -29,6 +29,8 @@ voice:
   tts_voice: af_heart
   tts_speed: 1
 resource_manager:
+  auto_manage: true
+  max_concurrent_models: 2
   enforce_invariants: true
   vision_mutex: true
   unload_after_ms: 30000

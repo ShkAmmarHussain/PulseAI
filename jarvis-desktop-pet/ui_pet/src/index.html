@@ -27,7 +27,7 @@
         <div class="logo"><svg class="ic"><use href="#i-face"/></svg></div>
         <div class="brand-text">
           <span class="name">Jarvis</span>
-          <span class="status" id="conn">connecting...</span>
+          <span class="status" id="conn" role="status" aria-live="polite">connecting...</span>
         </div>
       </div>
       <nav id="tabs">
@@ -92,6 +92,7 @@
           <select id="v-device">
             <option value="">System default input</option>
           </select>
+          <p class="hint" id="v-device-hint" aria-live="polite"></p>
         </div>
         <div class="field meter-field">
           <label>Input level <span id="v-level-name" class="hint"></span></label>
@@ -118,6 +119,7 @@
         </div>
         <div class="field"><label>Wake threshold</label><input id="v-threshold" type="number" min="0.1" max="0.95" step="0.05" /></div>
         <p class="hint">Lower = easier to trigger the wake word; raise it if Jarvis wakes too often on background speech.</p>
+        <div class="subhead">Spoken responses</div>
         <div class="field"><label>Speech engine</label>
           <select id="v-engine">
             <option value="kokoro">Kokoro &mdash; natural neural voice</option>
@@ -219,6 +221,11 @@
       <div class="section" id="sec-performance">
         <h3><svg class="ic"><use href="#i-wave"/></svg>Performance</h3>
         <p class="hint">Tune how long models stay loaded and how often vision runs. Defaults suit most PCs.</p>
+        <div class="field">
+          <label>Model memory (live)</label>
+          <div id="rm-status" class="rm-status" role="status" aria-live="polite">Asking backend&hellip;</div>
+        </div>
+        <p class="hint" id="rm-hint">Models load when a task needs them and unload after they sit idle, so memory stays free.</p>
         <details class="adv">
           <summary>Advanced</summary>
           <div class="adv-body">
@@ -232,7 +239,7 @@
 
       <div id="settings-actions">
         <button id="save" class="primary" disabled>Save changes</button>
-        <div id="settings-note">Loading...</div>
+        <div id="settings-note" aria-live="polite">Loading...</div>
       </div>
       </div>
     </main>

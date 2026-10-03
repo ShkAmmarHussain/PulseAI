@@ -61,5 +61,6 @@ window.Jarvis = (function () {
     ttsTest: (voice, text) => send({ type: "tts_test", payload: { voice, text } }),
     autostart: (enabled) => send({ type: "autostart", payload: { enabled: !!enabled } }),
     autostartState: () => send({ type: "autostart_state" }),
+    rmState: () => send({ type: "rm_state" }),
   };
 })();

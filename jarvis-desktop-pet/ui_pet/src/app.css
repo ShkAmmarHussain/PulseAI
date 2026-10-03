@@ -949,3 +949,49 @@ details.adv .adv-body .field:first-of-type { margin-top: 12px; }
   }
   #settings-content .section { scroll-margin-top: 64px; }
 }
+/* ---- Revamp: states, reveals, live model-memory status ---- */
+#mini-btns { opacity: 0; pointer-events: none; transition: opacity var(--t-fast); }
+#pet-row:hover #mini-btns,
+#mini-btns:focus-within,
+body.dock-show #mini-btns { opacity: 1; pointer-events: auto; }
+
+#composer-col.listening .composer-main {
+  border-color: rgba(146, 117, 245, 0.65);
+  box-shadow: var(--focus), 0 0 28px -8px rgba(146, 117, 245, 0.55);
+}
+
+.subhead {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--accent);
+  margin: 16px 0 8px;
+}
+
+.rm-status {
+  font: 12.5px/1.6 ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color: var(--dim);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  min-height: 42px;
+  word-break: break-all;
+}
+.rm-head { color: var(--text); font-weight: 700; margin-bottom: 4px; font-family: var(--ui, inherit); }
+.rm-row { display: flex; gap: 8px; align-items: baseline; }
+.rm-id { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.rm-idle { color: var(--dim); font-size: 11.5px; white-space: nowrap; }
+.rm-badge {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(67, 201, 149, 0.16);
+  color: var(--ok);
+}
+.rm-badge.busy { background: var(--accent-soft); color: var(--accent); }
+.hint.bad { color: var(--bad); }
