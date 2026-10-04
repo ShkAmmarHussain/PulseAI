@@ -1,11 +1,16 @@
+import asyncio
 import json
+import logging
 import sys
+import time
 
 import yaml
 from aiohttp import web
 
 from core.bus import create_event
 from core.config import CONFIG_DIR
+
+logger = logging.getLogger("ws_bridge")
 
 
 def _read_yaml(name: str) -> dict:
@@ -51,18 +56,40 @@ class WSBridge:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         self.clients.add(ws)
+        logger.info("ws connected from %s (clients=%d)", request.remote, len(self.clients))
+
+        async def _heartbeat():
+            loop = asyncio.get_event_loop()
+            prev = loop.time()
+            while True:
+                await asyncio.sleep(2.0)
+                now = loop.time()
+                drift = now - prev - 2.0
+                if drift > 0.5:
+                    logger.warning("event-loop lag: %.2fs", drift)
+                prev = now
+
+        hb = None
         try:
+            hb = asyncio.ensure_future(_heartbeat())
             async for msg in ws:
                 if msg.type == web.WSMsgType.TEXT:
                     try:
                         data = json.loads(msg.data)
                     except Exception:
                         continue
-                    await self._dispatch(ws, data)
+                    try:
+                        logger.info("recv %s", data.get("type"))
+                        await self._dispatch(ws, data)
+                    except Exception:
+                        logger.exception("dispatch failed: %s", str(data.get("type")))
                 elif msg.type == web.WSMsgType.ERROR:
                     break
         finally:
+            if hb is not None:
+                hb.cancel()
             self.clients.discard(ws)
+            logger.info("ws closed from %s (clients=%d)", request.remote, len(self.clients))
         return ws
 
     async def _dispatch(self, ws, data):
@@ -80,9 +107,13 @@ class WSBridge:
         elif et == "get_settings":
             await self._send(ws, {"type": "settings", "payload": get_settings()})
         elif et == "save_settings":
+            t0 = time.monotonic()
             saved = save_settings(payload)
+            logger.info("save_settings: files written in %.0fms cid=%s", (time.monotonic() - t0) * 1000, cid)
             await self.bus.publish(create_event("settings.updated", "updated", saved, correlation_id=cid))
+            logger.info("save_settings: bus published in %.0fms cid=%s", (time.monotonic() - t0) * 1000, cid)
             await self._send(ws, {"type": "settings_saved", "payload": saved, "correlation_id": cid})
+            logger.info("save_settings: reply sent in %.0fms cid=%s", (time.monotonic() - t0) * 1000, cid)
         elif et == "ping":
             await self._send(ws, {"type": "pong"})
         elif et == "test_lm_studio":
@@ -151,13 +182,14 @@ class WSBridge:
             from core.model_lifecycle import get_lifecycle
 
             lc = get_lifecycle()
-            snap = lc.snapshot() if lc else {"auto_manage": False, "loaded": [], "not_loaded": []}
+            snap = await asyncio.to_thread(lc.snapshot) if lc else {"auto_manage": False, "loaded": [], "not_loaded": []}
             await self._send(ws, {"type": "rm_state", "payload": snap, "correlation_id": cid})
 
     async def _send(self, ws, obj):
         try:
             await ws.send_json(obj)
-        except Exception:
+        except Exception as e:
+            logger.warning("send failed (%s): %r; dropping client (clients=%d)", obj.get("type") or obj.get("topic"), e, len(self.clients))
             self.clients.discard(ws)
 
     async def broadcast(self, topic: str, payload: dict, cid=None):

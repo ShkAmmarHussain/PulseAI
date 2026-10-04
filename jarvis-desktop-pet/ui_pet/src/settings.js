@@ -67,6 +67,8 @@ function fill(s) {
   setv("v-speed", voice.tts_speed == null ? 1 : voice.tts_speed);
   document.getElementById("v-speed-val").textContent =
     (voice.tts_speed == null ? 1 : voice.tts_speed).toFixed(2);
+  const uiSounds = document.getElementById("v-ui-sounds");
+  if (uiSounds) uiSounds.checked = voice.ui_sounds === false;
   note.textContent = "Loaded. Edit and press Save.";
   note.classList.remove("ok");
   setDirty(false);
@@ -123,6 +125,8 @@ function collect() {
   s.config.voice.agc = document.getElementById("v-agc").checked;
   s.config.voice.noise_gate = document.getElementById("v-gate").checked;
   s.config.voice.hotkey = val("v-hotkey").trim();
+  const uiSounds = document.getElementById("v-ui-sounds");
+  if (uiSounds) s.config.voice.ui_sounds = !uiSounds.checked;
   return s;
 }
 

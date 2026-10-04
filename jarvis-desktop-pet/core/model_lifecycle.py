@@ -20,16 +20,31 @@ def get_lifecycle() -> "ModelLifecycle | None":
     return _INSTANCE
 
 
+def _normalize_base(base: str) -> str:
+    """Strip /v1 and map localhost -> 127.0.0.1.
+
+    urllib prefers ::1 for "localhost"; when nothing listens there the SYN is
+    silently dropped on some systems and the connect hangs until timeout,
+    which used to stall callers for seconds. IPv4 loopback refuses instantly.
+    """
+    base = str(base or "").strip().rstrip("/")
+    if base.endswith("/v1"):
+        base = base[: -len("/v1")].rstrip("/")
+    if base.lower().startswith("http://localhost"):
+        base = "http://127.0.0.1" + base[len("http://localhost"):]
+    elif base.lower().startswith("https://localhost"):
+        base = "https://127.0.0.1" + base[len("https://localhost"):]
+    return base
+
+
 class ModelLifecycle:
     """Loads models on demand for the task at hand and offloads idle ones,
     using LM Studio's REST API (POST /api/v1/models/load, /api/v1/models/unload,
     GET /api/v0/models for per-model state)."""
 
     def __init__(self, lm_cfg: dict, rm_cfg: dict):
-        base = str(lm_cfg.get("base_url") or "http://localhost:1234/v1").strip().rstrip("/")
-        if base.endswith("/v1"):
-            base = base[: -len("/v1")].rstrip("/")
-        self.base = base or "http://localhost:1234"
+        base = _normalize_base(lm_cfg.get("base_url") or "http://localhost:1234/v1")
+        self.base = base or "http://127.0.0.1:1234"
         self.api_key = lm_cfg.get("api_key") or "lm-studio"
         self.auto_manage = bool(rm_cfg.get("auto_manage", True))
         self.unload_idle_ms = int(rm_cfg.get("unload_idle_ms", 60000))
@@ -40,6 +55,9 @@ class ModelLifecycle:
         self._lock = threading.RLock()
         self._last_unload_at = 0.0
         self._started_at = time.time()
+        self._states_cache: dict = {}
+        self._states_at = 0.0
+        self._states_fail_until = 0.0
         self.on_change = None  # async fn(snapshot) - set by the app
         self._task: asyncio.Task | None = None
         set_lifecycle(self)
@@ -47,10 +65,11 @@ class ModelLifecycle:
     # ---------- config refresh (settings saved) ----------
     def update_config(self, lm_cfg: dict, rm_cfg: dict) -> None:
         with self._lock:
-            base = str(lm_cfg.get("base_url") or self.base).strip().rstrip("/")
-            if base.endswith("/v1"):
-                base = base[: -len("/v1")].rstrip("/")
+            base = _normalize_base(lm_cfg.get("base_url") or self.base)
             self.base = base or self.base
+            self._states_cache = {}
+            self._states_at = 0.0
+            self._states_fail_until = 0.0
             self.api_key = lm_cfg.get("api_key") or self.api_key
             self.auto_manage = bool(rm_cfg.get("auto_manage", True))
             self.unload_idle_ms = int(rm_cfg.get("unload_idle_ms", self.unload_idle_ms))
@@ -81,16 +100,31 @@ class ModelLifecycle:
             return {"__error__": str(e)}
 
     def list_states(self) -> dict:
-        """{model_id: 'loaded' | 'not-loaded' | ...} from LM Studio."""
-        res = self._http("GET", "/api/v0/models", timeout=6.0)
-        if not res or "__error__" in res:
-            return {}
-        out = {}
-        for m in res.get("data") or []:
-            mid = m.get("id")
-            if mid:
-                out[mid] = m.get("state") or "unknown"
-        return out
+        """{model_id: 'loaded' | 'not-loaded' | ...} from LM Studio.
+
+        Cached briefly; a failed probe short-circuits for a few seconds so a
+        down LM Studio costs at most one ~2s connect per window instead of
+        one per call.
+        """
+        with self._lock:
+            now = time.time()
+            if now < self._states_fail_until:
+                return dict(self._states_cache)
+            if self._states_cache and now - self._states_at < 1.5:
+                return dict(self._states_cache)
+            res = self._http("GET", "/api/v0/models", timeout=6.0)
+            if not res or "__error__" in res:
+                self._states_fail_until = time.time() + 5.0
+                return dict(self._states_cache)
+            out = {}
+            for m in res.get("data") or []:
+                mid = m.get("id")
+                if mid:
+                    out[mid] = m.get("state") or "unknown"
+            self._states_cache = out
+            self._states_at = time.time()
+            self._states_fail_until = 0.0
+            return dict(out)
 
     def load(self, model: str) -> bool:
         # a 7B/13B model can legitimately take a while to come up
@@ -212,12 +246,12 @@ class ModelLifecycle:
         )
         while True:
             try:
-                before = self.list_states()
+                before = await asyncio.to_thread(self.list_states)
                 unloaded = await asyncio.to_thread(self.sweep_once)
                 if unloaded:
                     logger.info("idle sweep unloaded: %s", ", ".join(unloaded))
                     await self._notify()
-                elif before != self.list_states():
+                elif before != await asyncio.to_thread(self.list_states):
                     await self._notify()
             except asyncio.CancelledError:
                 raise
@@ -228,7 +262,8 @@ class ModelLifecycle:
     async def _notify(self) -> None:
         if self.on_change:
             try:
-                await self.on_change(self.snapshot())
+                snap = await asyncio.to_thread(self.snapshot)
+                await self.on_change(snap)
             except Exception:
                 logger.exception("rm_state notify failed")
 

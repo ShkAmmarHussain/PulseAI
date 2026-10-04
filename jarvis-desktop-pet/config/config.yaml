@@ -28,6 +28,7 @@ voice:
   tts_engine: kokoro
   tts_voice: af_heart
   tts_speed: 1
+  ui_sounds: true
 resource_manager:
   auto_manage: true
   max_concurrent_models: 2

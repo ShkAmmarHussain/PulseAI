@@ -21,6 +21,10 @@ class OrchestratorAgent(BaseAgent):
         except Exception:
             return 45.0
 
+    async def _say(self, text: str, cid: str = None):
+        """Speak a stock acknowledgment (served from the pre-rendered cache)."""
+        await self.bus.publish(create_event("voice.say", "say", {"text": text}, correlation_id=cid))
+
     def _arm_approval(self, cid):
         if not cid or cid in self._approval_timers:
             return
@@ -42,10 +46,11 @@ class OrchestratorAgent(BaseAgent):
             await self.bus.publish(
                 create_event(
                     "ui.chat", "chat",
-                    {"role": "system", "text": "Approval timed out \u2014 treated as denied. Nothing was changed."},
+                    {"role": "system", "text": "Approval timed out — treated as denied. Nothing was changed."},
                     correlation_id=cid,
                 )
             )
+            await self._say("Action denied. Nothing was changed.")
 
         self._approval_timers[cid] = asyncio.get_event_loop().create_task(_expire())
 
@@ -96,6 +101,8 @@ class OrchestratorAgent(BaseAgent):
             low = text.lower()
             triggers = ("open", "type", "click", "run", "delete", "launch", "close", "move", "create", "search", "screen", "summar", "describe")
             if len(text.split()) > 8 or any(t in low for t in triggers):
+                # instant cached acknowledgment while the planner/LLM works
+                await self._say("Working on that now.", cid)
                 await self.bus.publish(create_event("planner.request", "plan", {"query": text}, correlation_id=cid))
             else:
                 await self.bus.publish(create_event("memory.request", "recall", {"query": text}, correlation_id=cid))
@@ -136,6 +143,7 @@ class OrchestratorAgent(BaseAgent):
                 )
                 self._approval_steps[cid] = steps
                 self._arm_approval(cid)
+                await self._say("I need your approval to proceed.")
                 # no correlation id here: clients treat any ui.chat carrying
                 # the approval cid as its outcome and would hide the fresh card
                 await self.bus.publish(
@@ -165,6 +173,7 @@ class OrchestratorAgent(BaseAgent):
                 await self.bus.publish(
                     create_event("ui.chat", "chat", {"role": "assistant", "text": "Action denied. No changes made."}, correlation_id=cid)
                 )
+                await self._say("Action denied. Nothing was changed.", cid)
 
         elif et == "tool_result":
             summary = payload.get("summary", "Done.")

@@ -11,6 +11,98 @@ let typingTimer = null;
 let stickBottom = true;
 const USER_NAME = "Ammar";
 
+// ---- procedural UI earcons (spec 29, section 5.4) ----
+// 8 subtle state cues synthesized live via Web Audio (no audio assets).
+const Earcons = (function () {
+  let ctx = null;
+  let muted = false;
+  const GAIN = 0.16;
+  function ensure() {
+    if (!ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { ctx = new AC(); } catch (e) { return null; }
+    }
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    return ctx;
+  }
+  // browsers need a gesture before audio can start
+  window.addEventListener("pointerdown", () => ensure(), { once: true });
+  window.addEventListener("keydown", () => ensure(), { once: true });
+
+  function tone(freq, t0, dur, opts) {
+    opts = opts || {};
+    const o = ctx.createOscillator();
+    o.type = opts.type || "sine";
+    o.frequency.setValueAtTime(freq, t0);
+    if (opts.to) o.frequency.exponentialRampToValueAtTime(opts.to, t0 + dur);
+    const g = ctx.createGain();
+    const peak = opts.gain || GAIN;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(Math.max(peak, 0.001), t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start(t0);
+    o.stop(t0 + dur + 0.03);
+  }
+  function swoosh(t0, dur) {
+    const frames = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, frames, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < frames; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / frames);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const f = ctx.createBiquadFilter();
+    f.type = "bandpass";
+    f.frequency.setValueAtTime(600, t0);
+    f.frequency.exponentialRampToValueAtTime(3200, t0 + dur);
+    f.Q.value = 1.2;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(GAIN, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    src.start(t0);
+  }
+  const CUES = {
+    // wake-word detected: gentle 2-note rising chime (440 -> 880)
+    snd_wake: (t) => { tone(440, t, 0.10); tone(880, t + 0.10, 0.16, { gain: GAIN * 0.9 }); },
+    // mic opens: subdued tactile click
+    snd_listen_start: (t) => { tone(1200, t, 0.035, { type: "square", gain: GAIN * 0.45 }); },
+    // mic closes / transcribing begins: low soft settle tone
+    snd_listen_stop: (t) => { tone(330, t, 0.22, { gain: GAIN * 0.8 }); },
+    // task completes: crisp bright 3-note major chord
+    snd_success: (t) => { [523.25, 659.25, 783.99].forEach((f, i) => tone(f, t + i * 0.07, 0.30, { gain: GAIN * 0.8 })); },
+    // tool failure / disconnection: muted low double-tap
+    snd_error: (t) => { tone(196, t, 0.14, { type: "triangle" }); tone(196, t + 0.16, 0.18, { type: "triangle", gain: GAIN * 0.8 }); },
+    // approval card arrives: high-contrast melodic warning chime
+    snd_approval: (t) => { tone(987.77, t, 0.14); tone(783.99, t + 0.13, 0.24); },
+    // poking the pet: tactile soft pop
+    snd_squish: (t) => { tone(320, t, 0.14, { to: 110 }); },
+    // top-edge dock expands (phase 5): soft swoosh
+    snd_dock_peek: (t) => { swoosh(t, 0.28); },
+  };
+  function flash() {
+    const logo = document.querySelector(".brand .logo");
+    if (!logo) return;
+    logo.classList.remove("sounding");
+    void logo.offsetWidth; // restart the animation
+    logo.classList.add("sounding");
+  }
+  return {
+    play(name) {
+      if (muted || !CUES[name]) return false;
+      const c = ensure();
+      if (!c) return false;
+      try { CUES[name](c.currentTime + 0.005); flash(); return true; } catch (e) { return false; }
+    },
+    setMuted(m) { muted = !!m; },
+    isMuted() { return muted; },
+    names: Object.keys(CUES),
+  };
+})();
+window.Earcons = Earcons;
+
 // time-based greeting (spec 7.3 - subtle, second line does the work)
 (function setGreeting() {
   const h = new Date().getHours();
@@ -197,13 +289,17 @@ function toggleMic() {
 }
 micBtns.forEach((b) => (b.onclick = () => { if (!b.disabled) toggleMic(); }));
 
+let lastVoiceState = null;
 Jarvis.on("ui.voice_state", (d) => {
   const st = (d.payload || {}).state || "idle";
   setMicBusy(false);
   if (st === "listening") {
+    // wake-word path arrives from "wake"; manual push-to-talk from "idle"
+    Earcons.play(lastVoiceState === "wake" ? "snd_wake" : "snd_listen_start");
     setMic(true);
     setVoiceStatus("Listening\u2026", "listening");
   } else if (st === "transcribing") {
+    Earcons.play("snd_listen_stop");
     setMic(false);
     setMicBusy(true);
     setVoiceStatus("Transcribing\u2026", "transcribing");
@@ -211,8 +307,26 @@ Jarvis.on("ui.voice_state", (d) => {
     setMic(false);
     setVoiceStatus("");
   }
-  if (st === "error") addMsg("system", "Voice: " + ((d.payload || {}).error || "unknown error"));
+  if (st === "error") {
+    Earcons.play("snd_error");
+    addMsg("system", "Voice: " + ((d.payload || {}).error || "unknown error"));
+  }
+  lastVoiceState = st;
 });
+
+// tool outcomes -> success/error earcons (spec 29, section 5.4)
+Jarvis.on("tool.result", (d) => {
+  Earcons.play((d.payload || {}).ok === false ? "snd_error" : "snd_success");
+});
+
+// stock acknowledgment / settings mute (spec 29, sections 3.1 + 5.4)
+function syncSoundPrefs(d) {
+  const v = ((d || {}).payload || {}).config || {};
+  const voice = v.voice || {};
+  Earcons.setMuted(voice.ui_sounds === false);
+}
+Jarvis.on("settings", syncSoundPrefs);
+Jarvis.on("settings_saved", syncSoundPrefs);
 
 Jarvis.on("ui.chat", (d) => {
   if (!d.payload) return;
@@ -271,6 +385,7 @@ function removeApprovalCards(cid) {
 
 Jarvis.on("ui.approval", (d) => {
   hideTyping();
+  Earcons.play("snd_approval");
   const p = d.payload || {};
   const fa = friendlyAction(p);
   const band = riskBand(p.risk);
@@ -412,4 +527,5 @@ document.addEventListener("jarvis:connected", () => {
 document.addEventListener("jarvis:disconnected", () => {
   conn.textContent = "Reconnecting\u2026";
   conn.classList.remove("on");
+  Earcons.play("snd_error");
 });

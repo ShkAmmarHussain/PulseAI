@@ -203,8 +203,41 @@ document.addEventListener("mousemove", (e) => {
 });
 document.addEventListener("mouseup", () => { dragOrigin = null; });
 
+// tactile squish earcon on poke (spec 29, section 5.4)
+let petSoundMuted = false;
+let petCtx = null;
+function playSquish() {
+  if (petSoundMuted) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!petCtx) petCtx = new AC();
+    if (petCtx.state === "suspended") petCtx.resume().catch(() => {});
+    const t = petCtx.currentTime;
+    const o = petCtx.createOscillator();
+    o.frequency.setValueAtTime(320, t);
+    o.frequency.exponentialRampToValueAtTime(110, t + 0.14);
+    const g = petCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.16, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.connect(g);
+    g.connect(petCtx.destination);
+    o.start(t);
+    o.stop(t + 0.2);
+  } catch (e) {}
+}
+function syncPetSound(d) {
+  const v = (((d || {}).payload || {}).config || {}).voice || {};
+  petSoundMuted = v.ui_sounds === false;
+}
+Jarvis.on("settings", syncPetSound);
+Jarvis.on("settings_saved", syncPetSound);
+Jarvis.getSettings();
+
 petEl.onclick = () => {
   if (dragMoved) { dragMoved = false; return; }
+  playSquish();
   tcmd("open_chat");
 };
 document.getElementById("btn-chat").onclick = () => tcmd("open_chat");

@@ -6,6 +6,7 @@ import threading
 from pathlib import Path
 
 from agents.base import BaseAgent
+from core import audio_cache
 from core.bus import Event, create_event
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,11 @@ class VoiceTTSAgent(BaseAgent):
             self._cancel.set()
             return
         if ev.type == "updated":
+            prev = (self._voice, self._speed)
             self._read_cfg()
+            if (self._voice, self._speed) != prev and self._kokoro is not None:
+                # new voice style: render any missing stock clips for it
+                audio_cache.ensure_clips_async(self._kokoro, self._voice, self._speed)
             return
         if ev.type == "say":
             text = ev.payload.get("text", "")
@@ -82,6 +87,9 @@ class VoiceTTSAgent(BaseAgent):
 
             self._kokoro = Kokoro(str(model), str(voices))
             logger.info("kokoro TTS ready (voice=%s)", self._voice)
+            # pre-render the stock acknowledgment clips in the background so
+            # routine acks play straight from disk (spec 29, section 3.1)
+            audio_cache.ensure_clips_async(self._kokoro, self._voice, self._speed)
         except Exception as e:
             self._kokoro_error = str(e)
             logger.exception("kokoro load failed; falling back to SAPI")
@@ -130,10 +138,21 @@ class VoiceTTSAgent(BaseAgent):
             try:
                 spoken = False
                 if self._engine == "kokoro":
-                    try:
-                        spoken = self._speak_kokoro(text, voice)
-                    except Exception:
-                        logger.exception("kokoro speak failed; falling back to SAPI")
+                    # fast path: stock acknowledgment already on disk ->
+                    # stream the WAV directly, no neural synthesis (~<35ms)
+                    clip = audio_cache.find_clip(text, voice, self._speed)
+                    if clip is not None:
+                        logger.info("tts cache hit: %s (%s)", clip.name, text[:40])
+                        try:
+                            self._publish_tts(True)
+                            spoken = audio_cache.play_clip(clip, self._cancel)
+                        finally:
+                            self._publish_tts(False)
+                    if not spoken:
+                        try:
+                            spoken = self._speak_kokoro(text, voice)
+                        except Exception:
+                            logger.exception("kokoro speak failed; falling back to SAPI")
                 if not spoken:
                     self._speak_sapi(text)
             except Exception:

@@ -198,6 +198,13 @@ button:disabled { cursor: default; }
 
 .brand { display: flex; align-items: center; gap: 10px; padding: 2px 6px 12px; }
 .brand .logo { width: 30px; height: 30px; }
+/* subtle visual companion to the procedural earcons (spec 29, section 5.4) */
+.brand .logo.sounding { animation: logo-sound 0.5s var(--ease-out); }
+@keyframes logo-sound {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.14); filter: brightness(1.6); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
 .brand-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; white-space: nowrap; }
 .brand-text .name { font-weight: 680; font-size: 14.5px; letter-spacing: 0.1px; }
 .status {

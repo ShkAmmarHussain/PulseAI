@@ -12,6 +12,11 @@ def _base_url(url: str | None) -> str:
     base = (url or DEFAULT_BASE_URL).strip().rstrip("/")
     if not base.endswith("/v1"):
         base += "/v1"
+    # ::1 ("localhost") can blackhole SYNs when nothing listens; IPv4 refuses fast
+    if base.lower().startswith("http://localhost"):
+        base = "http://127.0.0.1" + base[len("http://localhost"):]
+    elif base.lower().startswith("https://localhost"):
+        base = "https://127.0.0.1" + base[len("https://localhost"):]
     return base
 
 
