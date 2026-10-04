@@ -1,4 +1,4 @@
-﻿# Jarvis Desktop Pet - Documentation Index
+# Jarvis Desktop Pet - Documentation Index
 
 > **Purpose:** Complete, exhaustive documentation covering every aspect of building a local multi-agent Jarvis-like desktop pet from start to end. Nothing skipped.
 
@@ -43,6 +43,11 @@ This project is designed to run 100% locally using your 3060 12GB GPU with LM St
 - [23. Testing](./23-TESTING.md) - Unit/integration/e2e, safety tests, performance, regression
 - [24. Troubleshooting](./24-TROUBLESHOOTING.md) - Issues, fixes, logs, diagnostics
 - [25. Roadmap](./25-ROADMAP.md) - Future work, enhancements, research
+
+### Product Revamp & Competitive Strategy
+- [27. UI Revamp](./27-UI-REVAMP.md) - Master UI specification, command center, component system
+- [28. Competitive Comparison](./28-COMPETITIVE-COMPARISON-COUCOU-HEYJEV.md) - Deep comparative analysis: PulseAI vs Coucou vs Hey Jev
+- [29. Hybrid Revamp Spec](./29-HYBRID-REVAMP-IMPLEMENTATION-SPEC.md) - Implementation blueprint adopting Coucou & Hey Jev strengths + product-grade pet revamp
 
 ---
 
