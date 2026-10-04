@@ -27,7 +27,19 @@ class PlannerAgent(BaseAgent):
             low = q.lower()
             steps = []
 
-            if re.search(r"\b(search|google|look up|web search)\b", low):
+            screenish = re.search(r"\b(screen|desktop|screenshot)\b", low)
+            screen_intent = re.search(
+                r"summar\w*|\bdescribe\b|\bread\b|\bcapture\b|\bgrab\b|take a (?:screenshot|picture)|"
+                r"\bscreenshot\b|what(?:'s| is| am i)\b|\bam i looking\b|\blook at\b|\bshow me\b",
+                low,
+            )
+            screen_mutation = re.search(
+                r"\b(open|close|delete|remove|move|create|launch|list|run|search|find|google)\b", low
+            )
+            if screenish and screen_intent and not screen_mutation:
+                steps.append({"action": "vision_describe", "query": q, "risk": 0})
+
+            elif re.search(r"\b(search|google|look up|web search)\b", low):
                 m = re.search(r"(?:search(?: for| the web for| the web)?|google|look up)\s+(.+)", q, re.I)
                 term = m.group(1).strip().rstrip("?.!") if m else q
                 steps.append({"action": "web_search", "query": term, "risk": 0})
@@ -88,7 +100,14 @@ class PlannerAgent(BaseAgent):
                 steps.append({"action": "type_text", "text": text, "risk": 6})
 
             else:
-                steps.append({"action": "respond", "text": f"Understood: {q}", "risk": 0})
+                # no action intent matched (e.g. the query merely mentioned a
+                # screen) - hand back to recall so the user gets a real answer
+                await self.bus.publish(
+                    create_event(
+                        "memory.request", "recall", {"query": q}, correlation_id=ev.correlation_id
+                    )
+                )
+                return
 
             await self.bus.publish(
                 create_event("planner.result", "plan", {"steps": steps, "query": q}, correlation_id=ev.correlation_id)

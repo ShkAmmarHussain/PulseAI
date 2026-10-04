@@ -93,7 +93,8 @@ class ModelLifecycle:
         return out
 
     def load(self, model: str) -> bool:
-        res = self._http("POST", "/api/v1/models/load", {"model": model})
+        # a 7B/13B model can legitimately take a while to come up
+        res = self._http("POST", "/api/v1/models/load", {"model": model}, timeout=90.0)
         ok = bool(res) and "__error__" not in res and res.get("status") in (None, "loaded")
         if ok:
             logger.info("model loaded: %s", model)

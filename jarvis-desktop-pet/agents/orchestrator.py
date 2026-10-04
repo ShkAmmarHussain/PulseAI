@@ -94,7 +94,7 @@ class OrchestratorAgent(BaseAgent):
                 create_event("ui.chat", "chat", {"role": "user", "text": text}, correlation_id=cid)
             )
             low = text.lower()
-            triggers = ("open", "type", "click", "run", "delete", "launch", "close", "move", "create", "search")
+            triggers = ("open", "type", "click", "run", "delete", "launch", "close", "move", "create", "search", "screen", "summar", "describe")
             if len(text.split()) > 8 or any(t in low for t in triggers):
                 await self.bus.publish(create_event("planner.request", "plan", {"query": text}, correlation_id=cid))
             else:

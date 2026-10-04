@@ -15,9 +15,13 @@ class ToolControlAgent(BaseAgent):
         self.bus.subscribe("tool.execute", self.handle)
 
     async def _execute(self, s: dict) -> str:
-        from skills import app_control, browser, file_ops, shell, web_search
+        from skills import app_control, browser, file_ops, screen_vision, shell, web_search
 
         name = s.get("action", "noop")
+        if name == "vision_describe":
+            return await screen_vision.describe(
+                self.cfg, s.get("query", ""), s.get("region"), rtm=self.rtm
+            )
         if name == "launch_app":
             return app_control.launch_app(s.get("target", ""))
         if name == "close_app":

@@ -42,15 +42,28 @@ def chat_sync(cfg: dict, model_id: str, messages: list, temperature: float = 0.7
     name = _model_name(model_id)
     if _lifecycle:
         _lifecycle.before_chat(name)
+    client = _client(lm)
     try:
-        client = _client(lm)
-        resp = client.chat.completions.create(
-            model=name,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
-        return (resp.choices[0].message.content or "").strip()
+        last = None
+        for attempt in range(2):
+            try:
+                resp = client.chat.completions.create(
+                    model=name,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                )
+                return (resp.choices[0].message.content or "").strip()
+            except Exception as e:
+                last = e
+                # transient "model unloaded" right after startup/eviction -
+                # re-ensure the model and retry once
+                if attempt == 0 and "unloaded" in str(e).lower() and _lifecycle:
+                    logger.info("model %s unloaded mid-call - reloading and retrying", name)
+                    _lifecycle.before_chat(name)
+                    continue
+                raise
+        raise last  # pragma: no cover
     finally:
         if _lifecycle:
             _lifecycle.after_chat(name)

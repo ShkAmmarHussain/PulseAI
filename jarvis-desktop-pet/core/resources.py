@@ -25,18 +25,23 @@ class ResourceTransitionManager:
         self._last_unload_at: float = 0.0
         self._last_load_at: float = 0.0
 
+    def _can_load_unlocked(self) -> bool:
+        now = time.time()
+        if now - self._last_unload_at < self._cooldown_ms / 1000.0:
+            return False
+        if self._state != LoadState.IDLE:
+            return False
+        return True
+
     async def can_load_vision(self) -> bool:
         async with self._lock:
-            now = time.time()
-            if now - self._last_unload_at < self._cooldown_ms / 1000.0:
-                return False
-            if self._state != LoadState.IDLE:
-                return False
-            return True
+            return self._can_load_unlocked()
 
     async def acquire_vision(self, task_id: str) -> bool:
+        # NOTE: _can_load_unlocked must not go through can_load_vision() here -
+        # asyncio.Lock is not reentrant and that path deadlocked
         async with self._lock:
-            if not await self.can_load_vision():
+            if not self._can_load_unlocked():
                 return False
             self._state = LoadState.LOADING
             self._last_load_at = time.time()
