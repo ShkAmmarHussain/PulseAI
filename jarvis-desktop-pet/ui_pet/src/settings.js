@@ -33,7 +33,7 @@ function setCompanionSeg(mode) {
     b.classList.toggle("on", b.getAttribute("data-mode") === mode);
   });
 }
-function companionMode() {
+function selectedCompanion() {
   const on = document.querySelector("#companion-seg [data-mode].on");
   return on ? on.getAttribute("data-mode") : "pet";
 }
@@ -41,7 +41,7 @@ document.querySelectorAll("#companion-seg [data-mode]").forEach((b) => {
   b.addEventListener("click", () => {
     setCompanionSeg(b.getAttribute("data-mode"));
     setDirty(true);
-    if (window.applyCompanion) window.applyCompanion(companionMode());
+    if (window.applyCompanion) window.applyCompanion(selectedCompanion());
   });
 });
 
@@ -94,6 +94,7 @@ function fill(s) {
   const uiSounds = document.getElementById("v-ui-sounds");
   if (uiSounds) uiSounds.checked = voice.ui_sounds === false;
   setCompanionSeg(((cfg.runtime || {}).companion) === "dock" ? "dock" : "pet");
+  setv("pet-colorway", (cfg.runtime || {}).pet_colorway || "obsidian");
   note.textContent = "Loaded. Edit and press Save.";
   note.classList.remove("ok");
   setDirty(false);
@@ -116,7 +117,8 @@ function collect() {
   s.config.resource_manager.unload_idle_ms = (Number(val("rm-unload-idle")) || 60) * 1000;
   s.config.resource_manager.cooldown_ms = (Number(val("rm-cooldown")) || 2) * 1000;
   s.config.runtime = s.config.runtime || {};
-  s.config.runtime.companion = companionMode();
+  s.config.runtime.companion = selectedCompanion();
+  s.config.runtime.pet_colorway = val("pet-colorway") || "obsidian";
 
   s.agents = s.agents || {};
   const ar = s.agents.agent_roles = s.agents.agent_roles || {};

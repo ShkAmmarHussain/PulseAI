@@ -142,9 +142,28 @@ Jarvis.on("tool.result", (d) => {
   markActive();
   if (petEl.dataset.mood === "approval") return;
   const ok = !!(d.payload || {}).ok;
+  playChime(ok);
   clearTimeout(moodTimer);
   setMood(ok ? "happy" : "concerned");
   moodTimer = setTimeout(() => setMood("idle"), ok ? 2200 : 3000);
+});
+// coding-agent sessions drive the Executing state (spec 29, section 5.5.5)
+Jarvis.on("agent.hook.session", (d) => {
+  markActive();
+  const p = d.payload || {};
+  const st = p.status || "update";
+  if (st === "running") {
+    clearTimeout(moodTimer);
+    setMood("executing");
+    setStatus("Working \u2014 " + (p.agent || "coding agent"), "active");
+  } else if (st === "waiting") {
+    clearTimeout(moodTimer);
+    setMood("concerned");
+    setStatus("Agent needs input", "active");
+  } else if (petEl.dataset.mood === "executing") {
+    moodTemp("happy", 1800);
+    setStatus("Ready", "idle");
+  }
 });
 Jarvis.on("ui.approval_cancelled", (d) => {
   if (pendingApproval && d.correlation_id && String(pendingApproval.cid) === String(d.correlation_id)) {
@@ -253,9 +272,37 @@ function playSquish() {
     o.stop(t + 0.2);
   } catch (e) {}
 }
+function playChime(ok) {
+  if (petSoundMuted) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!petCtx) petCtx = new AC();
+    if (petCtx.state === "suspended") petCtx.resume().catch(() => {});
+    const t = petCtx.currentTime;
+    const seq = ok ? [[660, 0], [880, 0.09], [1100, 0.18]] : [[330, 0], [220, 0.12]];
+    seq.forEach(([f, at]) => {
+      const o = petCtx.createOscillator();
+      o.type = "sine";
+      o.frequency.setValueAtTime(f, t + at);
+      const g = petCtx.createGain();
+      g.gain.setValueAtTime(0.0001, t + at);
+      g.gain.exponentialRampToValueAtTime(0.12, t + at + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + at + 0.14);
+      o.connect(g);
+      g.connect(petCtx.destination);
+      o.start(t + at);
+      o.stop(t + at + 0.17);
+    });
+  } catch (e) {}
+}
 function syncPetSound(d) {
-  const v = (((d || {}).payload || {}).config || {}).voice || {};
+  const cfg = ((d || {}).payload || {}).config || {};
+  const v = cfg.voice || {};
   petSoundMuted = v.ui_sounds === false;
+  // wardrobe/colorway (spec 29, section 5.5.7)
+  const cw = (cfg.runtime || {}).pet_colorway || "obsidian";
+  if (window.Pet3D && window.Pet3D.applyColorway) window.Pet3D.applyColorway(cw);
 }
 Jarvis.on("settings", syncPetSound);
 Jarvis.on("settings_saved", syncPetSound);
@@ -323,6 +370,27 @@ if (window.__TAURI__ && window.__TAURI__.event && window.__TAURI__.event.listen)
   tev.listen("tauri://file-drop", (e) => {
     ingestFiles((e && e.payload && e.payload.paths) || []);
   });
+
+  // taffy stretch while the window is dragged, damped snap-back after
+  // (spec 29, section 5.5.4 - drag velocity trailing)
+  const petWin = window.__TAURI__.window && window.__TAURI__.window.getCurrent
+    ? window.__TAURI__.window.getCurrent() : null;
+  let lastWin = null;
+  let stretchTimer = null;
+  if (petWin && petWin.listen) {
+    petWin.listen("tauri://move", (e) => {
+      const p = e && e.payload;
+      if (p && lastWin && window.Pet3D && window.Pet3D.stretch) {
+        window.Pet3D.stretch(p.x - lastWin.x, p.y - lastWin.y);
+        clearTimeout(stretchTimer);
+        stretchTimer = setTimeout(() => {
+          if (window.Pet3D && window.Pet3D.stretchEnd) window.Pet3D.stretchEnd();
+          lastWin = null;
+        }, 120);
+      }
+      if (p) lastWin = p;
+    }).catch(() => {});
+  }
 }
 // HTML5 fallback (plain webviews / CDP tests)
 document.addEventListener("dragover", (e) => {
@@ -368,6 +436,14 @@ petEl.addEventListener("mouseleave", () => {
 const origClick = petEl.onclick;
 petEl.onclick = (e) => {
   markActive();
+  // poke impulse + volume-conserving squash (spec 29, section 5.5.4)
+  if (window.Pet3D && window.Pet3D.poke && e) {
+    const r = petEl.getBoundingClientRect();
+    window.Pet3D.poke(
+      ((e.clientX - r.left) / (r.width || 1)) * 2 - 1,
+      -(((e.clientY - r.top) / (r.height || 1)) * 2 - 1)
+    );
+  }
   const now = Date.now();
   pokes.push(now);
   pokes = pokes.filter((t) => now - t <= 1500);
