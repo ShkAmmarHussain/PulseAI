@@ -93,10 +93,27 @@ window.onSettingsLoaded = (s) => {
   if (typeof rt.pet_enabled === "boolean" && rt.pet_enabled !== petEnabled) {
     applyPet(rt.pet_enabled, false);
   }
+  applyCompanion(rt.companion || "pet");
 };
 
+// ---- companion presentation: floating pet vs top-edge dock (spec 29, section 5.1) ----
+let companionMode = null;
+
+function applyCompanion(mode) {
+  companionMode = mode === "dock" ? "dock" : "pet";
+  if (!window.__TAURI__ || !window.__TAURI__.tauri) return;
+  window.__TAURI__.tauri.invoke("set_companion", { mode: companionMode });
+  // dock mode hides the pet window locally (does NOT persist pet_enabled);
+  // pet mode restores whatever the user's pet toggle says
+  window.__TAURI__.tauri.invoke("set_pet", { visible: companionMode === "pet" && petEnabled });
+}
+window.applyCompanion = applyCompanion;
+
 // called from Rust tray menu
-window.togglePetFromTray = () => applyPet(!petEnabled, true);
+window.togglePetFromTray = () => {
+  if (companionMode === "dock") applyCompanion("pet");
+  else applyPet(!petEnabled, true);
+};
 
 // ---- dictate-to-cursor bubble (spec 29, section 3.2) ----
 const dictBubble = document.getElementById("dictation-bubble");

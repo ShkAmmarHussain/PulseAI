@@ -3,7 +3,7 @@
 use std::sync::Mutex;
 use tauri::{
     CustomMenuItem, Manager, PhysicalPosition, SystemTray, SystemTrayEvent, SystemTrayMenu,
-    SystemTrayMenuItem, WindowEvent,
+    SystemTrayMenuItem, WindowBuilder, WindowEvent, WindowUrl,
 };
 
 struct BackendChild(Mutex<Option<std::process::Child>>);
@@ -49,6 +49,17 @@ fn position_pet(tauri_app: &tauri::App) {
     }
 }
 
+fn position_dock(w: &tauri::Window) {
+    if let Ok(Some(mon)) = w.primary_monitor() {
+        let scale = mon.scale_factor();
+        let size = mon.size();
+        let pos = mon.position();
+        let dock_w = (220.0 * scale) as i32;
+        let x = pos.x + ((size.width as i32) - dock_w) / 2;
+        let _ = w.set_position(PhysicalPosition::new(x, pos.y));
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(BackendChild(Mutex::new(None)))
@@ -68,7 +79,7 @@ fn main() {
             SystemTrayEvent::LeftClick { .. } => open_main_tab(app, "chat"),
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![open_chat, open_settings, set_pet])
+        .invoke_handler(tauri::generate_handler![open_chat, open_settings, set_pet, set_companion])
         .setup(|app| {
             if let Ok(exe) = std::env::current_exe() {
                 if let Some(dir) = exe.parent() {
@@ -122,5 +133,38 @@ fn set_pet(app: tauri::AppHandle, visible: bool) {
         } else {
             let _ = w.hide();
         }
+    }
+}
+
+#[tauri::command]
+fn set_companion(app: tauri::AppHandle, mode: String) {
+    if mode == "dock" {
+        if let Some(w) = app.get_window("dock") {
+            let _ = w.show();
+        } else {
+            let built = WindowBuilder::new(
+                &app,
+                "dock",
+                WindowUrl::App("index.html?mode=dock".into()),
+            )
+            .title("Jarvis Dock")
+            .inner_size(220.0, 38.0)
+            .resizable(false)
+            .decorations(false)
+            .transparent(true)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .focused(false)
+            .build();
+            match built {
+                Ok(w) => {
+                    position_dock(&w);
+                    let _ = w.show();
+                }
+                Err(e) => eprintln!("dock window build failed: {}", e),
+            }
+        }
+    } else if let Some(w) = app.get_window("dock") {
+        let _ = w.close();
     }
 }

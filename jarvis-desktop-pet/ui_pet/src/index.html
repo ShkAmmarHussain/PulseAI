@@ -32,6 +32,27 @@
     </defs>
   </svg>
 
+  <div id="dock-island" data-state="idle" aria-label="Jarvis dock">
+    <div class="dock-rail">
+      <span class="dock-core" aria-hidden="true"></span>
+      <span class="dock-dot" id="dock-dot" aria-hidden="true"></span>
+      <span class="dock-pill" id="dock-status">Ready</span>
+    </div>
+    <div class="dock-panel">
+      <div class="dock-head">
+        <span class="dock-name">Jarvis</span>
+        <span class="dock-task" id="dock-task">Idle</span>
+        <span class="dock-progress" aria-hidden="true"><i id="dock-progress-bar"></i></span>
+      </div>
+      <div class="dock-actions">
+        <button id="dock-mic" class="dock-btn" type="button" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg class="ic"><use href="#i-mic"/></svg></button>
+        <button id="dock-chat" class="dock-btn" type="button" title="Open chat" aria-label="Open chat"><svg class="ic"><use href="#i-chat"/></svg></button>
+        <button id="dock-settings" class="dock-btn" type="button" title="Settings" aria-label="Settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
+      </div>
+    </div>
+    <div id="dock-toast" hidden></div>
+  </div>
+
   <div id="app">
     <aside id="sidebar">
       <div class="brand">
@@ -289,6 +310,14 @@
                   <span class="slider"></span>
                 </label>
               </div>
+              <div class="field">
+                <label>Companion presentation</label>
+                <div class="seg" id="companion-seg" role="group" aria-label="Companion presentation">
+                  <button type="button" data-mode="pet" class="on">Floating pet</button>
+                  <button type="button" data-mode="dock">Top-edge dock</button>
+                </div>
+                <p class="hint">Floating pet: the draggable 3D character. Top-edge dock: a compact island pinned to the top centre of the screen &mdash; hover to expand into the command pill. Applies immediately; press Save to keep.</p>
+              </div>
             </div>
 
             <div class="card">
@@ -458,5 +487,6 @@
   <script src="activity.js"></script>
   <script src="settings.js"></script>
   <script src="main.js"></script>
+  <script src="dock.js"></script>
 </body>
 </html>

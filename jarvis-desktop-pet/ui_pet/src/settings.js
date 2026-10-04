@@ -27,6 +27,24 @@ if (sc) {
   sc.addEventListener("change", mark);
 }
 
+// ---- companion presentation toggle (spec 29, section 5.1) ----
+function setCompanionSeg(mode) {
+  document.querySelectorAll("#companion-seg [data-mode]").forEach((b) => {
+    b.classList.toggle("on", b.getAttribute("data-mode") === mode);
+  });
+}
+function companionMode() {
+  const on = document.querySelector("#companion-seg [data-mode].on");
+  return on ? on.getAttribute("data-mode") : "pet";
+}
+document.querySelectorAll("#companion-seg [data-mode]").forEach((b) => {
+  b.addEventListener("click", () => {
+    setCompanionSeg(b.getAttribute("data-mode"));
+    setDirty(true);
+    if (window.applyCompanion) window.applyCompanion(companionMode());
+  });
+});
+
 function fill(s) {
   current = s;
   const cfg = s.config || {};
@@ -75,6 +93,7 @@ function fill(s) {
     (voice.tts_speed == null ? 1 : voice.tts_speed).toFixed(2);
   const uiSounds = document.getElementById("v-ui-sounds");
   if (uiSounds) uiSounds.checked = voice.ui_sounds === false;
+  setCompanionSeg(((cfg.runtime || {}).companion) === "dock" ? "dock" : "pet");
   note.textContent = "Loaded. Edit and press Save.";
   note.classList.remove("ok");
   setDirty(false);
@@ -96,6 +115,8 @@ function collect() {
   s.config.resource_manager.vision_timeout_ms = (Number(val("rm-vision-timeout")) || 20) * 1000;
   s.config.resource_manager.unload_idle_ms = (Number(val("rm-unload-idle")) || 60) * 1000;
   s.config.resource_manager.cooldown_ms = (Number(val("rm-cooldown")) || 2) * 1000;
+  s.config.runtime = s.config.runtime || {};
+  s.config.runtime.companion = companionMode();
 
   s.agents = s.agents || {};
   const ar = s.agents.agent_roles = s.agents.agent_roles || {};
