@@ -1,0 +1,20 @@
+{
+  "mappings": [
+    {
+      "word": "kubectl",
+      "heard_as": ["cube control", "cube ctl", "koob ctl", "cube cuddle"]
+    },
+    {
+      "word": "Claude Code",
+      "heard_as": ["cloud code", "clawed code", "claud code"]
+    },
+    {
+      "word": "LM Studio",
+      "heard_as": ["element studio", "lm studio", "ellen studio"]
+    },
+    {
+      "word": "Antigravity",
+      "heard_as": ["anti gravity", "anti-gravity", "agy"]
+    }
+  ]
+}

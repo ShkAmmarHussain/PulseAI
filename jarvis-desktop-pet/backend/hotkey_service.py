@@ -61,7 +61,11 @@ def parse_hotkey(spec):
 
 
 class HotkeyService:
-    """Global push-to-talk hotkey (Windows RegisterHotKey) toggling voice listen."""
+    """Global hotkeys (Windows RegisterHotKey): push-to-talk + dictation toggle.
+
+    id 1 = push-to-talk (voice.hotkey), id 2 = dictate-to-cursor
+    (voice.dictation_hotkey, default ctrl+alt+d - spec 29, section 3.2).
+    """
 
     def __init__(self, voice):
         self.voice = voice
@@ -70,24 +74,34 @@ class HotkeyService:
         self._tid = None
         self._tid_ready = threading.Event()
         self._spec = None
+        self._dict_spec = None
 
-    def start(self, spec):
+    def start(self, spec, dictation_spec=None):
         self.stop()
         self._spec = spec or None
+        self._dict_spec = dictation_spec or None
         parsed = parse_hotkey(self._spec)
-        if parsed is None:
-            if self._spec:
-                logger.warning("invalid voice.hotkey '%s' (use e.g. ctrl+alt+j)", self._spec)
-            else:
-                logger.info("push-to-talk hotkey disabled")
+        dparsed = parse_hotkey(self._dict_spec)
+        if self._spec and parsed is None:
+            logger.warning("invalid voice.hotkey '%s' (use e.g. ctrl+alt+j)", self._spec)
+        elif not self._spec:
+            logger.info("push-to-talk hotkey disabled")
+        if self._dict_spec and dparsed is None:
+            logger.warning("invalid voice.dictation_hotkey '%s' (use e.g. ctrl+alt+d)", self._dict_spec)
+        if dparsed and dparsed == parsed:
+            logger.warning("dictation hotkey '%s' collides with push-to-talk; dictation hotkey disabled", self._dict_spec)
+            dparsed = None
+        if parsed is None and dparsed is None:
             return False
         if sys.platform != "win32":
-            logger.warning("push-to-talk hotkey only supported on Windows")
+            logger.warning("global hotkeys only supported on Windows")
             return False
         self._loop = asyncio.get_event_loop()
         self._tid_ready.clear()
         self._tid = None
-        self._thread = threading.Thread(target=self._run, args=parsed, daemon=True, name="hotkey")
+        self._thread = threading.Thread(
+            target=self._run, args=(parsed, dparsed), daemon=True, name="hotkey"
+        )
         self._thread.start()
         return True
 
@@ -101,26 +115,42 @@ class HotkeyService:
         self._tid = None
         self._tid_ready.clear()
 
-    def _run(self, mods, vk):
+    def _run(self, voice_combo, dict_combo):
         user32 = ctypes.windll.user32
         self._tid = ctypes.windll.kernel32.GetCurrentThreadId()
         self._tid_ready.set()
-        if not user32.RegisterHotKey(None, 1, mods | MOD_NOREPEAT, vk):
-            logger.error("register hotkey failed (combo already in use?): vk=0x%02X mods=0x%X", vk, mods)
-            return
-        logger.info("push-to-talk hotkey registered: %s (vk=0x%02X, mods=0x%X)", self._spec, vk, mods)
-        from ctypes import byref, wintypes
-
-        msg = wintypes.MSG()
+        registered = []
         try:
+            for hid, combo, label in (
+                (1, voice_combo, self._spec),
+                (2, dict_combo, self._dict_spec),
+            ):
+                if combo is None:
+                    continue
+                mods, vk = combo
+                if user32.RegisterHotKey(None, hid, mods | MOD_NOREPEAT, vk):
+                    registered.append(hid)
+                    logger.info("hotkey registered: %s (id=%d, vk=0x%02X mods=0x%X)", label, hid, vk, mods)
+                else:
+                    logger.error("register hotkey failed (combo already in use?): id=%d %s", hid, label)
+            if not registered:
+                return
+            from ctypes import byref, wintypes
+
+            msg = wintypes.MSG()
             while user32.GetMessageW(byref(msg), None, 0, 0) > 0:
                 if msg.message == WM_HOTKEY and self._loop:
-                    asyncio.run_coroutine_threadsafe(self._toggle(), self._loop)
+                    if msg.wParam == 2:
+                        asyncio.run_coroutine_threadsafe(self._toggle_dictation(), self._loop)
+                    else:
+                        asyncio.run_coroutine_threadsafe(self._toggle(), self._loop)
                 user32.TranslateMessage(byref(msg))
                 user32.DispatchMessageW(byref(msg))
         finally:
-            user32.UnregisterHotKey(None, 1)
-            logger.info("push-to-talk hotkey unregistered")
+            for hid in registered:
+                user32.UnregisterHotKey(None, hid)
+            if registered:
+                logger.info("hotkeys unregistered (%d)", len(registered))
 
     async def _toggle(self):
         try:
@@ -131,3 +161,13 @@ class HotkeyService:
             await self.voice.set_listening(self.voice.state != "listening")
         except Exception:
             logger.exception("hotkey toggle failed")
+
+    async def _toggle_dictation(self):
+        try:
+            if not self.voice:
+                return
+            if self.voice.state == "test":
+                return
+            await self.voice.set_dictation(not self.voice.is_dictating)
+        except Exception:
+            logger.exception("dictation hotkey toggle failed")

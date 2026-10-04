@@ -133,6 +133,8 @@
           <button type="button" data-sec="sec-models"><svg class="ic"><use href="#i-globe"/></svg><span>Models &amp; Connection</span></button>
           <button type="button" data-sec="sec-safety"><svg class="ic"><use href="#i-shield"/></svg><span>Safety &amp; Permissions</span></button>
           <button type="button" data-sec="sec-performance"><svg class="ic"><use href="#i-gauge"/></svg><span>Performance</span></button>
+          <button type="button" data-sec="sec-dictionary"><svg class="ic"><use href="#i-search"/></svg><span>Dictionary</span></button>
+          <button type="button" data-sec="sec-history"><svg class="ic"><use href="#i-activity"/></svg><span>Dictation History</span></button>
         </nav>
         <div id="settings-content">
           <div class="section" id="sec-voice">
@@ -250,6 +252,10 @@
                   <div class="field"><label for="v-hotkey">Push-to-talk hotkey</label>
                     <input id="v-hotkey" type="text" spellcheck="false" placeholder="ctrl+alt+j" />
                     <p class="hint">Global shortcut that starts/stops listening. E.g. ctrl+alt+j, alt+space, ctrl+f9. Empty disables; applies on save.</p>
+                  </div>
+                  <div class="field"><label for="v-dict-hotkey">Dictation hotkey</label>
+                    <input id="v-dict-hotkey" type="text" spellcheck="false" placeholder="ctrl+alt+d" />
+                    <p class="hint">Global shortcut that toggles dictate-to-cursor: speech is typed into whichever field has focus. E.g. ctrl+alt+d; applies on save.</p>
                   </div>
                 </div>
               </div>
@@ -370,6 +376,37 @@
             </details>
           </div>
 
+          <div class="section" id="sec-dictionary">
+            <h3>Dictionary</h3>
+            <p class="sec-desc">Phonetic replacement: what the mic hears is rewritten to your canonical spelling before Jarvis uses the text.</p>
+
+            <div class="card">
+              <div class="card-title">Mappings</div>
+              <div id="vocab-table" class="vocab-table" role="table">
+                <div class="vocab-head" role="row"><span>Heard as</span><span>Replace with</span><span></span></div>
+              </div>
+              <div class="field test-field">
+                <button id="vocab-add" class="small"><svg class="ic"><use href="#i-plus"/></svg>Add mapping</button>
+                <button id="vocab-save" class="small"><svg class="ic"><use href="#i-check"/></svg>Save dictionary</button>
+                <span class="hint" id="vocab-hint" aria-live="polite">Comma-separate several &ldquo;heard as&rdquo; phrases per row. Applies to dictation and voice input.</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="section" id="sec-history">
+            <h3>Dictation History</h3>
+            <p class="sec-desc">Everything dictated system-wide with the application it was typed into.</p>
+
+            <div class="card">
+              <div class="card-title">Recent dictations</div>
+              <div id="dict-history" class="dict-history"><p class="hint">Loading&hellip;</p></div>
+              <div class="field test-field">
+                <button id="dict-history-refresh" class="small"><svg class="ic"><use href="#i-activity"/></svg>Refresh</button>
+                <span class="hint">Stored locally in %LOCALAPPDATA%\Jarvis\dictation_history.jsonl.</span>
+              </div>
+            </div>
+          </div>
+
           <div id="settings-actions">
             <button id="save" class="primary" disabled>Save changes</button>
             <div id="settings-note" aria-live="polite">Loading...</div>
@@ -377,6 +414,11 @@
         </div>
       </main>
     </div>
+  </div>
+  <div id="dictation-bubble" hidden aria-live="polite">
+    <span class="db-dot" aria-hidden="true"></span>
+    <span class="db-label">Listening &mdash; speak to type</span>
+    <span class="db-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
   </div>
   <script src="ws.js"></script>
   <script src="chat.js"></script>

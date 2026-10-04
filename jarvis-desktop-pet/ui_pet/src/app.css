@@ -1444,3 +1444,104 @@ html, body:has(#pet-page) { background: transparent; }
   #empty-state .es-title { font-size: var(--fs-h1); }
   .search-wrap { width: min(420px, 70%); }
 }
+
+/* ---------- Dictate-to-cursor (spec 29, section 3.2) ---------- */
+#dictation-bubble {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 11px 18px;
+  border-radius: 999px;
+  background: rgba(18, 17, 33, 0.9);
+  border: 1px solid var(--border-default);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  z-index: 90;
+  animation: db-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+#dictation-bubble[hidden] { display: none; }
+@keyframes db-in { from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.96); } }
+.db-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff5f7a;
+  box-shadow: 0 0 10px #ff5f7a;
+  animation: db-pulse 1.1s ease-in-out infinite;
+  flex: none;
+}
+@keyframes db-pulse { 50% { opacity: 0.4; } }
+.db-label { font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+#dictation-bubble.flash .db-dot { background: #4ade80; box-shadow: 0 0 10px #4ade80; animation: none; }
+.db-bars { display: flex; align-items: center; gap: 3px; height: 72px; }
+.db-bars i {
+  display: block;
+  width: 4px;
+  height: 10px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #8b5cf6, #5b8bff);
+  transition: height 90ms linear;
+}
+
+/* ---------- Dictionary table (spec 29, section 3.3) ---------- */
+.vocab-table { display: flex; flex-direction: column; gap: 8px; margin-bottom: 13px; }
+.vocab-head, .vocab-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 34px;
+  gap: 9px;
+  align-items: center;
+}
+.vocab-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-tertiary);
+  padding: 0 2px;
+}
+.vocab-row input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  min-height: 38px;
+  padding: 8px 11px;
+  width: 100%;
+  color: var(--text-primary);
+  font-size: 13.5px;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.vocab-row input::placeholder { color: var(--text-disabled); }
+.vocab-row input:focus {
+  outline: none;
+  border-color: rgba(142, 140, 255, 0.55);
+  box-shadow: 0 0 0 3px rgba(142, 140, 255, 0.14);
+}
+.vocab-del { width: 34px; height: 34px; justify-content: center; }
+
+/* ---------- Dictation history (spec 29, section 3.2) ---------- */
+.dict-history {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  max-height: 330px;
+  overflow-y: auto;
+  margin-bottom: 13px;
+}
+.dict-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 11px;
+  background: var(--bg-surface-elevated);
+}
+.dict-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.dict-text { font-size: 13.5px; color: var(--text-primary); word-break: break-word; }

@@ -184,6 +184,59 @@ class WSBridge:
             lc = get_lifecycle()
             snap = await asyncio.to_thread(lc.snapshot) if lc else {"auto_manage": False, "loaded": [], "not_loaded": []}
             await self._send(ws, {"type": "rm_state", "payload": snap, "correlation_id": cid})
+        elif et == "dictation":
+            await self._dictation(ws, payload, cid)
+        elif et == "dictation_history":
+            from tools.dictation_injector import read_history
+
+            entries = await asyncio.to_thread(read_history, int(payload.get("limit") or 100))
+            await self._send(
+                ws, {"type": "dictation_history", "payload": {"entries": entries}, "correlation_id": cid}
+            )
+        elif et == "vocabulary_get":
+            from core.stt import load_vocabulary
+
+            mappings = await asyncio.to_thread(load_vocabulary)
+            await self._send(ws, {"type": "vocabulary", "payload": {"mappings": mappings}, "correlation_id": cid})
+        elif et == "vocabulary_save":
+            from core.stt import load_vocabulary, save_vocabulary
+
+            mappings = payload.get("mappings") if isinstance(payload.get("mappings"), list) else []
+            path = await asyncio.to_thread(save_vocabulary, mappings)
+            fresh = await asyncio.to_thread(load_vocabulary)
+            await self._send(
+                ws,
+                {
+                    "type": "vocabulary",
+                    "payload": {"mappings": fresh, "saved": True, "path": str(path)},
+                    "correlation_id": cid,
+                },
+            )
+
+    async def _dictation(self, ws, payload, cid):
+        """spec 29 section 3.2: toggle/apply dictate-to-cursor."""
+        action = str(payload.get("action") or "toggle")
+        if not self.voice:
+            await self._send(
+                ws, {"type": "dictation_ack", "payload": {"ok": False, "error": "voice unavailable"}, "correlation_id": cid}
+            )
+            return
+        if action in ("start", "stop", "toggle"):
+            target = action == "start" or (action == "toggle" and not self.voice.is_dictating)
+            ok = await self.voice.set_dictation(target)
+            await self._send(
+                ws,
+                {"type": "dictation_ack", "payload": {"ok": ok, "active": self.voice.is_dictating}, "correlation_id": cid},
+            )
+        elif action == "apply":
+            res = await self.voice.apply_dictation_text(str(payload.get("text") or ""))
+            res["active"] = self.voice.is_dictating
+            await self._send(ws, {"type": "dictation_ack", "payload": res, "correlation_id": cid})
+        else:
+            await self._send(
+                ws,
+                {"type": "dictation_ack", "payload": {"ok": False, "error": "unknown action"}, "correlation_id": cid},
+            )
 
     async def _send(self, ws, obj):
         try:
@@ -203,5 +256,5 @@ class WSBridge:
         async def fwd_ui(ev):
             await self.broadcast(ev.topic, ev.payload, ev.correlation_id)
 
-        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result"):
+        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop"):
             self.bus.subscribe(t, fwd_ui)

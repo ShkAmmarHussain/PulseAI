@@ -97,3 +97,39 @@ window.onSettingsLoaded = (s) => {
 
 // called from Rust tray menu
 window.togglePetFromTray = () => applyPet(!petEnabled, true);
+
+// ---- dictate-to-cursor bubble (spec 29, section 3.2) ----
+const dictBubble = document.getElementById("dictation-bubble");
+Jarvis.on("dictation.start", () => {
+  if (!dictBubble) return;
+  dictBubble.hidden = false;
+  dictBubble.classList.remove("flash");
+  const lbl = dictBubble.querySelector(".db-label");
+  if (lbl) lbl.textContent = "Listening — speak to type";
+});
+Jarvis.on("dictation.stop", () => {
+  if (dictBubble) dictBubble.hidden = true;
+});
+Jarvis.on("dictation.result", (d) => {
+  if (!dictBubble) return;
+  const p = d.payload || {};
+  const lbl = dictBubble.querySelector(".db-label");
+  if (lbl) lbl.textContent = p.injected === false ? "Couldn't inject text" : "Typed into " + (p.app || "focused window");
+  dictBubble.classList.add("flash");
+  clearTimeout(dictBubble._hideT);
+  dictBubble._hideT = setTimeout(() => {
+    dictBubble.hidden = true;
+    dictBubble.classList.remove("flash");
+  }, 2500);
+});
+Jarvis.on("ui.mic_level", (d) => {
+  if (!dictBubble || dictBubble.hidden) return;
+  const lvl = Math.min(1, (d.payload || {}).level || 0);
+  const now = Date.now();
+  const bars = dictBubble.querySelectorAll(".db-bars i");
+  bars.forEach((b, i) => {
+    const wob = 0.5 + 0.5 * Math.sin(now / 90 + i * 1.4);
+    const h = 10 + lvl * 60 * (0.45 + 0.55 * wob);
+    b.style.height = Math.max(8, Math.min(72, h)).toFixed(0) + "px";
+  });
+});

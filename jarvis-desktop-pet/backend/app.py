@@ -62,7 +62,8 @@ class App:
                 self.cfg["config"].get("resource_manager") or {},
             )
             if getattr(self, "hotkey", None):
-                self.hotkey.start((self.cfg.get("config", {}).get("voice") or {}).get("hotkey"))
+                vc = (self.cfg.get("config", {}).get("voice") or {})
+                self.hotkey.start(vc.get("hotkey"), vc.get("dictation_hotkey") or "ctrl+alt+d")
             if self.bridge:
                 await self.bridge.broadcast("ui.state", {"settings_saved": True}, ev.correlation_id)
                 await self.lifecycle.notify_now()
@@ -88,7 +89,8 @@ class App:
         from backend.hotkey_service import HotkeyService
 
         self.hotkey = HotkeyService(self.voice)
-        self.hotkey.start((self.cfg.get("config", {}).get("voice") or {}).get("hotkey"))
+        vc = (self.cfg.get("config", {}).get("voice") or {})
+        self.hotkey.start(vc.get("hotkey"), vc.get("dictation_hotkey") or "ctrl+alt+d")
 
         self.bus.start()
 

@@ -1,16 +1,29 @@
 import asyncio
 import logging
+import re
 import threading
 import time
 
 import numpy as np
 
 from core.bus import create_event
+from core.stt import apply_vocabulary
+from tools.dictation_injector import append_history as append_dictation_history
+from tools.dictation_injector import inject as inject_dictation_text
 
 logger = logging.getLogger(__name__)
 
 SAMPLE_RATE = 16000
 BLOCK_SAMPLES = 1280  # 80 ms - openWakeWord frame multiple
+
+# spec 29 section 3.2: voice activation / deactivation of dictate-to-cursor
+_DICTATION_START_PHRASE = re.compile(
+    r"^\s*(?:hey\s+jarvis[,!\s]*)?(?:transcribe|dictate(?:\s+this)?|dictation)\b", re.IGNORECASE
+)
+_DICTATION_STOP_PHRASE = re.compile(
+    r"^\s*(?:stop|end|finish)\s+(?:the\s+)?(?:transcription|transcribing|dictation|dictating|dictate)\b",
+    re.IGNORECASE,
+)
 
 
 class VoiceService:
@@ -46,6 +59,8 @@ class VoiceService:
         self._noise_floor = 0.004
         self._gain = 1.0
         self._gain_rms = 0.0
+        self._dictating = False
+        self._dictate_end_pending = False
 
     def _read_cfg(self, cfg=None):
         if cfg is not None:
@@ -157,6 +172,114 @@ class VoiceService:
         else:
             if self._mode == "listen" and not self._busy:
                 await self._finish_capture(force_idle=True)
+
+    # ---------- dictation (spec 29, section 3.2) ----------
+
+    @property
+    def is_dictating(self) -> bool:
+        return self._dictating
+
+    async def set_dictation(self, on: bool) -> bool:
+        """Toggle system-wide dictate-to-cursor mode."""
+        if not self.enabled:
+            self._set_state("disabled")
+            return False
+        if on:
+            if self._dictating:
+                return True
+            if self._busy or self._state == "test" or self._stopping:
+                return False
+            await self.bus.publish(create_event("voice.interrupt", "interrupt", {}, source="voice"))
+            if self._stream is None:
+                if not self._open_stream("listen"):
+                    return False
+            else:
+                self._set_mode("listen")
+            await self._begin_dictation("hotkey")
+            return True
+        if not self._dictating:
+            return False
+        with self._lock:
+            has_audio = self._speech_started or len(self._frames) >= SAMPLE_RATE // 8
+        if has_audio and not self._busy:
+            # transcribe + inject whatever was already spoken, then end there
+            self._dictate_end_pending = True
+            await self._finish_capture(force_idle=False)
+            return True
+        await self._end_dictation()
+        return True
+
+    async def apply_dictation_text(self, text: str) -> dict:
+        """Dictionary replacement + injection + history + dictation.result event.
+
+        Shared by the transcription pipeline and the ws 'dictation' command.
+        """
+        text = apply_vocabulary((text or "").strip())
+        if not text:
+            return {"ok": False, "error": "empty", "text": ""}
+        res = await asyncio.to_thread(inject_dictation_text, text)
+        entry = {
+            "ts": time.time(),
+            "text": text,
+            "app": res.get("app", ""),
+            "injected": bool(res.get("injected")),
+        }
+        await asyncio.to_thread(append_dictation_history, entry)
+        await self.bus.publish(
+            create_event(
+                "dictation.result",
+                "dictation",
+                {"text": text, "injected": bool(res.get("injected")), "app": res.get("app", "")},
+                source="voice",
+            )
+        )
+        return {"ok": True, "text": text, "injected": bool(res.get("injected")), "app": res.get("app", "")}
+
+    async def _begin_dictation(self, source: str):
+        self._dictating = True
+        self._dictate_end_pending = False
+        self._reset_capture()
+        if self._stream is None:
+            self._open_stream("listen")
+        else:
+            self._set_mode("listen")
+        self._set_state("listening")
+        await self.bus.publish(
+            create_event("dictation.start", "dictation", {"target": "cursor", "mode": "system_wide"}, source="voice")
+        )
+        logger.info("dictation started (%s)", source)
+
+    def _resume_dictation(self):
+        """Back to capturing the next dictation utterance."""
+        self._dictate_end_pending = False
+        self._reset_capture()
+        if self._stream is None:
+            self._open_stream("listen")
+        else:
+            self._set_mode("listen")
+        self._set_state("listening")
+
+    async def _end_dictation(self):
+        if not self._dictating and not self._dictate_end_pending:
+            return
+        self._dictating = False
+        self._dictate_end_pending = False
+        await self.bus.publish(create_event("dictation.stop", "dictation", {}, source="voice"))
+        if self.wake_enabled and self._stream is not None:
+            self._return_after_capture()
+        else:
+            self._close_stream()
+            self._set_state("idle")
+        logger.info("dictation stopped")
+
+    async def _dictation_finalize(self, text: str, end_requested: bool):
+        if _DICTATION_STOP_PHRASE.match(text or ""):
+            await self._end_dictation()
+            return
+        if text:
+            await self.apply_dictation_text(text)
+        if end_requested:
+            await self._end_dictation()
 
     # ---------- wake test (user-facing mic/wake diagnostics) ----------
 
@@ -599,7 +722,15 @@ class VoiceService:
                 self._frames = []
                 self._speech_started = False
                 self._silent_blocks = 0
+            end_requested = self._dictate_end_pending
+            was_dictating = self._dictating
             if force_idle or audio.size < SAMPLE_RATE // 4:  # <250ms of speech
+                if self._dictating:
+                    if end_requested or force_idle:
+                        await self._end_dictation()
+                    else:
+                        self._resume_dictation()
+                    return
                 self._return_after_capture(force_close=force_idle)
                 return
             self._mode = "transcribe"
@@ -610,19 +741,34 @@ class VoiceService:
             except Exception as e:
                 logger.exception("stt failed")
                 self._set_state("error", error=f"Transcription failed: {e}")
+                if self._dictating:
+                    if end_requested:
+                        await self._end_dictation()
+                    else:
+                        self._resume_dictation()
                 return
             finally:
                 self._busy = False
-            text = (text or "").strip()
-            if text:
+            text = apply_vocabulary((text or "").strip())
+            if was_dictating:
+                await self._dictation_finalize(text, end_requested or not self._dictating)
+            elif text and _DICTATION_START_PHRASE.match(text):
+                await self._begin_dictation("voice")
+            elif text:
                 await self.bus.publish(
                     create_event("audio.input.voice", "voice", {"text": text}, source="voice")
                 )
-            if self.wake_enabled and self._stream is not None:
-                self._return_after_capture()
-            else:
-                self._close_stream()
-                self._set_state("idle")
+            if self._dictating:
+                self._resume_dictation()
+            elif not was_dictating:
+                # normal path: session started here or never ran
+                if self.wake_enabled and self._stream is not None:
+                    self._return_after_capture()
+                else:
+                    self._close_stream()
+                    self._set_state("idle")
+            # was_dictating and not dictating anymore: _end_dictation already
+            # returned the mic to wake/idle
         finally:
             self._stopping = False
 

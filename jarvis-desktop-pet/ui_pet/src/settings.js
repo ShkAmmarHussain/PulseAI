@@ -18,7 +18,11 @@ function setDirty(on) {
 const IMMEDIATE_IDS = ["v-wake", "v-device", "v-autostart", "v-speed", "wake-test", "tts-test", "test", "save"];
 const sc = document.getElementById("settings-content");
 if (sc) {
-  const mark = (e) => { if (e.target && !IMMEDIATE_IDS.includes(e.target.id)) setDirty(true); };
+  const mark = (e) => {
+    // dictionary + history have their own save buttons, not the global Save
+    if (e.target && e.target.closest && e.target.closest("#sec-dictionary, #sec-history")) return;
+    if (e.target && !IMMEDIATE_IDS.includes(e.target.id)) setDirty(true);
+  };
   sc.addEventListener("input", mark);
   sc.addEventListener("change", mark);
 }
@@ -61,6 +65,7 @@ function fill(s) {
   document.getElementById("v-agc").checked = voice.agc !== false;
   document.getElementById("v-gate").checked = voice.noise_gate !== false;
   setv("v-hotkey", voice.hotkey || "");
+  setv("v-dict-hotkey", voice.dictation_hotkey || "ctrl+alt+d");
   Jarvis.autostartState();
   setv("v-engine", voice.tts_engine || "kokoro");
   setv("v-voice", voice.tts_voice || "af_heart");
@@ -74,6 +79,8 @@ function fill(s) {
   setDirty(false);
   Jarvis.voiceDevices();
   Jarvis.rmState();
+  Jarvis.vocabulary();
+  Jarvis.dictationHistory();
   if (window.onSettingsLoaded) window.onSettingsLoaded(s);
 }
 
@@ -125,6 +132,7 @@ function collect() {
   s.config.voice.agc = document.getElementById("v-agc").checked;
   s.config.voice.noise_gate = document.getElementById("v-gate").checked;
   s.config.voice.hotkey = val("v-hotkey").trim();
+  s.config.voice.dictation_hotkey = val("v-dict-hotkey").trim() || "ctrl+alt+d";
   const uiSounds = document.getElementById("v-ui-sounds");
   if (uiSounds) s.config.voice.ui_sounds = !uiSounds.checked;
   return s;
@@ -393,3 +401,126 @@ function renderRmStatus(s) {
   });
 }
 Jarvis.on("rm_state", (d) => renderRmStatus(d.payload));
+// ---- phonetic dictionary (spec 29, section 3.3) ----
+const vocabTable = document.getElementById("vocab-table");
+const vocabHint = document.getElementById("vocab-hint");
+
+function vocabRow(m) {
+  const row = document.createElement("div");
+  row.className = "vocab-row";
+  row.setAttribute("role", "row");
+  const heard = document.createElement("input");
+  heard.type = "text";
+  heard.className = "vocab-heard";
+  heard.placeholder = "cube control, koob ctl";
+  heard.spellcheck = false;
+  heard.value = Array.isArray(m.heard_as) ? m.heard_as.join(", ") : "";
+  const word = document.createElement("input");
+  word.type = "text";
+  word.className = "vocab-word";
+  word.placeholder = "kubectl";
+  word.spellcheck = false;
+  word.value = m.word || "";
+  const del = document.createElement("button");
+  del.type = "button";
+  del.className = "icon-btn vocab-del";
+  del.title = "Remove mapping";
+  del.setAttribute("aria-label", "Remove mapping");
+  del.innerHTML = '<svg class="ic"><use href="#i-x"/></svg>';
+  del.addEventListener("click", () => row.remove());
+  row.appendChild(heard);
+  row.appendChild(word);
+  row.appendChild(del);
+  return row;
+}
+
+function renderVocab(mappings) {
+  if (!vocabTable) return;
+  Array.prototype.slice.call(vocabTable.querySelectorAll(".vocab-row")).forEach((r) => r.remove());
+  const list = Array.isArray(mappings) && mappings.length ? mappings : [{}];
+  list.forEach((m) => vocabTable.appendChild(vocabRow(m || {})));
+}
+
+function collectVocab() {
+  if (!vocabTable) return [];
+  const out = [];
+  Array.prototype.slice.call(vocabTable.querySelectorAll(".vocab-row")).forEach((r) => {
+    const word = (r.querySelector(".vocab-word").value || "").trim();
+    const heard = (r.querySelector(".vocab-heard").value || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (word && heard.length) out.push({ word: word, heard_as: heard });
+  });
+  return out;
+}
+
+Jarvis.on("vocabulary", (d) => {
+  const p = d.payload || {};
+  renderVocab(p.mappings);
+  if (p.saved) {
+    if (vocabHint) {
+      vocabHint.textContent = "Dictionary saved (" + ((p.mappings || []).length) + " mapping(s)).";
+      vocabHint.classList.add("ok");
+    }
+    note.textContent = "Dictionary saved.";
+    note.classList.add("ok");
+  }
+});
+
+const vocabAdd = document.getElementById("vocab-add");
+if (vocabAdd) {
+  vocabAdd.addEventListener("click", () => {
+    const row = vocabRow({});
+    if (vocabTable) vocabTable.appendChild(row);
+    const w = row.querySelector(".vocab-word");
+    if (w) w.focus();
+  });
+}
+const vocabSaveBtn = document.getElementById("vocab-save");
+if (vocabSaveBtn) {
+  vocabSaveBtn.addEventListener("click", () => {
+    if (vocabHint) {
+      vocabHint.textContent = "Saving dictionary...";
+      vocabHint.classList.remove("ok");
+    }
+    Jarvis.vocabularySave(collectVocab());
+  });
+}
+
+// ---- dictation history (spec 29, section 3.2) ----
+const dictHist = document.getElementById("dict-history");
+
+function renderHistory(entries) {
+  if (!dictHist) return;
+  dictHist.innerHTML = "";
+  if (!entries || !entries.length) {
+    const p = document.createElement("p");
+    p.className = "hint";
+    p.textContent = "No dictations yet.";
+    dictHist.appendChild(p);
+    return;
+  }
+  entries.slice(0, 100).forEach((e) => {
+    const row = document.createElement("div");
+    row.className = "dict-row";
+    const meta = document.createElement("span");
+    meta.className = "dict-meta";
+    const t = e.ts ? new Date(e.ts * 1000) : null;
+    meta.textContent =
+      (t ? t.toLocaleString() : "") +
+      (e.app ? " \u00b7 " + e.app : "") +
+      (e.injected === false ? " \u00b7 not injected" : "");
+    const txt = document.createElement("span");
+    txt.className = "dict-text";
+    txt.textContent = e.text || "";
+    row.appendChild(meta);
+    row.appendChild(txt);
+    dictHist.appendChild(row);
+  });
+}
+
+Jarvis.on("dictation_history", (d) => renderHistory((d.payload || {}).entries));
+Jarvis.on("dictation.result", () => Jarvis.dictationHistory());
+const dictRefresh = document.getElementById("dict-history-refresh");
+if (dictRefresh) dictRefresh.addEventListener("click", () => Jarvis.dictationHistory());

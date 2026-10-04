@@ -62,5 +62,9 @@ window.Jarvis = (function () {
     autostart: (enabled) => send({ type: "autostart", payload: { enabled: !!enabled } }),
     autostartState: () => send({ type: "autostart_state" }),
     rmState: () => send({ type: "rm_state" }),
+    dictation: (action, text) => send({ type: "dictation", payload: { action, text } }),
+    dictationHistory: (limit) => send({ type: "dictation_history", payload: { limit: limit || 100 } }),
+    vocabulary: () => send({ type: "vocabulary_get" }),
+    vocabularySave: (mappings) => send({ type: "vocabulary_save", payload: { mappings } }),
   };
 })();

@@ -25,6 +25,7 @@ voice:
     enabled: true
     threshold: 0.35
   hotkey: ctrl+alt+j
+  dictation_hotkey: ctrl+alt+d
   tts_engine: kokoro
   tts_voice: af_heart
   tts_speed: 1
