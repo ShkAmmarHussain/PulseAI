@@ -20,7 +20,7 @@ const sc = document.getElementById("settings-content");
 if (sc) {
   const mark = (e) => {
     // dictionary + history have their own save buttons, not the global Save
-    if (e.target && e.target.closest && e.target.closest("#sec-dictionary, #sec-history")) return;
+    if (e.target && e.target.closest && e.target.closest("#sec-dictionary, #sec-history, #sec-integrations")) return;
     if (e.target && !IMMEDIATE_IDS.includes(e.target.id)) setDirty(true);
   };
   sc.addEventListener("input", mark);
@@ -67,6 +67,7 @@ function fill(s) {
   setv("v-hotkey", voice.hotkey || "");
   setv("v-dict-hotkey", voice.dictation_hotkey || "ctrl+alt+d");
   Jarvis.autostartState();
+  Jarvis.hookState();
   setv("v-engine", voice.tts_engine || "kokoro");
   setv("v-voice", voice.tts_voice || "af_heart");
   setv("v-speed", voice.tts_speed == null ? 1 : voice.tts_speed);
@@ -540,3 +541,42 @@ Jarvis.on("dictation_history", (d) => renderHistory((d.payload || {}).entries));
 Jarvis.on("dictation.result", () => Jarvis.dictationHistory());
 const dictRefresh = document.getElementById("dict-history-refresh");
 if (dictRefresh) dictRefresh.addEventListener("click", () => Jarvis.dictationHistory());
+
+
+// ---- developer agent hook relay, jarvis-hook (spec 29, section 4) ----
+function renderHookState(s) {
+  const cs = document.getElementById('hook-claude-state');
+  const as = document.getElementById('hook-agy-state');
+  const rs = document.getElementById('hook-relay-state');
+  if (cs) cs.textContent = s.installed_claude
+    ? 'Installed - Claude Code relays sessions, file diffs and approvals to Jarvis.'
+    : 'Not installed.';
+  if (as) as.textContent = s.installed_agy
+    ? 'Installed - Antigravity relays sessions and events to Jarvis.'
+    : 'Not installed.';
+  if (rs) {
+    const st = s.stats || {};
+    rs.textContent =
+      (s.listening ? 'Listening on ' + s.pipe : 'Pipe starting: ' + s.pipe) +
+      ' - ' + (st.events || 0) + ' event(s), ' +
+      (st.approvals || 0) + ' approval card(s), ' +
+      (st.auto_allowed || 0) + ' auto-allowed, ' +
+      (st.denied || 0) + ' denied.';
+  }
+}
+Jarvis.on('hook_state', (d) => renderHookState(d.payload || {}));
+Jarvis.on('hook_install', (d) => {
+  const p = d.payload || {};
+  if (!p.ok) {
+    const el = document.getElementById('hook-' + (p.target || 'claude') + '-state');
+    if (el) el.textContent = 'Install failed: ' + (p.error || 'unknown error');
+  }
+  Jarvis.hookState();
+});
+Jarvis.on('hook_uninstall', () => Jarvis.hookState());
+for (const t of ['claude', 'agy']) {
+  const ib = document.getElementById('hook-' + t + '-install');
+  const ub = document.getElementById('hook-' + t + '-uninstall');
+  if (ib) ib.addEventListener('click', () => Jarvis.hookInstall(t));
+  if (ub) ub.addEventListener('click', () => Jarvis.hookUninstall(t));
+}

@@ -190,6 +190,33 @@ class WSBridge:
                 except Exception:
                     pass
             await self._send(ws, {"type": "rm_state", "payload": snap, "correlation_id": cid})
+        elif et == "hook_state":
+            from backend.hook_bridge import hook_state
+
+            st = await asyncio.to_thread(hook_state)
+            h = getattr(self, "hook", None)
+            if h is not None:
+                st["stats"] = dict(h.stats)
+                st["sessions"] = dict(h.sessions)
+                st["listening"] = h.alive
+            await self._send(ws, {"type": "hook_state", "payload": st, "correlation_id": cid})
+        elif et == "hook_install":
+            from backend.hook_bridge import install_hook
+
+            res = await asyncio.to_thread(install_hook, str(payload.get("target") or ""))
+            res["target"] = str(payload.get("target") or "")
+            await self._send(ws, {"type": "hook_install", "payload": res, "correlation_id": cid})
+        elif et == "hook_uninstall":
+            from backend.hook_bridge import uninstall_hook
+
+            res = await asyncio.to_thread(uninstall_hook, str(payload.get("target") or ""))
+            res["target"] = str(payload.get("target") or "")
+            await self._send(ws, {"type": "hook_uninstall", "payload": res, "correlation_id": cid})
+        elif et == "hook_terminal":
+            from backend.hook_bridge import focus_pid
+
+            ok = await asyncio.to_thread(focus_pid, payload.get("pid"))
+            await self._send(ws, {"type": "hook_terminal", "payload": {"ok": bool(ok)}, "correlation_id": cid})
         elif et == "dictation":
             await self._dictation(ws, payload, cid)
         elif et == "dictation_history":
@@ -246,7 +273,8 @@ class WSBridge:
 
     async def _send(self, ws, obj):
         try:
-            await ws.send_json(obj)
+            # bounded: one stalled/frozen client must never freeze the loop
+            await asyncio.wait_for(ws.send_json(obj), timeout=0.5)
         except Exception as e:
             logger.warning("send failed (%s): %r; dropping client (clients=%d)", obj.get("type") or obj.get("topic"), e, len(self.clients))
             self.clients.discard(ws)
@@ -262,5 +290,5 @@ class WSBridge:
         async def fwd_ui(ev):
             await self.broadcast(ev.topic, ev.payload, ev.correlation_id)
 
-        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop", "intent.fast_path"):
+        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop", "intent.fast_path", "agent.hook.session", "agent.hook.diff", "agent.hook.approval_request"):
             self.bus.subscribe(t, fwd_ui)

@@ -45,6 +45,26 @@ function showApproval(data, cid) {
   dn.disabled = false;
   a.textContent = "Allow once";
   dn.textContent = "Deny";
+  approval.querySelectorAll(".hook-extra").forEach((b) => b.remove());
+  if (pp.hook) {
+    const row = approval.querySelector(".btns");
+    const al = document.createElement("button");
+    al.className = "hook-extra";
+    al.textContent = "Always allow";
+    al.onclick = () => {
+      if (!pendingApproval) return;
+      Jarvis.approval(true, { action: pp.action, remember: true }, pendingApproval.cid);
+      settleApproval(al, "Allowing\u2026");
+    };
+    row.appendChild(al);
+    if (pp.pid) {
+      const tm = document.createElement("button");
+      tm.className = "hook-extra";
+      tm.textContent = "Terminal";
+      tm.onclick = () => Jarvis.hookTerminal(pp.pid);
+      row.appendChild(tm);
+    }
+  }
   delete approval.dataset.pending;
   approval.style.display = "block";
   bubble.style.display = "none";
@@ -58,8 +78,7 @@ function showApproval(data, cid) {
 function settleApproval(btn, label) {
   if (!pendingApproval) return;
   approval.dataset.pending = "1";
-  approval.querySelector(".allow").disabled = true;
-  approval.querySelector(".deny").disabled = true;
+  approval.querySelectorAll(".allow, .deny, .hook-extra").forEach((b) => { b.disabled = true; });
   btn.textContent = label;
   showBubble("Working\u2026", 8000);
   setMood("thinking");
@@ -70,8 +89,7 @@ function settleApproval(btn, label) {
       approval.style.display = "none";
       delete approval.dataset.pending;
       pendingApproval = null;
-      approval.querySelector(".allow").disabled = false;
-      approval.querySelector(".deny").disabled = false;
+      approval.querySelectorAll(".allow, .deny, .hook-extra").forEach((b) => { b.disabled = false; });
     }
   }, 90000);
 }

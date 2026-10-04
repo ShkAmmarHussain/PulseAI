@@ -84,6 +84,12 @@ class App:
         self.bridge = WSBridge(self.bus, voice=self.voice)
         self.bridge.wire_bus()
 
+        from backend.hook_bridge import HookBridge
+
+        self.hook = HookBridge(self.bus)
+        self.bridge.hook = self.hook
+        self.hook.start(asyncio.get_running_loop())
+
         async def rm_changed(snap: dict):
             if self.bridge:
                 try:

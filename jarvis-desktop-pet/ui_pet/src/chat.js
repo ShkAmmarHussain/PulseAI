@@ -473,6 +473,7 @@ Jarvis.on("ui.approval", (d) => {
   const settle = (btn, label) => {
     wrap.dataset.pending = "1";
     [allow, deny].forEach((b) => { b.disabled = true; });
+    wrap.querySelectorAll(".ac-extra").forEach((b) => { b.disabled = true; });
     btn.textContent = label;
     showTyping();
     // safety: never leave a stuck pending card around
@@ -488,6 +489,25 @@ Jarvis.on("ui.approval", (d) => {
   };
   btns.appendChild(deny);
   btns.appendChild(allow);
+  if (p.hook) {
+    // terminal approval (spec 4.2): session grant + terminal jump
+    const always = document.createElement("button");
+    always.className = "deny ac-extra";
+    always.textContent = "Always allow for session";
+    always.onclick = () => {
+      Jarvis.approval(true, { action: p.action, remember: true }, d.correlation_id);
+      settle(always, "Allowing\u2026");
+    };
+    btns.appendChild(always);
+    if (p.pid) {
+      const term = document.createElement("button");
+      term.className = "ac-why-btn ac-extra";
+      term.type = "button";
+      term.textContent = "Open Terminal";
+      term.onclick = () => Jarvis.hookTerminal(p.pid);
+      btns.appendChild(term);
+    }
+  }
 
   closeBtn.onclick = () => {
     wrap.style.display = "none";

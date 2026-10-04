@@ -135,6 +135,7 @@
           <button type="button" data-sec="sec-performance"><svg class="ic"><use href="#i-gauge"/></svg><span>Performance</span></button>
           <button type="button" data-sec="sec-dictionary"><svg class="ic"><use href="#i-search"/></svg><span>Dictionary</span></button>
           <button type="button" data-sec="sec-history"><svg class="ic"><use href="#i-activity"/></svg><span>Dictation History</span></button>
+          <button type="button" data-sec="sec-integrations"><svg class="ic"><use href="#i-globe"/></svg><span>Integrations</span></button>
         </nav>
         <div id="settings-content">
           <div class="section" id="sec-voice">
@@ -393,19 +394,51 @@
             </div>
           </div>
 
-          <div class="section" id="sec-history">
-            <h3>Dictation History</h3>
-            <p class="sec-desc">Everything dictated system-wide with the application it was typed into.</p>
+              <div class="section" id="sec-history">
+                <h3>Dictation History</h3>
+                <p class="sec-desc">Everything dictated system-wide with the application it was typed into.</p>
 
-            <div class="card">
-              <div class="card-title">Recent dictations</div>
-              <div id="dict-history" class="dict-history"><p class="hint">Loading&hellip;</p></div>
-              <div class="field test-field">
-                <button id="dict-history-refresh" class="small"><svg class="ic"><use href="#i-activity"/></svg>Refresh</button>
-                <span class="hint">Stored locally in %LOCALAPPDATA%\Jarvis\dictation_history.jsonl.</span>
+                <div class="card">
+                  <div class="card-title">Recent dictations</div>
+                  <div id="dict-history" class="dict-history"><p class="hint">Loading&hellip;</p></div>
+                  <div class="field test-field">
+                    <button id="dict-history-refresh" class="small"><svg class="ic"><use href="#i-activity"/></svg>Refresh</button>
+                    <span class="hint">Stored locally in %LOCALAPPDATA%\Jarvis\dictation_history.jsonl.</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+
+              <div class="section" id="sec-integrations">
+                <h3>Integrations</h3>
+                <p class="sec-desc">Connect terminal coding agents to Jarvis: live session status, file-diff ticker and in-context approvals over the local <code>jarvis-hook</code> pipe.</p>
+
+                <div class="card">
+                  <div class="card-title">Claude Code</div>
+                  <p class="hint" id="hook-claude-state">Checking&hellip;</p>
+                  <div class="field test-field">
+                    <button id="hook-claude-install" class="small"><svg class="ic"><use href="#i-plus"/></svg>Install hook</button>
+                    <button id="hook-claude-uninstall" class="small"><svg class="ic"><use href="#i-x"/></svg>Remove hook</button>
+                  </div>
+                  <p class="hint">Adds the relay to %USERPROFILE%\.claude\settings.json (a .jarvis-backup copy is kept). Restart Claude Code to pick it up.</p>
+                </div>
+
+                <div class="card">
+                  <div class="card-title">Antigravity (agy)</div>
+                  <p class="hint" id="hook-agy-state">Checking&hellip;</p>
+                  <div class="field test-field">
+                    <button id="hook-agy-install" class="small"><svg class="ic"><use href="#i-plus"/></svg>Install hook</button>
+                    <button id="hook-agy-uninstall" class="small"><svg class="ic"><use href="#i-x"/></svg>Remove hook</button>
+                  </div>
+                  <p class="hint">Registers the relay in %USERPROFILE%\.gemini\config\hooks.json.</p>
+                </div>
+
+                <div class="card">
+                  <div class="card-title">Relay status</div>
+                  <p class="hint" id="hook-relay-state">Asking backend&hellip;</p>
+                  <p class="hint">Terminal approvals appear as Approval Cards in the chat and on the 3D pet &mdash; Allow once, Deny, or Always allow for session.</p>
+                </div>
+              </div>
+
 
           <div id="settings-actions">
             <button id="save" class="primary" disabled>Save changes</button>

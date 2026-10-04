@@ -1545,3 +1545,33 @@ html, body:has(#pet-page) { background: transparent; }
   font-variant-numeric: tabular-nums;
 }
 .dict-text { font-size: 13.5px; color: var(--text-primary); word-break: break-word; }
+
+
+/* jarvis-hook relay: terminal approval extras + live diff ticker (spec 29, section 4) */
+#approval .btns button.hook-extra {
+  background: rgba(142, 140, 255, 0.16);
+  border: 1px solid rgba(142, 140, 255, 0.45);
+  color: var(--text-primary);
+}
+#approval .btns button.hook-extra:hover { background: rgba(142, 140, 255, 0.3); }
+.act-diff { margin-top: 5px; }
+.act-diff summary {
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--text-secondary, #9a97c8);
+  user-select: none;
+}
+.act-diff pre {
+  max-height: 220px;
+  overflow: auto;
+  margin-top: 6px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}

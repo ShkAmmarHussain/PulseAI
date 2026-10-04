@@ -82,6 +82,7 @@
       det.textContent = e.detail;
       body.appendChild(det);
     }
+    if (e.node) body.appendChild(e.node);
     item.appendChild(time);
     item.appendChild(track);
     item.appendChild(body);
@@ -173,6 +174,36 @@
     "ui.pet_visibility": (d) => {
       const on = !d.payload || d.payload.enabled !== false;
       addEntry({ label: on ? "Pet shown" : "Pet hidden", detail: on ? "Jarvis is on your desktop." : "Jarvis is only in this window.", tone: "muted" });
+    },
+    "agent.hook.session": (d) => {
+      const p = d.payload || {};
+      const st = p.status || "update";
+      addEntry({
+        label: "Coding agent " + st,
+        detail: (p.agent || "CLI agent") + (p.project ? " \u2014 " + p.project : ""),
+        tone: st === "running" ? "ok" : st === "waiting" ? "warn" : "muted",
+      });
+    },
+    "agent.hook.diff": (d) => {
+      const p = d.payload || {};
+      let node = null;
+      if (p.patch) {
+        const det = document.createElement("details");
+        det.className = "act-diff";
+        const sum = document.createElement("summary");
+        sum.textContent = "Show diff";
+        const pre = document.createElement("pre");
+        pre.textContent = p.patch;
+        det.appendChild(sum);
+        det.appendChild(pre);
+        node = det;
+      }
+      addEntry({
+        label: "Edited " + (p.file || "file"),
+        detail: "(+" + (p.added || 0) + " -" + (p.removed || 0) + ")",
+        tone: "muted",
+        node: node,
+      });
     },
   };
 

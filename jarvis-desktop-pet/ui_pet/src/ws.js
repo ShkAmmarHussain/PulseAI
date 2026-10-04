@@ -66,5 +66,9 @@ window.Jarvis = (function () {
     dictationHistory: (limit) => send({ type: "dictation_history", payload: { limit: limit || 100 } }),
     vocabulary: () => send({ type: "vocabulary_get" }),
     vocabularySave: (mappings) => send({ type: "vocabulary_save", payload: { mappings } }),
+    hookState: () => send({ type: "hook_state" }),
+    hookInstall: (target) => send({ type: "hook_install", payload: { target } }),
+    hookUninstall: (target) => send({ type: "hook_uninstall", payload: { target } }),
+    hookTerminal: (pid) => send({ type: "hook_terminal", payload: { pid } }),
   };
 })();

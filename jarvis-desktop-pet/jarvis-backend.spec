@@ -26,7 +26,7 @@ extra_hidden += ['pythoncom', 'aiohttp', 'pydantic', 'yaml', 'openai', 'smolagen
 a = Analysis(
     ['backend/main.py'],
     pathex=[str(project)],
-    datas=[('config', 'config'), ('agents', 'agents'), ('skills', 'skills'), ('core', 'core')] + extra_datas,
+    datas=[('config', 'config'), ('agents', 'agents'), ('skills', 'skills'), ('core', 'core'), ('bin', 'bin')] + extra_datas,
     binaries=extra_bins,
     hiddenimports=list(dict.fromkeys(extra_hidden)),
     noarchive=False,
