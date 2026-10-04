@@ -362,10 +362,25 @@ if (secNav) {
 function renderRmStatus(s) {
   const el = document.getElementById("rm-status");
   if (!el) return;
-  if (!s || !Array.isArray(s.loaded)) { el.textContent = "Model status unavailable."; return; }
+  // zero-LLM bypass counter (spec 29, Phase 3) - shown in every branch
+  const fpLine = () => {
+    const fp = s && s.fast_path;
+    if (!fp || fp.enabled === false) return;
+    const line = document.createElement("div");
+    line.className = "rm-fast";
+    line.textContent =
+      "Fast path: " + fp.hits + " command(s) answered without the LLM" +
+      (fp.last_latency_ms ? " (last " + fp.last_latency_ms + "ms)" : "") + ".";
+    el.appendChild(line);
+  };
+  const setText = (t) => {
+    el.textContent = t;
+    fpLine();
+  };
+  if (!s || !Array.isArray(s.loaded)) { setText("Model status unavailable."); return; }
   if (!s.auto_manage) {
-    el.textContent = "Automatic model memory is off. Loaded: " +
-      (s.loaded.map((m) => m.id).join(", ") || "none") + ".";
+    setText("Automatic model memory is off. Loaded: " +
+      (s.loaded.map((m) => m.id).join(", ") || "none") + ".");
     return;
   }
   const hint = document.getElementById("rm-hint");
@@ -374,7 +389,7 @@ function renderRmStatus(s) {
       s.unload_idle_s + "s idle (max " + s.max_concurrent + " at once), so memory stays free.";
   }
   if (!s.loaded.length) {
-    el.textContent = "All models idle-unloaded \u2014 memory fully free. The next task loads its model on demand.";
+    setText("All models idle-unloaded \u2014 memory fully free. The next task loads its model on demand.");
     return;
   }
   el.innerHTML = "";
@@ -399,6 +414,7 @@ function renderRmStatus(s) {
     row.appendChild(idle);
     el.appendChild(row);
   });
+  fpLine();
 }
 Jarvis.on("rm_state", (d) => renderRmStatus(d.payload));
 // ---- phonetic dictionary (spec 29, section 3.3) ----

@@ -183,6 +183,12 @@ class WSBridge:
 
             lc = get_lifecycle()
             snap = await asyncio.to_thread(lc.snapshot) if lc else {"auto_manage": False, "loaded": [], "not_loaded": []}
+            extra = getattr(self, "stats_extra", None)
+            if extra:
+                try:
+                    snap["fast_path"] = extra()
+                except Exception:
+                    pass
             await self._send(ws, {"type": "rm_state", "payload": snap, "correlation_id": cid})
         elif et == "dictation":
             await self._dictation(ws, payload, cid)
@@ -256,5 +262,5 @@ class WSBridge:
         async def fwd_ui(ev):
             await self.broadcast(ev.topic, ev.payload, ev.correlation_id)
 
-        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop"):
+        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop", "intent.fast_path"):
             self.bus.subscribe(t, fwd_ui)

@@ -106,6 +106,12 @@ def _type_char(ch: str) -> None:
     _send(arr)
 
 
+def press_virtual_key(vk: int) -> None:
+    """Tap a virtual-key key (media transport, Enter, Tab...) via SendInput."""
+    _press(vk)
+    _press(vk, up=True)
+
+
 def _clipboard_get() -> str:
     u32 = _user32()
     k32 = ctypes.windll.kernel32

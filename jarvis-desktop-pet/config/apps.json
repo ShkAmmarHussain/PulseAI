@@ -1,0 +1,22 @@
+{
+  "apps": [
+    {"name": "Notepad", "cmd": "notepad.exe", "aliases": ["notepad", "not pad", "notes"]},
+    {"name": "Calculator", "cmd": "calc.exe", "aliases": ["calculator", "calc"]},
+    {"name": "File Explorer", "cmd": "explorer.exe", "aliases": ["explorer", "file explorer", "files", "folder"]},
+    {"name": "Command Prompt", "cmd": "cmd.exe", "aliases": ["cmd", "command prompt", "command"]},
+    {"name": "PowerShell", "cmd": "powershell.exe", "aliases": ["powershell", "ps", "terminal shell"]},
+    {"name": "Windows Terminal", "cmd": "wt.exe", "aliases": ["terminal", "windows terminal"]},
+    {"name": "Task Manager", "cmd": "taskmgr.exe", "aliases": ["task manager", "taskmgr"]},
+    {"name": "Control Panel", "cmd": "control.exe", "aliases": ["control panel", "controls"]},
+    {"name": "Settings", "cmd": "ms-settings:", "aliases": ["settings", "windows settings"]},
+    {"name": "Registry Editor", "cmd": "regedit.exe", "aliases": ["regedit", "registry editor", "registry"]},
+    {"name": "Paint", "cmd": "mspaint.exe", "aliases": ["paint", "mspaint"]},
+    {"name": "Snipping Tool", "cmd": "snippingtool.exe", "aliases": ["snipping tool", "snip", "screenshot tool"]},
+    {"name": "Microsoft Edge", "cmd": "msedge.exe", "aliases": ["edge", "microsoft edge"]},
+    {"name": "Google Chrome", "cmd": "chrome.exe", "aliases": ["chrome", "google chrome"]},
+    {"name": "Spotify", "cmd": "spotify.exe", "aliases": ["spotify"]},
+    {"name": "Visual Studio Code", "cmd": "code", "aliases": ["vs code", "vscode", "visual studio code", "code"]},
+    {"name": "Device Manager", "cmd": "devmgmt.msc", "aliases": ["device manager"]},
+    {"name": "Disk Cleanup", "cmd": "cleanmgr.exe", "aliases": ["disk cleanup", "cleanup"]}
+  ]
+}

@@ -43,6 +43,10 @@ class App:
             await inst.start()
 
         async def on_input(ev: Event):
+            text = str(ev.payload.get("text", ev.payload.get("transcript", ""))).strip()
+            fast = getattr(self, "fast", None)
+            if text and fast is not None and await fast.try_handle(text, ev.correlation_id):
+                return
             await self.bus.publish(
                 create_event(
                     "orchestrator.input", "input", ev.payload,
@@ -64,6 +68,8 @@ class App:
             if getattr(self, "hotkey", None):
                 vc = (self.cfg.get("config", {}).get("voice") or {})
                 self.hotkey.start(vc.get("hotkey"), vc.get("dictation_hotkey") or "ctrl+alt+d")
+            if getattr(self, "fast", None):
+                self.fast.update_config(self.cfg)
             if self.bridge:
                 await self.bridge.broadcast("ui.state", {"settings_saved": True}, ev.correlation_id)
                 await self.lifecycle.notify_now()
@@ -80,6 +86,10 @@ class App:
 
         async def rm_changed(snap: dict):
             if self.bridge:
+                try:
+                    snap["fast_path"] = self.fast.stats()
+                except Exception:
+                    pass
                 await self.bridge.broadcast("rm_state", snap)
 
         self.lifecycle.on_change = rm_changed
@@ -91,6 +101,12 @@ class App:
         self.hotkey = HotkeyService(self.voice)
         vc = (self.cfg.get("config", {}).get("voice") or {})
         self.hotkey.start(vc.get("hotkey"), vc.get("dictation_hotkey") or "ctrl+alt+d")
+
+        from core.fast_router import FastRouter
+
+        self.fast = FastRouter(self.bus, self.cfg)
+        await self.fast.start()
+        self.bridge.stats_extra = self.fast.stats
 
         self.bus.start()
 

@@ -151,10 +151,15 @@ class OrchestratorAgent(BaseAgent):
                 )
 
         elif et == "approval_response":
+            # cids armed by another module (e.g. the fast-path power gate)
+            # are not ours: ignore them silently so their card stays alive
+            mine = bool(cid) and (
+                cid in self._approval_timers or cid in self._approval_settled or cid in self._approval_expired
+            )
             if not self._settle_approval(cid):
                 # duplicate / expired / unknown answer: never re-execute;
-                # re-sync clients in case a card is stuck in pending state
-                if cid:
+                # re-sync clients in case a stuck card of ours is still up
+                if mine:
                     await self.bus.publish(
                         create_event(
                             "ui.approval_cancelled", "approval_cancelled", {"reason": "already_answered"}, correlation_id=cid
