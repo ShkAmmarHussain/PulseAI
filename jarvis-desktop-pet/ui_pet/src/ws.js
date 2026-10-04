@@ -70,5 +70,6 @@ window.Jarvis = (function () {
     hookInstall: (target) => send({ type: "hook_install", payload: { target } }),
     hookUninstall: (target) => send({ type: "hook_uninstall", payload: { target } }),
     hookTerminal: (pid) => send({ type: "hook_terminal", payload: { pid } }),
+    fileIngest: (paths) => send({ type: "file_ingest", payload: { paths } }),
   };
 })();

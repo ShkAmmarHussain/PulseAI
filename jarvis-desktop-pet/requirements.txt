@@ -25,6 +25,7 @@ pycaw>=20240210
 mss>=9.0.2
 rapidocr-onnxruntime>=1.4.4
 Pillow>=10.4.0
+pypdf>=6.0.0
 
 # Memory
 chromadb>=0.5.15

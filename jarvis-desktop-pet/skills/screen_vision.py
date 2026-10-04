@@ -87,3 +87,65 @@ async def describe(
     finally:
         if got:
             await rtm.release_vision(tid)
+
+
+FILE_MIME = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".bmp": "image/bmp",
+}
+IMG_EXTS = tuple(FILE_MIME)
+MAX_IMAGE_BYTES = 20 * 1024 * 1024
+
+
+def is_image_path(path: str) -> bool:
+    from pathlib import Path
+
+    return Path(str(path or "")).suffix.lower() in IMG_EXTS
+
+
+def describe_file_sync(cfg: dict, path: str, query: str = "") -> str:
+    """Vision analysis of a dropped image file (spec 29, section 5.2)."""
+    import base64 as b64mod
+    from pathlib import Path
+
+    from core import llm
+
+    p = Path(path).expanduser()
+    if not p.is_file():
+        return f"Image file not found: {path}"
+    data = p.read_bytes()[:MAX_IMAGE_BYTES]
+    mime = FILE_MIME.get(p.suffix.lower(), "image/png")
+    b64 = b64mod.b64encode(data).decode("ascii")
+    text = (query or "").strip() or f"Describe this image file ({p.name}) in detail."
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": text},
+                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
+            ],
+        }
+    ]
+    return llm.chat_sync(cfg, _vision_model(cfg), messages, temperature=0.2, max_tokens=500)
+
+
+async def describe_file(
+    cfg: dict,
+    path: str,
+    query: str = "",
+    rtm=None,
+    task_id: str | None = None,
+) -> str:
+    tid = task_id or uuid.uuid4().hex
+    got = await _acquire(rtm, tid)
+    if rtm is not None and not got:
+        logger.warning("vision mutex busy - proceeding without it")
+    try:
+        return await asyncio.to_thread(describe_file_sync, cfg, path, query)
+    finally:
+        if got:
+            await rtm.release_vision(tid)

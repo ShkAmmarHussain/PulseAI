@@ -104,6 +104,37 @@ class WSBridge:
             await self.bus.publish(
                 create_event("ui.approval.response", "approval_response", payload, correlation_id=cid)
             )
+        elif et == "file_ingest":
+            from pathlib import Path as _P
+
+            from skills.screen_vision import is_image_path
+
+            raw = payload.get("paths") or []
+            if isinstance(raw, str):
+                raw = [raw]
+            items = []
+            for s in list(raw)[:10]:
+                try:
+                    p = _P(str(s).strip().strip('"'))
+                    exists = p.is_file()
+                    size = p.stat().st_size if exists else 0
+                except OSError:
+                    exists, size = False, 0
+                items.append(
+                    {
+                        "path": str(s),
+                        "name": p.name,
+                        "kind": "image" if is_image_path(str(s)) else "document",
+                        "exists": exists,
+                        "size": size,
+                    }
+                )
+            await self.bus.publish(
+                create_event("ui.file_ingest", "file_ingest", {"items": items}, correlation_id=cid)
+            )
+            await self._send(
+                ws, {"type": "file_ingest", "payload": {"ok": True, "items": items}, "correlation_id": cid}
+            )
         elif et == "get_settings":
             await self._send(ws, {"type": "settings", "payload": get_settings()})
         elif et == "save_settings":
@@ -290,5 +321,5 @@ class WSBridge:
         async def fwd_ui(ev):
             await self.broadcast(ev.topic, ev.payload, ev.correlation_id)
 
-        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop", "intent.fast_path", "agent.hook.session", "agent.hook.diff", "agent.hook.approval_request"):
+        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop", "intent.fast_path", "agent.hook.session", "agent.hook.diff", "agent.hook.approval_request", "ui.file_ingest"):
             self.bus.subscribe(t, fwd_ui)

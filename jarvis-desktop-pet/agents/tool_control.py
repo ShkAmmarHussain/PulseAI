@@ -22,6 +22,12 @@ class ToolControlAgent(BaseAgent):
             return await screen_vision.describe(
                 self.cfg, s.get("query", ""), s.get("region"), rtm=self.rtm
             )
+        if name == "vision_file":
+            return await screen_vision.describe_file(
+                self.cfg, s.get("path", ""), s.get("query", ""), rtm=self.rtm
+            )
+        if name == "summarize_file":
+            return await self._summarize_file(s.get("path", ""))
         if name == "launch_app":
             return app_control.launch_app(s.get("target", ""))
         if name == "close_app":
@@ -48,6 +54,37 @@ class ToolControlAgent(BaseAgent):
         if name == "type_text":
             return f"Typed text (input control not yet enabled): {s.get('text', '')[:60]}"
         return f"executed {name}"
+
+    async def _summarize_file(self, path: str) -> str:
+        """Extract text (incl. PDF) and summarize via the orchestrator model."""
+        import asyncio
+
+        from core import llm
+        from skills import file_ops
+
+        text = file_ops.read_text(path)
+        if text.startswith("File not found") or text.startswith("Failed"):
+            return text
+        roles = (((self.cfg or {}).get("agents") or {}).get("agent_roles")) or {}
+        model = (roles.get("orchestrator") or {}).get("model_id") or "qwen3-8b"
+        from pathlib import Path
+
+        name = Path(path).name
+        excerpt = text[:12000]
+        prompt = (
+            f"Summarize this file ({name}) for the user in a compact briefing: "
+            "key points, structure/purpose, and anything notable. Plain text only.\n\n"
+            f"--- file: {name} ---\n{excerpt}"
+        )
+        summary = await asyncio.to_thread(
+            llm.chat_sync,
+            self.cfg,
+            model,
+            [{"role": "user", "content": prompt}],
+            0.3,
+            450,
+        )
+        return summary or text[:600]
 
     async def handle(self, ev: Event):
         if ev.type == "execute":

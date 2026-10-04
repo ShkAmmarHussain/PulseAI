@@ -235,6 +235,14 @@ if (container) {
     speaking: { lean: 0.04, tilt: 0, bob: 0.5, bobSpeed: 1.4, eyeSX: 1, eyeSY: 1.1, eyeX: 0, eyeY: 0, mouthO: 1, flat: 0, smileS: 1, ant: 2.6, brows: 0, happy: 0, rings: 1, orbs: 0, bounce: 0, nod: 1 },
     happy: { lean: -0.04, tilt: 0, bob: 1.2, bobSpeed: 1.7, eyeSX: 1, eyeSY: 1, eyeX: 0, eyeY: 0, mouthO: 0, flat: 0, smileS: 1.4, ant: 1.9, brows: 0, happy: 1, rings: 0, orbs: 0, bounce: 1, nod: 0 },
     concerned: { lean: 0.13, tilt: 0, bob: 0.2, bobSpeed: 0.7, eyeSX: 0.95, eyeSY: 0.9, eyeX: 0, eyeY: -0.4, mouthO: 0, flat: 1, smileS: 0.5, ant: 0.8, brows: 1.6, happy: 0, rings: 0, orbs: 0, bounce: 0, nod: 0 },
+    // --- spec 29 section 5.5.5: 10-state emotional reactivity machine ---
+    curious: { lean: -0.06, tilt: 0.5, bob: 1.15, bobSpeed: 1.5, eyeSX: 1.25, eyeSY: 1.25, eyeX: 0, eyeY: 0, mouthO: 0, flat: 0, smileS: 1.2, ant: 2.2, brows: 0.4, happy: 0, rings: 0, orbs: 1, bounce: 0, nod: 0 },
+    sleep: { lean: 0.17, tilt: 0, bob: 0.15, bobSpeed: 0.35, eyeSX: 1, eyeSY: 0.06, eyeX: 0, eyeY: 0.3, mouthO: 0, flat: 0.35, smileS: 0.7, ant: 0.35, brows: 0, happy: 0, rings: 0, orbs: 0, bounce: 0, nod: 0 },
+    poked: { lean: -0.02, tilt: 0, bob: 0.35, bobSpeed: 2.2, eyeSX: 1.15, eyeSY: 0.7, eyeX: 0, eyeY: 0, mouthO: 0, flat: 0, smileS: 1.6, ant: 3.0, brows: 0.8, happy: 1, rings: 0, orbs: 0, bounce: 1, nod: 0 },
+    dizzy: { lean: 0.05, tilt: 1, bob: 0.6, bobSpeed: 3.6, eyeSX: 1.05, eyeSY: 1.05, eyeX: 1, eyeY: 0, mouthO: 0, flat: 1, smileS: 0.4, ant: 4.5, brows: 1.8, happy: 0, rings: 0, orbs: 0, bounce: 0, nod: 0 },
+    ingesting: { lean: -0.14, tilt: 0, bob: 0.45, bobSpeed: 1.9, eyeSX: 1.15, eyeSY: 1.3, eyeX: 0, eyeY: 0, mouthO: 1, flat: 0, smileS: 1, ant: 4.2, brows: 0.3, happy: 0.6, rings: 0, orbs: 0, bounce: 0, nod: 0 },
+    executing: { lean: 0.08, tilt: 0, bob: 0.55, bobSpeed: 1.25, eyeSX: 1, eyeSY: 0.82, eyeX: 0, eyeY: 0, mouthO: 0, flat: 0.4, smileS: 0.9, ant: 3.0, brows: 0.9, happy: 0, rings: 0, orbs: 1, bounce: 0, nod: 0.6 },
+    approval: { lean: 0.03, tilt: 0, bob: 0.4, bobSpeed: 1.3, eyeSX: 1.1, eyeSY: 1.22, eyeX: 0, eyeY: 0, mouthO: 0, flat: 0, smileS: 0.8, ant: 5, brows: 1.3, happy: 0, rings: 0, orbs: 0, bounce: 0, nod: 0 },
   };
 
   const cur = Object.assign({}, PRESETS.idle);
@@ -244,15 +252,58 @@ if (container) {
   let blink = 0;
   const look = { x: 0, next: 2 };
 
+  // internal luminous core colour per state (spec 29, section 5.5.2)
+  const CORE = {
+    idle: 0x00f0ff, listening: 0x00f0ff, thinking: 0xa855f7, speaking: 0x00f0ff,
+    happy: 0x10b981, concerned: 0xf59e0b, curious: 0x00f0ff, sleep: 0xf59e0b,
+    poked: 0x10b981, dizzy: 0xa855f7, ingesting: 0x00f0ff, executing: 0xa855f7,
+    approval: 0xf59e0b,
+  };
+  const coreCol = new THREE.Color(CORE.idle);
+  const whiteCol = new THREE.Color(0xffffff);
+  let glowTargetMul = 1;
+  let glowMul = 1;
+  function applyCore(m) {
+    coreCol.setHex(CORE[m] || CORE.idle);
+    rim.color.copy(coreCol);
+    chestLight.color.copy(coreCol);
+    glowTargetMul = m === "sleep" ? 0.15 : 1; // eco-sleep dims the rim to an ember
+  }
+
+  // file ingestion animation state (spec 29, sections 5.2 / 5.5.6)
+  const ingest = { active: false, x: 0, y: 0, dropAt: -1e9 };
+  let gulpAmt = 0;
+
   window.Pet3D = {
     setMood(m) {
       if (PRESETS[m]) {
         mood = m;
         target = Object.assign({}, PRESETS[m]);
+        applyCore(m);
       }
     },
     mood: () => mood,
+    ingestHover(pos) {
+      ingest.active = true;
+      if (pos && pos.length >= 2) {
+        const W = container.clientWidth || 176;
+        const H = container.clientHeight || 198;
+        // HTML5 client coords (Tauri screen coords land outside the window)
+        if (pos[0] >= 0 && pos[0] <= W) ingest.x = (pos[0] / W) * 2 - 1;
+        if (pos[1] >= 0 && pos[1] <= H) ingest.y = (pos[1] / H) * 2 - 1;
+      }
+    },
+    ingestDrop() {
+      ingest.dropAt = performance.now();
+      gulpAmt = 1; // gulp/crunch bounce (decays in frame())
+      ingest.active = false;
+    },
+    ingestEnd() {
+      ingest.active = false;
+      ingest.x = ingest.y = 0;
+    },
   };
+  applyCore("idle");
 
   const damp = (a, b, lambda, dt) => a + (b - a) * (1 - Math.exp(-lambda * dt));
 
@@ -280,14 +331,14 @@ if (container) {
     const eyeShiftY = cur.eyeY * 0.1;
 
     blinkAt -= dt;
-    if (blinkAt <= 0 && mood !== "happy") {
+    if (blinkAt <= 0 && mood !== "happy" && mood !== "dizzy" && mood !== "poked") {
       blink = 1;
-      blinkAt = 3 + Math.random() * 3;
+      blinkAt = (Math.random() < 0.22 ? 0.18 : 0) + 2.5 + Math.random() * 3.5; // occasional double-blink
     }
     if (blink > 0) blink = Math.max(0, blink - dt * 9);
     const blinkCurve = 1 - Math.sin(Math.min(blink, 1) * Math.PI) * 0.96;
 
-    const canBlink = mood === "idle" || mood === "listening" || mood === "speaking";
+    const canBlink = mood === "idle" || mood === "listening" || mood === "speaking" || mood === "curious" || mood === "executing";
     const sy = cur.eyeSY * (canBlink ? blinkCurve : 1);
     eyeL.scale.set(cur.eyeSX, sy, 1);
     eyeR.scale.set(cur.eyeSX, sy, 1);
@@ -324,15 +375,24 @@ if (container) {
     }
 
     const antPulse = 0.85 + Math.sin(t * cur.ant * 2.4) * 0.35;
-    antTip.material.color.setHSL(0.74, 1, 0.55 + antPulse * 0.18);
+    glowMul = glowMul + (glowTargetMul - glowMul) * (1 - Math.exp(-3 * dt));
+    rim.intensity = 26 * glowMul;
+    chestLight.intensity = 2.6 * glowMul;
+    antTip.material.color.copy(coreCol).lerp(whiteCol, antPulse * 0.22);
     antTip.scale.setScalar(1 + Math.sin(t * cur.ant * 2.4) * 0.15);
-    antGlow.intensity = 2.5 + antPulse * 2.5;
+    antGlow.intensity = (2.5 + antPulse * 2.5) * glowMul;
+    if (ingest.active) {
+      head.rotation.x += ingest.y * 0.1;
+      head.rotation.z += ingest.x * 0.14;
+    }
 
-    const bounceS = cur.bounce > 0.05;
+    gulpAmt *= Math.exp(-dt * 6); // gulp/crunch bounce decays (~700ms)
+    const bounceAmt = Math.max(cur.bounce, gulpAmt);
+    const bounceS = bounceAmt > 0.05;
     if (bounceS) {
       const b = Math.abs(Math.sin(t * 6.5));
-      body.scale.set(1 + b * 0.06 * cur.bounce, 1 - b * 0.08 * cur.bounce, 1 + b * 0.06 * cur.bounce);
-      head.scale.set(1 - b * 0.03 * cur.bounce, 1 + b * 0.05 * cur.bounce, 1 - b * 0.03 * cur.bounce);
+      body.scale.set(1 + b * 0.06 * bounceAmt, 1 - b * 0.08 * bounceAmt, 1 + b * 0.06 * bounceAmt);
+      head.scale.set(1 - b * 0.03 * bounceAmt, 1 + b * 0.05 * bounceAmt, 1 - b * 0.03 * bounceAmt);
     } else {
       body.scale.set(1, 1, 1);
       head.scale.set(1, 1, 1);

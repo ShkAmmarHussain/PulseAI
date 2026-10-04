@@ -239,6 +239,26 @@ document.querySelectorAll("#empty-state .chip").forEach((chip) => {
   });
 });
 
+// files dropped on the pet/dock: stage the inspection prompt in the composer
+// (spec 29 sections 5.2 + acceptance 6 - the summary prompt opens, not auto-runs)
+Jarvis.on("ui.file_ingest", (d) => {
+  const items = ((d || {}).payload || {}).items || [];
+  if (!items.length) return;
+  const it = items[0];
+  const q = String(it.path || "").replace(/"/g, "");
+  if (!q) return;
+  const more = items.length > 1 ? ` (and ${items.length - 1} more dropped file${items.length > 2 ? "s" : ""})` : "";
+  const prompt =
+    it.kind === "image"
+      ? `Describe this image file: "${q}"${more}`
+      : `Summarize this file: "${q}" - key points, structure, and anything notable.${more}`;
+  if (window.showTab) showTab("chat");
+  input.value = prompt;
+  autogrow();
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+});
+
 // header search: asking from anywhere lands in the conversation
 const searchInput = document.getElementById("global-search");
 if (searchInput) {
@@ -353,6 +373,7 @@ const VERBS = {
   list_dir: "List files in", open_url: "Open in your browser",
   web_search: "Search the web", run_shell: "Run a command",
   vision_describe: "Describe your screen", type_text: "Type text",
+  vision_file: "Analyzed image file", summarize_file: "Summarized file",
   respond: "Respond", noop: "Run",
 };
 

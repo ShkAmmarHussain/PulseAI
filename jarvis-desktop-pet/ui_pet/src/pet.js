@@ -68,7 +68,7 @@ function showApproval(data, cid) {
   delete approval.dataset.pending;
   approval.style.display = "block";
   bubble.style.display = "none";
-  setMood("concerned");
+  setMood("approval");
   setStatus("Needs approval", "active");
   clearTimeout(moodTimer);
 }
@@ -138,6 +138,14 @@ Jarvis.on("ui.chat", (d) => {
   }
 });
 Jarvis.on("ui.approval", (d) => showApproval(d, d.correlation_id));
+Jarvis.on("tool.result", (d) => {
+  markActive();
+  if (petEl.dataset.mood === "approval") return;
+  const ok = !!(d.payload || {}).ok;
+  clearTimeout(moodTimer);
+  setMood(ok ? "happy" : "concerned");
+  moodTimer = setTimeout(() => setMood("idle"), ok ? 2200 : 3000);
+});
 Jarvis.on("ui.approval_cancelled", (d) => {
   if (pendingApproval && d.correlation_id && String(pendingApproval.cid) === String(d.correlation_id)) {
     approval.style.display = "none";
@@ -260,6 +268,128 @@ petEl.onclick = () => {
 };
 document.getElementById("btn-chat").onclick = () => tcmd("open_chat");
 document.getElementById("btn-settings").onclick = () => tcmd("open_settings");
+
+// ---- file drag-and-drop ingestion (spec 29, sections 5.2 / 5.5.6) ----
+function playGulp() {
+  if (petSoundMuted) return;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!petCtx) petCtx = new AC();
+    if (petCtx.state === "suspended") petCtx.resume().catch(() => {});
+    const t = petCtx.currentTime;
+    const o = petCtx.createOscillator();
+    o.frequency.setValueAtTime(170, t);
+    o.frequency.exponentialRampToValueAtTime(540, t + 0.1);
+    o.frequency.exponentialRampToValueAtTime(240, t + 0.24);
+    const g = petCtx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.18, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+    o.connect(g);
+    g.connect(petCtx.destination);
+    o.start(t);
+    o.stop(t + 0.3);
+  } catch (e) {}
+}
+
+function ingestFiles(paths) {
+  const list = (paths || []).filter(Boolean);
+  if (!list.length) return;
+  const name = String(list[0]).split(/[\\/]/).pop();
+  showBubble("Inspecting " + name + (list.length > 1 ? ` (+${list.length - 1} more)` : "") + "...", 6000);
+  setStatus("Inspecting " + name, "active");
+  clearTimeout(moodTimer);
+  setMood("ingesting");
+  if (window.Pet3D && window.Pet3D.ingestDrop) window.Pet3D.ingestDrop();
+  playGulp();
+  Jarvis.fileIngest(list);
+  moodTimer = setTimeout(() => { setMood("idle"); setStatus("Ready", "idle"); }, 4500);
+  markActive();
+}
+
+if (window.__TAURI__ && window.__TAURI__.event && window.__TAURI__.event.listen) {
+  const tev = window.__TAURI__.event;
+  tev.listen("tauri://file-drop-hover", (e) => {
+    markActive();
+    if (petEl.dataset.mood !== "ingesting") { clearTimeout(moodTimer); setMood("ingesting"); }
+    if (window.Pet3D && window.Pet3D.ingestHover) {
+      window.Pet3D.ingestHover((e && e.payload && e.payload.position) || null);
+    }
+  });
+  tev.listen("tauri://file-drop-cancelled", () => {
+    if (petEl.dataset.mood === "ingesting") { setMood("idle"); if (window.Pet3D && window.Pet3D.ingestEnd) window.Pet3D.ingestEnd(); }
+  });
+  tev.listen("tauri://file-drop", (e) => {
+    ingestFiles((e && e.payload && e.payload.paths) || []);
+  });
+}
+// HTML5 fallback (plain webviews / CDP tests)
+document.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  markActive();
+  if (petEl.dataset.mood !== "ingesting") { clearTimeout(moodTimer); setMood("ingesting"); }
+  if (window.Pet3D && window.Pet3D.ingestHover) window.Pet3D.ingestHover([e.clientX, e.clientY]);
+});
+document.addEventListener("dragleave", (e) => {
+  if (e.relatedTarget != null) return;
+  if (petEl.dataset.mood === "ingesting") { setMood("idle"); if (window.Pet3D && window.Pet3D.ingestEnd) window.Pet3D.ingestEnd(); }
+});
+document.addEventListener("drop", (e) => {
+  e.preventDefault();
+  const dt = e.dataTransfer;
+  const files = dt ? Array.from(dt.files || []) : [];
+  let paths = files.map((f) => f.path || f.name).filter(Boolean);
+  if (!paths.length && dt) {
+    const txt = dt.getData("text/uri-list") || dt.getData("text/plain") || "";
+    paths = txt.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  }
+  ingestFiles(paths);
+});
+
+// ---- hover curiosity + rapid-poke dizzy + eco-sleep (spec 29, section 5.5.5) ----
+let pokes = [];
+let lastActivity = Date.now();
+function markActive() {
+  lastActivity = Date.now();
+  if (petEl.dataset.mood === "sleep") { setMood("idle"); setStatus("Ready", "idle"); }
+}
+document.addEventListener("mousemove", markActive, { passive: true });
+document.addEventListener("mousedown", markActive, { passive: true });
+
+petEl.addEventListener("mouseenter", () => {
+  markActive();
+  if (petEl.dataset.mood === "idle") { clearTimeout(moodTimer); setMood("curious"); }
+});
+petEl.addEventListener("mouseleave", () => {
+  if (petEl.dataset.mood === "curious") { clearTimeout(moodTimer); setMood("idle"); }
+});
+// rapid clicking (>5 pokes in 1.5s -> dizzy)
+const origClick = petEl.onclick;
+petEl.onclick = (e) => {
+  markActive();
+  const now = Date.now();
+  pokes.push(now);
+  pokes = pokes.filter((t) => now - t <= 1500);
+  if (pokes.length > 5) {
+    pokes = [];
+    clearTimeout(moodTimer);
+    setMood("dizzy");
+    showBubble("Whoa, easy there!", 2500);
+    moodTimer = setTimeout(() => setMood("idle"), 2600);
+    return;
+  }
+  if (petEl.dataset.mood === "idle") setMood("poked");
+  origClick(e);
+};
+// eco-sleep after 5 minutes of inactivity in this window
+setInterval(() => {
+  if (petEl.dataset.mood === "sleep") return;
+  if (Date.now() - lastActivity > 5 * 60 * 1000 && petEl.dataset.mood === "idle") {
+    setMood("sleep");
+    setStatus("Sleeping", "idle");
+  }
+}, 15000);
 
 const micBtn = document.getElementById("btn-mic");
 let micOn = false;

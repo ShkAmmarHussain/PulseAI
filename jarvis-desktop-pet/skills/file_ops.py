@@ -50,3 +50,44 @@ def create_file(path: str, content: str = "") -> str:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(content, encoding="utf-8")
     return f"Created {p}."
+
+
+TEXT_EXTS = (
+    ".txt", ".md", ".rst", ".log", ".csv", ".tsv", ".json", ".yaml", ".yml",
+    ".toml", ".ini", ".cfg", ".xml", ".html", ".htm", ".css", ".js", ".ts",
+    ".jsx", ".tsx", ".py", ".rs", ".go", ".java", ".kt", ".c", ".h", ".cpp",
+    ".hpp", ".cs", ".rb", ".php", ".sh", ".ps1", ".bat", ".sql", ".r",
+    ".swift", ".scala", ".lua", ".pl", ".dockerfile", ".gitignore", ".env",
+    ".txtx", ".tex",
+)
+READ_MAX_BYTES = 400_000
+
+
+def read_text(path: str, max_bytes: int = READ_MAX_BYTES) -> str:
+    """Read a text/code file (and basic PDF extraction) for summarization."""
+    p = _resolve(path)
+    if not str(p).strip():
+        return "Failed: no path specified."
+    if not p.is_file():
+        return f"File not found: {p}"
+    if p.suffix.lower() == ".pdf":
+        try:
+            import io
+
+            import pypdf
+
+            reader = pypdf.PdfReader(io.BytesIO(p.read_bytes()))
+            pages = [(pg.extract_text() or "") for pg in reader.pages[:40]]
+            text = "\n".join(pages).strip()
+            if not text:
+                return f"PDF '{p.name}' has no extractable text ({len(reader.pages)} pages)."
+            return text[:max_bytes]
+        except ImportError:
+            return f"PDF '{p.name}': text extraction unavailable (pypdf not installed)."
+        except Exception as e:
+            return f"Failed to read PDF '{p.name}': {e}"
+    data = p.read_bytes()[:max_bytes]
+    try:
+        return data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("utf-8", errors="replace")

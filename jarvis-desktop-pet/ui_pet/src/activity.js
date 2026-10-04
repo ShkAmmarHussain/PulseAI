@@ -15,6 +15,7 @@
     list_dir: "Listed files", open_url: "Opened in browser",
     web_search: "Searched the web", run_shell: "Ran a command",
     vision_describe: "Looked at your screen", type_text: "Typed text",
+  vision_file: "Analyzed image file", summarize_file: "Summarized file",
     respond: "Responded", noop: "Ran action",
   };
 

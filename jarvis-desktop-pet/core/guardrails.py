@@ -17,6 +17,8 @@ EXPLICIT_RISK = {
     "web_search": 0,
     "list_dir": 0,
     "vision_describe": 0,
+    "vision_file": 0,
+    "summarize_file": 0,
     "type_text": 6,
     "move_file": 4,
     "create_file": 4,

@@ -5,6 +5,7 @@ from core.bus import Event, create_event
 
 PATH_RE = re.compile(r"""(?P<q>["'][^"']+["'])|(?P<p>~?[\w.]:[\\/][\w\s.\\/-]+|\.{0,2}[\\/][\w\s.\\/-]+|\b[\w-]+\.[a-zA-Z]{1,5}\b)""")
 URL_RE = re.compile(r"https?://\S+|\bwww\.\S+")
+IMG_EXTS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 
 
 def _clean_path(m: re.Match) -> str:
@@ -29,14 +30,30 @@ class PlannerAgent(BaseAgent):
 
             screenish = re.search(r"\b(screen|desktop|screenshot)\b", low)
             screen_intent = re.search(
-                r"summar\w*|\bdescribe\b|\bread\b|\bcapture\b|\bgrab\b|take a (?:screenshot|picture)|"
+                r"summar\w*|\bdescribe\b|\bread\b|\bcapture\b|\bgrab\b|take a (screenshot|picture)|"
                 r"\bscreenshot\b|what(?:'s| is| am i)\b|\bam i looking\b|\blook at\b|\bshow me\b",
                 low,
             )
             screen_mutation = re.search(
-                r"\b(open|close|delete|remove|move|create|launch|list|run|search|find|google)\b", low
+                r"\b(open|close|delete|remove|move|create|list|run|search|find|google)\b", low
             )
-            if screenish and screen_intent and not screen_mutation:
+
+            # file ingestion prompts (spec 29 section 5.2) - raised by the pet
+            # drag-and-drop composer prefill: images go to the vision pipeline,
+            # text/code/pdf documents get summarized.
+            paths = [_clean_path(m) for m in PATH_RE.finditer(q)]
+            img = next((p for p in paths if p.lower().rstrip('".').endswith(IMG_EXTS)), None)
+            if img and re.search(
+                r"\b(describe|analy[sz]e|inspect|look at|summar\w*|what(?:'s| is| am) in)\b", low
+            ):
+                steps.append({"action": "vision_file", "path": img, "query": q, "risk": 0})
+            elif paths and re.search(r"\b(summar\w*|explain|describe|break down)\b", low) and (
+                re.search(r"\b(this|the|a|that|dropped)?\s*(file|document|pdf|doc)\b", low)
+                or re.search(r"\.\w{1,5}\b", q)
+            ):
+                steps.append({"action": "summarize_file", "path": paths[0], "query": q, "risk": 0})
+
+            elif screenish and screen_intent and not screen_mutation:
                 steps.append({"action": "vision_describe", "query": q, "risk": 0})
 
             elif re.search(r"\b(search|google|look up|web search)\b", low):
