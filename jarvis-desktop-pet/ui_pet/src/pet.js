@@ -23,9 +23,12 @@ function showBubble(text, ms) {
 
 function showApproval(data, cid) {
   pendingApproval = { payload: data.payload || data, cid: cid || data.correlation_id };
+  const pp = pendingApproval.payload;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let html = esc(pp.message || "Approve?");
+  if (pp.action && pp.action.target) html += '<div class="ac-target">Target: ' + esc(pp.action.target) + "</div>";
   approval.querySelector(".msg").innerHTML =
-    (pendingApproval.payload.message || "Approve?") +
-    ' <span class="risk">Risk level ' + (pendingApproval.payload.risk == null ? "?" : pendingApproval.payload.risk) + "/10</span>";
+    html + ' <span class="risk">Risk level ' + (pp.risk == null ? "?" : pp.risk) + "/10</span>";
   const a = approval.querySelector(".allow");
   const dn = approval.querySelector(".deny");
   a.disabled = false;

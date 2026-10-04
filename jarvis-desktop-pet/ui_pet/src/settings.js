@@ -127,7 +127,10 @@ function collect() {
 }
 
 Jarvis.on("settings", (d) => fill(d.payload));
+let saveTimeout = null;
 Jarvis.on("settings_saved", (d) => {
+  clearTimeout(saveTimeout);
+  saveTimeout = null;
   fill(d.payload);
   note.textContent = "Saved.";
   note.classList.add("ok");
@@ -177,6 +180,13 @@ document.getElementById("save").onclick = () => {
   note.textContent = "Saving...";
   dirty = false;
   saveBtn.disabled = true;
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    saveTimeout = null;
+    note.textContent = "Save didn\u2019t confirm \u2014 changes may not be stored. Try again.";
+    note.classList.remove("ok");
+    saveBtn.disabled = false;
+  }, 8000);
   Jarvis.saveSettings(collect());
 };
 document.getElementById("test").onclick = () => {

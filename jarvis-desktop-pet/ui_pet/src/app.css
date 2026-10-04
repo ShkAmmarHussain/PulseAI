@@ -459,13 +459,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   backdrop-filter: blur(16px);
   border: 1px solid rgba(240, 185, 79, 0.42);
   border-radius: var(--r);
-  padding: 13px 15px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   box-shadow: var(--shadow), 0 0 24px rgba(240, 185, 79, 0.08);
 }
 .ac-text { font-size: 13px; line-height: 1.45; user-select: text; }
+.ac-target {
+  margin-top: 5px;
+  font-size: var(--fs-helper);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  word-break: break-all;
+  user-select: text;
+}
 .risk {
   display: inline-block;
   margin-left: 8px;

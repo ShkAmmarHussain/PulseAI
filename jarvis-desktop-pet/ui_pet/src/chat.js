@@ -192,6 +192,13 @@ Jarvis.on("ui.approval", (d) => {
   const text = document.createElement("div");
   text.className = "ac-text";
   text.textContent = p.message || "Approval needed";
+  const tgt = p.action && p.action.target;
+  if (tgt) {
+    const tdiv = document.createElement("div");
+    tdiv.className = "ac-target";
+    tdiv.textContent = "Target: " + tgt;
+    text.appendChild(tdiv);
+  }
   const risk = document.createElement("span");
   risk.className = "risk";
   risk.textContent = "Risk level " + (p.risk == null ? "?" : p.risk) + "/10 \u2014 confirmation required";
