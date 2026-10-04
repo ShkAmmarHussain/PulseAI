@@ -6,11 +6,21 @@ const typingEl = document.getElementById("typing");
 const emptyEl = document.getElementById("empty-state");
 const voiceStatus = document.getElementById("voice-status");
 const voiceText = document.getElementById("vs-text");
+const peekBtn = document.getElementById("approval-peek");
 let typingTimer = null;
 let stickBottom = true;
+const USER_NAME = "Ammar";
+
+// time-based greeting (spec 7.3 - subtle, second line does the work)
+(function setGreeting() {
+  const h = new Date().getHours();
+  const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const el = document.getElementById("greeting");
+  if (el) el.textContent = part + ", " + USER_NAME;
+})();
 
 function hideEmpty() {
-  if (emptyEl) emptyEl.remove();
+  if (emptyEl && emptyEl.parentElement) emptyEl.remove();
 }
 
 msgs.addEventListener("scroll", () => {
@@ -51,28 +61,49 @@ function hideTyping() {
   clearTimeout(typingTimer);
 }
 
+function nowTime() {
+  try {
+    return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  } catch (e) {
+    return "";
+  }
+}
+
+function metaRow(who) {
+  const meta = document.createElement("div");
+  meta.className = "msg-meta";
+  const av = document.createElement("div");
+  if (who === "assistant") {
+    av.className = "msg-avatar assistant orb";
+    av.innerHTML = '<i class="core"></i>';
+  } else {
+    av.className = "msg-avatar user";
+    av.innerHTML = '<svg class="ic"><use href="#i-user"/></svg>';
+  }
+  const name = document.createElement("span");
+  name.className = "msg-name";
+  name.textContent = who === "assistant" ? "Jarvis" : "You";
+  const time = document.createElement("span");
+  time.className = "msg-time";
+  time.textContent = nowTime();
+  meta.appendChild(av);
+  meta.appendChild(name);
+  meta.appendChild(time);
+  return meta;
+}
+
 function addMsg(role, text) {
   hideEmpty();
   let node;
-  if (role === "assistant") {
-    const row = document.createElement("div");
-    row.className = "msg-row";
-    const av = document.createElement("div");
-    av.className = "avatar";
-    av.innerHTML = '<svg class="ic"><use href="#i-face"/></svg>';
-    const wrap = document.createElement("div");
-    wrap.className = "msg-col";
-    const name = document.createElement("span");
-    name.className = "msg-name";
-    name.textContent = "Jarvis";
+  if (role === "assistant" || role === "user") {
+    const group = document.createElement("div");
+    group.className = "msg-group " + role;
+    group.appendChild(metaRow(role));
     const div = document.createElement("div");
-    div.className = "msg assistant";
+    div.className = "msg " + role;
     div.textContent = text;
-    wrap.appendChild(name);
-    wrap.appendChild(div);
-    row.appendChild(av);
-    row.appendChild(wrap);
-    node = row;
+    group.appendChild(div);
+    node = group;
   } else {
     node = document.createElement("div");
     node.className = "msg " + role;
@@ -85,7 +116,7 @@ function addMsg(role, text) {
 // ---- composer ----
 function autogrow() {
   input.style.height = "auto";
-  input.style.height = Math.min(input.scrollHeight, 148) + "px";
+  input.style.height = Math.min(input.scrollHeight, 220) + "px";
 }
 input.addEventListener("input", autogrow);
 
@@ -116,14 +147,36 @@ document.querySelectorAll("#empty-state .chip").forEach((chip) => {
   });
 });
 
+// header search: asking from anywhere lands in the conversation
+const searchInput = document.getElementById("global-search");
+if (searchInput) {
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const t = searchInput.value.trim();
+    if (!t) return;
+    searchInput.value = "";
+    if (window.showTab) showTab("chat");
+    input.value = t;
+    send();
+  });
+}
+
 // ---- microphone / voice states ----
-const micBtn = document.getElementById("mic");
+const micBtns = [document.getElementById("mic"), document.getElementById("top-mic")].filter(Boolean);
 let micOn = false;
 function setMic(on) {
   micOn = on;
-  micBtn.classList.toggle("rec", on);
-  micBtn.title = on ? "Stop listening" : "Click to talk";
-  micBtn.setAttribute("aria-pressed", String(on));
+  micBtns.forEach((b) => {
+    b.classList.toggle("rec", on);
+    b.title = on ? "Stop listening" : "Click to talk";
+    b.setAttribute("aria-pressed", String(on));
+  });
+}
+function setMicBusy(busy) {
+  micBtns.forEach((b) => {
+    b.classList.toggle("busy", busy);
+    b.disabled = busy;
+  });
 }
 function setVoiceStatus(text, mode) {
   if (!voiceStatus) return;
@@ -137,23 +190,22 @@ function setVoiceStatus(text, mode) {
     voiceStatus.hidden = true;
   }
 }
-micBtn.onclick = () => {
-  if (micBtn.disabled) return;
+function toggleMic() {
   const next = !micOn;
   setMic(next);
   Jarvis.voiceListen(next);
-};
+}
+micBtns.forEach((b) => (b.onclick = () => { if (!b.disabled) toggleMic(); }));
+
 Jarvis.on("ui.voice_state", (d) => {
   const st = (d.payload || {}).state || "idle";
-  micBtn.classList.remove("busy");
-  micBtn.disabled = false;
+  setMicBusy(false);
   if (st === "listening") {
     setMic(true);
     setVoiceStatus("Listening\u2026", "listening");
   } else if (st === "transcribing") {
     setMic(false);
-    micBtn.classList.add("busy");
-    micBtn.disabled = true;
+    setMicBusy(true);
     setVoiceStatus("Transcribing\u2026", "transcribing");
   } else {
     setMic(false);
@@ -168,9 +220,7 @@ Jarvis.on("ui.chat", (d) => {
   // any ui.chat carrying an approval's cid is that approval's outcome -
   // clears the card even when the user answered it in the other window
   if (d.correlation_id) {
-    document.querySelectorAll(".approval-card").forEach((card) => {
-      if (card.dataset.cid && String(card.dataset.cid) === String(d.correlation_id)) card.remove();
-    });
+    removeApprovalCards(String(d.correlation_id));
   }
   addMsg(d.payload.role || "assistant", d.payload.text || "");
 });
@@ -182,27 +232,121 @@ Jarvis.on("tts_state", (d) => {
   else if (voiceText && voiceText.textContent === "Speaking\u2026") setVoiceStatus("");
 });
 
-// ---- approvals ----
+// ---- approvals (section 12 + mockup approval prompt) ----
+const VERBS = {
+  launch_app: "Open", open_app: "Open", close_app: "Close",
+  delete_file: "Delete", move_file: "Move", create_file: "Create",
+  list_dir: "List files in", open_url: "Open in your browser",
+  web_search: "Search the web", run_shell: "Run a command",
+  vision_describe: "Describe your screen", type_text: "Type text",
+  respond: "Respond", noop: "Run",
+};
+
+function friendlyAction(p) {
+  const a = (p.action && (p.action.action || p.action.name)) || "";
+  const verb = VERBS[a] || a.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  let tgt = (p.action && (p.action.target || p.action.path || p.action.url || p.action.cmd)) || "";
+  if (tgt) {
+    const parts = String(tgt).split(/[\\/]/);
+    tgt = parts[parts.length - 1] || String(tgt);
+    if (tgt.length > 46) tgt = tgt.slice(0, 43) + "\u2026";
+  }
+  return { verb, tgt, title: (verb + (tgt ? " " + tgt : "")).trim() };
+}
+
+function riskBand(r) {
+  const n = Number(r);
+  if (!isFinite(n)) return { cls: "med", label: "Unknown" };
+  if (n <= 2) return { cls: "low", label: "Low" };
+  if (n <= 6) return { cls: "med", label: "Medium" };
+  return { cls: "high", label: "High" };
+}
+
+function removeApprovalCards(cid) {
+  document.querySelectorAll(".approval-card").forEach((card) => {
+    if (card.dataset.cid && String(card.dataset.cid) === String(cid)) card.remove();
+  });
+  if (!document.querySelector(".approval-card") && peekBtn) peekBtn.hidden = true;
+}
+
 Jarvis.on("ui.approval", (d) => {
   hideTyping();
   const p = d.payload || {};
+  const fa = friendlyAction(p);
+  const band = riskBand(p.risk);
+  const tgt = p.action && p.action.target;
+
   const wrap = document.createElement("div");
   wrap.className = "approval-card";
   if (d.correlation_id) wrap.dataset.cid = d.correlation_id;
-  const text = document.createElement("div");
-  text.className = "ac-text";
-  text.textContent = p.message || "Approval needed";
-  const tgt = p.action && p.action.target;
-  if (tgt) {
-    const tdiv = document.createElement("div");
-    tdiv.className = "ac-target";
-    tdiv.textContent = "Target: " + tgt;
-    text.appendChild(tdiv);
-  }
-  const risk = document.createElement("span");
-  risk.className = "risk";
-  risk.textContent = "Risk level " + (p.risk == null ? "?" : p.risk) + "/10 \u2014 confirmation required";
-  text.appendChild(risk);
+
+  const head = document.createElement("div");
+  head.className = "ac-head";
+  head.innerHTML =
+    '<span class="ac-shield"><svg class="ic"><use href="#i-shield"/></svg></span>' +
+    '<span class="ac-title-label">Action requires approval</span>';
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "ac-close";
+  closeBtn.type = "button";
+  closeBtn.title = "Hide for now";
+  closeBtn.setAttribute("aria-label", "Collapse approval prompt");
+  closeBtn.innerHTML = '<svg class="ic"><use href="#i-x"/></svg>';
+  head.appendChild(closeBtn);
+
+  const body = document.createElement("div");
+  body.className = "ac-body";
+  const app = document.createElement("div");
+  app.className = "ac-app";
+  app.innerHTML =
+    '<span class="ac-app-icon"><svg class="ic"><use href="#i-folder"/></svg></span>' +
+    '<div class="ac-app-main">' +
+    '<div class="ac-action"></div>' +
+    '<div class="ac-desc"></div>' +
+    (tgt ? '<div class="ac-target">Target: </div>' : "") +
+    "</div>";
+  app.querySelector(".ac-action").textContent = fa.title;
+  app.querySelector(".ac-desc").textContent =
+    p.message || "Jarvis wants to run this action on your computer.";
+  if (tgt) app.querySelector(".ac-target").textContent = "Target: " + tgt;
+  body.appendChild(app);
+
+  const meta = document.createElement("div");
+  meta.className = "ac-meta";
+  const riskCol = document.createElement("div");
+  riskCol.className = "ac-risk";
+  const lab = document.createElement("span");
+  lab.className = "ac-label";
+  lab.textContent = "Risk level";
+  const badge = document.createElement("span");
+  badge.className = "risk " + band.cls;
+  badge.textContent = band.label;
+  badge.title = p.risk == null ? "Risk unknown" : "Risk " + p.risk + "/10";
+  riskCol.appendChild(lab);
+  riskCol.appendChild(badge);
+  meta.appendChild(riskCol);
+
+  const why = document.createElement("div");
+  why.className = "ac-why";
+  const whyBtn = document.createElement("button");
+  whyBtn.className = "ac-why-btn";
+  whyBtn.type = "button";
+  whyBtn.setAttribute("aria-expanded", "false");
+  whyBtn.innerHTML = 'Why? <svg class="ic"><use href="#i-chevron"/></svg>';
+  const whyBody = document.createElement("div");
+  whyBody.className = "ac-why-body";
+  whyBody.hidden = true;
+  whyBody.textContent =
+    "Jarvis wants to run: " + fa.title + ". Nothing happens on your computer until you allow it.";
+  whyBtn.onclick = () => {
+    const open = whyBody.hidden;
+    whyBody.hidden = !open;
+    whyBtn.setAttribute("aria-expanded", String(open));
+  };
+  why.appendChild(whyBtn);
+  why.appendChild(whyBody);
+  meta.appendChild(why);
+  body.appendChild(meta);
+
   const btns = document.createElement("div");
   btns.className = "ac-btns";
   const allow = document.createElement("button");
@@ -217,7 +361,7 @@ Jarvis.on("ui.approval", (d) => {
     btn.textContent = label;
     showTyping();
     // safety: never leave a stuck pending card around
-    setTimeout(() => wrap.remove(), 90000);
+    setTimeout(() => removeApprovalCards(wrap.dataset.cid || ""), 90000);
   };
   allow.onclick = () => {
     Jarvis.approval(true, { action: p.action }, d.correlation_id);
@@ -229,25 +373,43 @@ Jarvis.on("ui.approval", (d) => {
   };
   btns.appendChild(deny);
   btns.appendChild(allow);
-  wrap.appendChild(text);
+
+  closeBtn.onclick = () => {
+    wrap.style.display = "none";
+    if (peekBtn) peekBtn.hidden = false;
+  };
+
+  wrap.appendChild(head);
+  wrap.appendChild(body);
   wrap.appendChild(btns);
   msgs.insertBefore(wrap, typingEl);
+  if (peekBtn) peekBtn.hidden = true;
   scrollLatest(true);
 });
 
+if (peekBtn) {
+  peekBtn.onclick = () => {
+    const card = document.querySelector(".approval-card");
+    if (card) {
+      card.style.display = "";
+      peekBtn.hidden = true;
+      scrollLatest(true);
+    } else {
+      peekBtn.hidden = true;
+    }
+  };
+}
+
 // backend expired the approval (treated as denied) - remove the pending card
 Jarvis.on("ui.approval_cancelled", (d) => {
-  const cid = d.correlation_id;
-  document.querySelectorAll(".approval-card").forEach((card) => {
-    if (cid && card.dataset.cid === String(cid)) card.remove();
-  });
+  if (d.correlation_id) removeApprovalCards(String(d.correlation_id));
 });
 
 document.addEventListener("jarvis:connected", () => {
-  conn.textContent = "connected";
+  conn.textContent = "Connected";
   conn.classList.add("on");
 });
 document.addEventListener("jarvis:disconnected", () => {
-  conn.textContent = "reconnecting...";
+  conn.textContent = "Reconnecting\u2026";
   conn.classList.remove("on");
 });

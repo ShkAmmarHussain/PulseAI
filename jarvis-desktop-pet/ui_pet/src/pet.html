@@ -18,21 +18,28 @@
   </svg>
 
   <div id="pet-page">
-    <div id="bubble"></div>
-    <div id="approval">
-      <div class="msg"></div>
-      <div class="btns">
-        <button class="allow">Allow once</button>
-        <button class="deny">Deny</button>
-      </div>
+    <div id="pet-head" data-tauri-drag-region>
+      <div class="pet-logo orb" aria-hidden="true"><i class="core"></i></div>
+      <span class="pet-name">Jarvis</span>
+      <span class="pet-status" id="pet-status" role="status" aria-live="polite">
+        <i class="dot"></i><span id="pet-status-text">Ready</span>
+      </span>
     </div>
-    <div id="pet-row" data-tauri-drag-region>
-      <div id="pet" data-mood="idle"></div>
-      <div id="mini-btns">
-        <button id="btn-mic" title="Talk to Jarvis"><svg class="ic"><use href="#i-mic"/></svg></button>
-        <button id="btn-chat" title="Open chat"><svg class="ic"><use href="#i-chat"/></svg></button>
-        <button id="btn-settings" title="Settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
+    <div id="pet-stage">
+      <div id="bubble"></div>
+      <div id="approval">
+        <div class="msg"></div>
+        <div class="btns">
+          <button class="allow">Allow once</button>
+          <button class="deny">Deny</button>
+        </div>
       </div>
+      <div id="pet" data-mood="idle"></div>
+    </div>
+    <div id="mini-btns">
+      <button id="btn-mic" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg class="ic"><use href="#i-mic"/></svg></button>
+      <button id="btn-chat" title="Open chat" aria-label="Open chat"><svg class="ic"><use href="#i-chat"/></svg></button>
+      <button id="btn-settings" title="Settings" aria-label="Open settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
     </div>
   </div>
   <script src="ws.js"></script>

@@ -5,6 +5,16 @@ let bubbleTimer = null;
 let moodTimer = null;
 let pendingApproval = null;
 
+const statusEl = document.getElementById("pet-status");
+const statusText = document.getElementById("pet-status-text");
+function setStatus(text, mode) {
+  if (statusText) statusText.textContent = text;
+  if (statusEl) {
+    statusEl.classList.toggle("active", mode === "active");
+    statusEl.classList.toggle("off", mode === "off");
+  }
+}
+
 function setMood(m) {
   petEl.dataset.mood = m;
   if (window.Pet3D) window.Pet3D.setMood(m);
@@ -39,6 +49,7 @@ function showApproval(data, cid) {
   approval.style.display = "block";
   bubble.style.display = "none";
   setMood("concerned");
+  setStatus("Needs approval", "active");
   clearTimeout(moodTimer);
 }
 
@@ -52,6 +63,7 @@ function settleApproval(btn, label) {
   btn.textContent = label;
   showBubble("Working\u2026", 8000);
   setMood("thinking");
+  setStatus("Working\u2026", "active");
   clearTimeout(moodTimer);
   setTimeout(() => {
     if (approval.dataset.pending === "1") {
@@ -98,10 +110,12 @@ Jarvis.on("ui.chat", (d) => {
   }
   if (d.payload.role === "assistant" && d.payload.text) {
     showBubble(d.payload.text);
+    setStatus("Ready", "idle");
     if (petEl.dataset.mood !== "speaking") moodTemp("happy", 2200);
   }
   if (d.payload.role === "user") {
     setMood("thinking");
+    setStatus("Thinking\u2026", "active");
     clearTimeout(moodTimer);
   }
 });
@@ -117,6 +131,7 @@ Jarvis.on("ui.approval_cancelled", (d) => {
     dn.disabled = false;
     a.textContent = "Allow once";
     dn.textContent = "Deny";
+    setStatus("Ready", "idle");
     showBubble("Timed out \u2014 denied.", 3500);
   }
 });
@@ -126,8 +141,10 @@ Jarvis.on("tts_state", (d) => {
   if (speaking) {
     clearTimeout(moodTimer);
     setMood("speaking");
+    setStatus("Speaking\u2026", "active");
   } else if (petEl.dataset.mood === "speaking") {
     moodTemp("happy", 1400);
+    setStatus("Ready", "idle");
   }
 });
 
@@ -136,20 +153,30 @@ Jarvis.on("ui.voice_state", (d) => {
   if (st === "listening") {
     setMood("listening");
     clearTimeout(moodTimer);
+    setStatus("Listening\u2026", "active");
     showBubble("Listening...", 6000);
   } else if (st === "transcribing") {
     setMood("thinking");
     clearTimeout(moodTimer);
+    setStatus("Transcribing\u2026", "active");
   } else if (st === "wake" || st === "idle") {
     if (["listening", "thinking"].includes(petEl.dataset.mood)) setMood("idle");
+    setStatus("Ready", "idle");
   } else if (st === "error") {
     moodTemp("concerned", 4000);
+    setStatus("Voice error", "active");
     showBubble("Voice: " + ((d.payload || {}).error || "error"), 4000);
   }
 });
 
-document.addEventListener("jarvis:connected", () => showBubble('Say "Hey Jarvis" or type a message.', 5000));
-document.addEventListener("jarvis:disconnected", () => showBubble("Reconnecting...", 3000));
+document.addEventListener("jarvis:connected", () => {
+  setStatus("Ready", "idle");
+  showBubble('Say "Hey Jarvis" or type a message.', 5000);
+});
+document.addEventListener("jarvis:disconnected", () => {
+  setStatus("Offline", "off");
+  showBubble("Reconnecting...", 3000);
+});
 
 function tcmd(name) {
   if (window.__TAURI__ && window.__TAURI__.tauri) window.__TAURI__.tauri.invoke(name);

@@ -18,234 +18,359 @@
       <symbol id="i-wave" viewBox="0 0 24 24"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></symbol>
       <symbol id="i-cpu" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol>
       <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.8-7 10-4-2.2-7-5.5-7-10V6l7-3z"/></symbol>
+      <symbol id="i-activity" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20.5 20.5L16.2 16.2"/></symbol>
+      <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 19.5c1.4-3.4 3.9-5 7-5s5.6 1.6 7 5"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A2 2 0 0 1 5 5.5h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+      <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.5 12h17M12 3c2.6 2.7 3.9 5.7 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.7-3.9-9S9.4 5.7 12 3z"/></symbol>
+      <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1 1 15 0"/><path d="M12 13.5l4-4.5"/></symbol>
+      <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></symbol>
     </defs>
   </svg>
 
   <div id="app">
-    <header id="topbar">
+    <aside id="sidebar">
       <div class="brand">
-        <div class="logo"><svg class="ic"><use href="#i-face"/></svg></div>
+        <div class="logo orb" aria-hidden="true"><i class="core"></i></div>
         <div class="brand-text">
           <span class="name">Jarvis</span>
-          <span class="status" id="conn" role="status" aria-live="polite">connecting...</span>
+          <span class="status" role="status" aria-live="polite">
+            <i class="dot" id="conn-dot"></i><span class="svc">Local Service</span><span class="sep">&bull;</span><span id="conn">Connecting&hellip;</span>
+          </span>
         </div>
+        <button id="sb-toggle" class="icon-btn ghost" title="Collapse sidebar" aria-label="Collapse sidebar"><svg class="ic"><use href="#i-collapse"/></svg></button>
       </div>
-      <nav id="tabs">
-        <button class="tab active" data-tab="chat"><svg class="ic"><use href="#i-chat"/></svg>Chat</button>
-        <button class="tab" data-tab="settings"><svg class="ic"><use href="#i-sliders"/></svg>Settings</button>
+
+      <nav id="nav" aria-label="Primary">
+        <button class="nav-item active" data-tab="chat"><svg class="ic"><use href="#i-chat"/></svg><span class="nav-label">Chat</span></button>
+        <button class="nav-item" data-tab="activity"><svg class="ic"><use href="#i-activity"/></svg><span class="nav-label">Activity</span></button>
+        <button class="nav-item" data-tab="settings"><svg class="ic"><use href="#i-sliders"/></svg><span class="nav-label">Settings</span></button>
       </nav>
-      <button id="pet-toggle" class="icon-btn active" title="Show / hide floating pet" aria-label="Show or hide floating pet"><svg class="ic"><use href="#i-eye"/></svg></button>
-    </header>
 
-    <main id="pane-chat" class="pane active">
-      <div id="msgs">
-        <div id="empty-state">
-          <div class="logo"><svg class="ic"><use href="#i-face"/></svg></div>
-          <div class="es-title">How can I help?</div>
-          <div class="es-sub">Type a request or talk to Jarvis.</div>
-          <div class="chips">
-            <button class="chip" type="button" data-prompt="Help me open an app ">Open an app</button>
-            <button class="chip" type="button" data-prompt="Help me find a file on this PC ">Find a file</button>
-            <button class="chip" type="button" data-prompt="Summarize what is on my screen ">Summarize my screen</button>
-            <button class="chip" type="button" data-prompt="Run this routine for me: ">Run a routine</button>
-          </div>
-          <div class="es-hint">Say <kbd>Hey Jarvis</kbd> anytime, or press <kbd>Ctrl+Alt+J</kbd> to talk from anywhere.</div>
-        </div>
-        <div id="typing" class="msg-row" hidden>
-          <div class="avatar"><svg class="ic"><use href="#i-face"/></svg></div>
-          <div class="msg assistant typing-bubble"><i></i><i></i><i></i><span class="tb-text">Thinking&hellip;</span></div>
-        </div>
-      </div>
-      <div id="chat-input-row">
-        <div id="composer-col">
-          <div id="voice-status" role="status" aria-live="polite" hidden>
-            <span class="vs-dot"></span><span id="vs-text">Listening&hellip;</span>
-          </div>
-          <div class="composer-main">
-            <textarea id="chat-input" rows="1" placeholder="Ask Jarvis to do something&hellip;" autocomplete="off" aria-label="Message Jarvis"></textarea>
-            <button id="mic" title="Click to talk" aria-label="Toggle microphone"><svg class="ic"><use href="#i-mic"/></svg></button>
-            <button id="send" title="Send (Enter)" aria-label="Send message"><svg class="ic"><use href="#i-send"/></svg><span>Send</span></button>
-          </div>
-        </div>
-      </div>
-    </main>
-
-    <main id="pane-settings" class="pane">
-      <nav id="settings-index" aria-label="Settings sections">
-        <button type="button" data-sec="sec-voice" class="active">Voice</button>
-        <button type="button" data-sec="sec-assistant">Assistant &amp; pet</button>
-        <button type="button" data-sec="sec-models">Models &amp; connection</button>
-        <button type="button" data-sec="sec-safety">Safety &amp; permissions</button>
-        <button type="button" data-sec="sec-performance">Performance</button>
-      </nav>
-      <div id="settings-content">
-      <div class="section" id="sec-voice">
-        <h3><svg class="ic"><use href="#i-wave"/></svg>Voice</h3>
-        <div class="field switch-field">
-          <label>Always listen for &ldquo;Hey Jarvis&rdquo;</label>
-          <label class="switch">
-            <input type="checkbox" id="v-wake" checked />
+      <div class="sidebar-foot">
+        <div class="pet-mini">
+          <div class="pet-orb orb" aria-hidden="true"><i class="core"></i></div>
+          <span class="pet-mini-label">Pet Visible</span>
+          <label class="switch" title="Show / hide floating pet">
+            <input type="checkbox" id="pet-side-toggle" data-pet-toggle checked />
             <span class="slider"></span>
           </label>
         </div>
-        <div class="field"><label>Microphone</label>
-          <select id="v-device">
-            <option value="">System default input</option>
-          </select>
-          <p class="hint" id="v-device-hint" aria-live="polite"></p>
-        </div>
-        <div class="field meter-field">
-          <label>Input level <span id="v-level-name" class="hint"></span></label>
-          <div class="mic-meter"><div id="v-level"></div></div>
-        </div>
-        <div class="field switch-field">
-          <label>Auto gain &mdash; boost quiet mics</label>
-          <label class="switch">
-            <input type="checkbox" id="v-agc" checked />
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="field switch-field">
-          <label>Noise gate &mdash; cut background hiss</label>
-          <label class="switch">
-            <input type="checkbox" id="v-gate" checked />
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="field test-field">
-          <label>Wake word test</label>
-          <button id="wake-test" class="small"><svg class="ic"><use href="#i-mic"/></svg>Test &ldquo;Hey Jarvis&rdquo;</button>
-          <span id="wake-test-out" class="hint" aria-live="polite">Press, then say the wake word.</span>
-        </div>
-        <div class="field"><label>Wake threshold</label><input id="v-threshold" type="number" min="0.1" max="0.95" step="0.05" /></div>
-        <p class="hint">Lower = easier to trigger the wake word; raise it if Jarvis wakes too often on background speech.</p>
-        <div class="subhead">Spoken responses</div>
-        <div class="field"><label>Speech engine</label>
-          <select id="v-engine">
-            <option value="kokoro">Kokoro &mdash; natural neural voice</option>
-            <option value="sapi">Windows &mdash; fast, robotic</option>
-          </select>
-        </div>
-        <div class="field"><label>Voice</label>
-          <select id="v-voice">
-            <option value="af_heart">af_heart &mdash; warm female</option>
-            <option value="af_bella">af_bella &mdash; bright female</option>
-            <option value="af_nicole">af_nicole &mdash; soft female</option>
-            <option value="af_sarah">af_sarah &mdash; calm female</option>
-            <option value="af_sky">af_sky &mdash; light female</option>
-            <option value="af_alloy">af_alloy &mdash; neutral female</option>
-            <option value="am_michael">am_michael &mdash; professional male</option>
-            <option value="am_fenrir">am_fenrir &mdash; strong male</option>
-            <option value="am_puck">am_puck &mdash; expressive male</option>
-            <option value="am_echo">am_echo &mdash; deep male</option>
-            <option value="am_onyx">am_onyx &mdash; dark male</option>
-            <option value="am_adam">am_adam &mdash; friendly male</option>
-            <option value="bf_emma">bf_emma &mdash; British female</option>
-            <option value="bm_george">bm_george &mdash; British male</option>
-            <option value="bm_lewis">bm_lewis &mdash; British young male</option>
-          </select>
-        </div>
-        <div class="field"><label>Speech speed</label><input id="v-speed" type="range" min="0.5" max="1.8" step="0.05" /><span class="range-val" id="v-speed-val">1.0</span></div>
-        <div class="field test-field">
-          <label>Preview</label>
-          <button id="tts-test" class="small"><svg class="ic"><use href="#i-play"/></svg>Preview Voice</button>
-          <span class="hint">Plays a sample with the selected voice.</span>
-        </div>
-        <div class="field"><label>Push-to-talk hotkey</label>
-          <input id="v-hotkey" type="text" spellcheck="false" placeholder="ctrl+alt+j" />
-          <p class="hint">Global shortcut that starts/stops listening. E.g. ctrl+alt+j, alt+space, ctrl+f9. Empty disables; applies on save.</p>
-        </div>
-        <p class="hint">Say &ldquo;Hey Jarvis&rdquo; anytime, or press the mic to talk. Wake word runs locally (mic stays in use while enabled).</p>
+        <button id="quick-actions-btn" class="qa-btn" type="button"><svg class="ic"><use href="#i-plus"/></svg><span class="nav-label">Quick actions</span></button>
       </div>
+    </aside>
 
-      <div class="section" id="sec-assistant">
-        <h3><svg class="ic"><use href="#i-face"/></svg>Assistant &amp; pet</h3>
-        <div class="field switch-field">
-          <label>Start with Windows (chat hidden)</label>
-          <label class="switch">
-            <input type="checkbox" id="v-autostart" />
-            <span class="slider"></span>
-          </label>
+    <div id="main">
+      <header id="topbar">
+        <div class="search-wrap">
+          <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="global-search" type="text" placeholder="Ask Jarvis anything&hellip;" autocomplete="off" aria-label="Ask Jarvis anything" />
+          <button id="top-mic" class="icon-btn" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg class="ic"><use href="#i-mic"/></svg></button>
+          <span class="sw-sep" aria-hidden="true"></span>
+          <button id="top-settings" class="icon-btn" title="Settings" aria-label="Open settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
         </div>
-        <p class="hint">Opens Jarvis at login with the chat window hidden &mdash; the pet and tray stay available. Changes apply immediately.</p>
-        <div class="field switch-field">
-          <label>Show floating pet on desktop</label>
-          <label class="switch">
-            <input type="checkbox" id="pet-enabled" checked />
-            <span class="slider"></span>
-          </label>
-        </div>
-        <p class="hint">When off, Jarvis lives only in this window and the tray icon.</p>
-        <div class="field"><label>Assistant name</label><input id="p-name" /></div>
-        <div class="field"><label>Voice style</label><input id="p-voice" /></div>
-        <div class="field"><label>Wake word label</label><input id="p-wake" /></div>
-      </div>
+      </header>
 
-      <div class="section" id="sec-models">
-        <h3><svg class="ic"><use href="#i-cpu"/></svg>Models &amp; connection</h3>
-        <div class="field"><label>Endpoint URL</label><input id="lm-url" /></div>
-        <div class="field"><label>API key</label><input id="lm-key" placeholder="not required locally" /></div>
-        <div class="field test-field">
-          <label>Connection</label>
-          <button id="test" class="small">Test LM Studio</button>
-          <span class="hint">Checks the endpoint and lists loaded models.</span>
-        </div>
-        <details class="adv">
-          <summary>Advanced</summary>
-          <div class="adv-body">
-            <div class="field"><label>Timeout (s)</label><input id="lm-timeout" type="number" min="1" step="1" /></div>
-            <div class="field"><label>Orchestrator model ID</label><input id="m-orchestrator" /></div>
-            <div class="field"><label>Planner model ID</label><input id="m-planner" /></div>
-            <div class="field"><label>Tool / PC Control model ID</label><input id="m-tool_control" /></div>
-            <div class="field"><label>Vision model ID (on-demand)</label><input id="m-vision" /></div>
-            <div class="field"><label>Small agents model ID (3B)</label><input id="m-small" /></div>
-            <p class="hint">Model IDs must match names listed in LM Studio. Leave blank to fall back to the default model.</p>
+      <main id="pane-chat" class="pane active">
+        <div id="msgs">
+          <div id="empty-state">
+            <div class="hero-orb orb" aria-hidden="true"><i class="ring"></i><i class="core"></i></div>
+            <h1 class="es-title" id="greeting">Good morning, Ammar</h1>
+            <p class="es-sub">Ready when you are. You can ask me to do something,<br />or use the quick actions below.</p>
+            <div class="chips" id="hero-chips" role="group" aria-label="Quick actions">
+              <button class="chip" type="button" data-prompt="Help me open an app "><svg class="ic"><use href="#i-plus"/></svg>Open an app</button>
+              <button class="chip" type="button" data-prompt="Help me find a file on this PC "><svg class="ic"><use href="#i-folder"/></svg>Find a file</button>
+              <button class="chip" type="button" data-prompt="Summarize what is on my screen "><svg class="ic"><use href="#i-eye"/></svg>Summarize my screen</button>
+              <button class="chip" type="button" data-prompt="Run this routine for me: "><svg class="ic"><use href="#i-activity"/></svg>Run a routine</button>
+            </div>
+            <p class="es-hint">Say <kbd>Hey Jarvis</kbd> anytime, or press <kbd>Ctrl+Alt+J</kbd> to talk from anywhere.</p>
           </div>
-        </details>
-      </div>
-
-      <div class="section" id="sec-safety">
-        <h3><svg class="ic"><use href="#i-shield"/></svg>Safety &amp; permissions</h3>
-        <div class="field">
-          <label>Mode</label>
-          <select id="safety-mode">
-            <option value="conservative">Conservative (ask for risky actions)</option>
-            <option value="smart">Smart (session grants)</option>
-          </select>
-        </div>
-        <p class="hint">High-risk actions (deleting files, sending messages, financial sites) always ask for confirmation. Smart mode remembers approvals for the session.</p>
-        <div class="field"><label>Approval prompt timeout (s)</label><input id="approval-timeout" type="number" min="5" step="5" /></div>
-        <p class="hint">How long the approval prompt waits before treating the action as denied.</p>
-      </div>
-
-      <div class="section" id="sec-performance">
-        <h3><svg class="ic"><use href="#i-wave"/></svg>Performance</h3>
-        <p class="hint">Tune how long models stay loaded and how often vision runs. Defaults suit most PCs.</p>
-        <div class="field">
-          <label>Model memory (live)</label>
-          <div id="rm-status" class="rm-status" role="status" aria-live="polite">Asking backend&hellip;</div>
-        </div>
-        <p class="hint" id="rm-hint">Models load when a task needs them and unload after they sit idle, so memory stays free.</p>
-        <details class="adv">
-          <summary>Advanced</summary>
-          <div class="adv-body">
-            <div class="field"><label>Vision timeout (s)</label><input id="rm-vision-timeout" type="number" min="1" step="1" /></div>
-            <div class="field"><label>Unload idle after (s)</label><input id="rm-unload-idle" type="number" min="5" step="5" /></div>
-            <div class="field"><label>Load cooldown (s)</label><input id="rm-cooldown" type="number" min="0.5" step="0.5" /></div>
-            <p class="hint">Smaller idle values free video memory (VRAM) sooner; very small values can cause model reload stutter.</p>
+          <div id="typing" class="msg-row" hidden>
+            <div class="avatar orb"><i class="core"></i></div>
+            <div class="msg assistant typing-bubble"><i></i><i></i><i></i><span class="tb-text">Thinking&hellip;</span></div>
           </div>
-        </details>
-      </div>
+        </div>
+        <button id="approval-peek" type="button" hidden><svg class="ic"><use href="#i-shield"/></svg>Jarvis needs your approval &mdash; Review</button>
+        <div id="chat-input-row">
+          <div id="composer-col">
+            <div id="voice-status" role="status" aria-live="polite" hidden>
+              <span class="vs-dot"></span><span id="vs-text">Listening&hellip;</span>
+            </div>
+            <div class="composer-main">
+              <textarea id="chat-input" rows="1" placeholder="Ask Jarvis to research, create, analyze, or automate&hellip;" autocomplete="off" aria-label="Message Jarvis"></textarea>
+              <button id="mic" title="Click to talk" aria-label="Toggle microphone"><svg class="ic"><use href="#i-mic"/></svg></button>
+              <button id="send" class="primary" title="Send (Enter)" aria-label="Send message"><svg class="ic"><use href="#i-send"/></svg></button>
+            </div>
+          </div>
+        </div>
+      </main>
 
-      <div id="settings-actions">
-        <button id="save" class="primary" disabled>Save changes</button>
-        <div id="settings-note" aria-live="polite">Loading...</div>
-      </div>
-      </div>
-    </main>
+      <main id="pane-activity" class="pane">
+        <div class="page-head">
+          <div>
+            <h2>Activity</h2>
+            <p class="sec-desc">What Jarvis has been doing this session.</p>
+          </div>
+          <button id="activity-clear" class="ghost-btn" type="button">Clear</button>
+        </div>
+        <div id="activity-list" aria-live="polite">
+          <div class="act-empty" id="activity-empty">
+            <div class="act-empty-orb orb" aria-hidden="true"><i class="core"></i></div>
+            <div class="act-empty-title">No activity yet</div>
+            <p class="act-empty-sub">Actions Jarvis takes &mdash; requests, approvals, completed work &mdash; will show up here as they happen.</p>
+          </div>
+        </div>
+      </main>
+
+      <main id="pane-settings" class="pane">
+        <nav id="settings-index" aria-label="Settings sections">
+          <button type="button" data-sec="sec-voice" class="active"><svg class="ic"><use href="#i-wave"/></svg><span>Voice</span></button>
+          <button type="button" data-sec="sec-assistant"><svg class="ic"><use href="#i-face"/></svg><span>Assistant &amp; Pet</span></button>
+          <button type="button" data-sec="sec-models"><svg class="ic"><use href="#i-globe"/></svg><span>Models &amp; Connection</span></button>
+          <button type="button" data-sec="sec-safety"><svg class="ic"><use href="#i-shield"/></svg><span>Safety &amp; Permissions</span></button>
+          <button type="button" data-sec="sec-performance"><svg class="ic"><use href="#i-gauge"/></svg><span>Performance</span></button>
+        </nav>
+        <div id="settings-content">
+          <div class="section" id="sec-voice">
+            <h3>Voice</h3>
+            <p class="sec-desc">Configure how Jarvis listens, speaks and responds.</p>
+
+            <div class="card">
+              <div class="card-title">Wake Word</div>
+              <div class="field switch-field">
+                <div class="field-text">
+                  <label for="v-wake">Enable wake word</label>
+                  <p class="hint">Jarvis will listen for the wake word even when you&rsquo;re not in the app.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="v-wake" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="field test-field">
+                <button id="wake-test" class="small"><svg class="ic"><use href="#i-mic"/></svg>Test</button>
+                <span id="wake-test-out" class="hint" aria-live="polite">Press, then say &ldquo;Hey Jarvis&rdquo;.</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Microphone</div>
+              <div class="field"><label for="v-device">Input device</label>
+                <select id="v-device">
+                  <option value="">System default input</option>
+                </select>
+                <p class="hint" id="v-device-hint" aria-live="polite"></p>
+              </div>
+              <div class="field meter-field">
+                <label>Input level <span id="v-level-name" class="hint"></span></label>
+                <div class="mic-meter"><div id="v-level"></div></div>
+              </div>
+              <div class="field switch-field">
+                <div class="field-text">
+                  <label for="v-agc">Auto gain</label>
+                  <p class="hint">Automatically adjust input level.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="v-agc" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="field switch-field">
+                <div class="field-text">
+                  <label for="v-gate">Noise gate</label>
+                  <p class="hint">Reduce background noise.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="v-gate" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Spoken Responses</div>
+              <div class="field-grid">
+                <div class="field"><label for="v-engine">Engine</label>
+                  <select id="v-engine">
+                    <option value="kokoro">Kokoro &mdash; natural neural voice</option>
+                    <option value="sapi">Windows &mdash; fast, robotic</option>
+                  </select>
+                </div>
+                <div class="field"><label for="v-voice">Voice</label>
+                  <select id="v-voice">
+                    <option value="af_heart">af_heart &mdash; warm female</option>
+                    <option value="af_bella">af_bella &mdash; bright female</option>
+                    <option value="af_nicole">af_nicole &mdash; soft female</option>
+                    <option value="af_sarah">af_sarah &mdash; calm female</option>
+                    <option value="af_sky">af_sky &mdash; light female</option>
+                    <option value="af_alloy">af_alloy &mdash; neutral female</option>
+                    <option value="am_michael">am_michael &mdash; professional male</option>
+                    <option value="am_fenrir">am_fenrir &mdash; strong male</option>
+                    <option value="am_puck">am_puck &mdash; expressive male</option>
+                    <option value="am_echo">am_echo &mdash; deep male</option>
+                    <option value="am_onyx">am_onyx &mdash; dark male</option>
+                    <option value="am_adam">am_adam &mdash; friendly male</option>
+                    <option value="bf_emma">bf_emma &mdash; British female</option>
+                    <option value="bm_george">bm_george &mdash; British male</option>
+                    <option value="bm_lewis">bm_lewis &mdash; British young male</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-grid speed-row">
+                <div class="field"><label for="v-speed">Speed</label>
+                  <div class="range-wrap"><input id="v-speed" type="range" min="0.5" max="1.8" step="0.05" /><span class="range-val" id="v-speed-val">1.0</span></div>
+                </div>
+                <div class="field test-field">
+                  <button id="tts-test" class="small"><svg class="ic"><use href="#i-play"/></svg>Preview</button>
+                  <span class="hint">Plays a sample with the selected voice.</span>
+                </div>
+              </div>
+            </div>
+
+            <details class="adv">
+              <summary><svg class="ic"><use href="#i-chevron"/></svg>Advanced</summary>
+              <div class="adv-body">
+                <div class="card">
+                  <div class="field"><label for="v-threshold">Wake threshold</label><input id="v-threshold" type="number" min="0.1" max="0.95" step="0.05" /></div>
+                  <p class="hint">Lower = easier to trigger the wake word; raise it if Jarvis wakes too often on background speech.</p>
+                  <div class="field"><label for="v-hotkey">Push-to-talk hotkey</label>
+                    <input id="v-hotkey" type="text" spellcheck="false" placeholder="ctrl+alt+j" />
+                    <p class="hint">Global shortcut that starts/stops listening. E.g. ctrl+alt+j, alt+space, ctrl+f9. Empty disables; applies on save.</p>
+                  </div>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="section" id="sec-assistant">
+            <h3>Assistant &amp; Pet</h3>
+            <p class="sec-desc">Identity, desktop pet and startup behaviour.</p>
+
+            <div class="card">
+              <div class="card-title">Desktop Pet &amp; Startup</div>
+              <div class="field switch-field">
+                <div class="field-text">
+                  <label for="v-autostart">Start with Windows (chat hidden)</label>
+                  <p class="hint">Opens Jarvis at login with the chat window hidden &mdash; the pet and tray stay available. Applies immediately.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="v-autostart" />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <div class="field switch-field">
+                <div class="field-text">
+                  <label for="pet-enabled">Show floating pet on desktop</label>
+                  <p class="hint">When off, Jarvis lives only in this window and the tray icon.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="pet-enabled" data-pet-toggle checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Identity</div>
+              <div class="field-grid">
+                <div class="field"><label for="p-name">Assistant name</label><input id="p-name" /></div>
+                <div class="field"><label for="p-wake">Wake word label</label><input id="p-wake" /></div>
+              </div>
+              <div class="field"><label for="p-voice">Voice style</label><input id="p-voice" /></div>
+            </div>
+          </div>
+
+          <div class="section" id="sec-models">
+            <h3>Models &amp; Connection</h3>
+            <p class="sec-desc">Where Jarvis runs its models and how it connects.</p>
+
+            <div class="card">
+              <div class="card-title">Local Model Service</div>
+              <div class="field"><label for="lm-url">Endpoint URL</label><input id="lm-url" /></div>
+              <div class="field"><label for="lm-key">API key</label><input id="lm-key" placeholder="not required locally" /></div>
+              <div class="field test-field">
+                <button id="test" class="small"><svg class="ic"><use href="#i-globe"/></svg>Test connection</button>
+                <span class="hint">Checks the endpoint and lists loaded models.</span>
+              </div>
+            </div>
+
+            <details class="adv">
+              <summary><svg class="ic"><use href="#i-chevron"/></svg>Advanced</summary>
+              <div class="adv-body">
+                <div class="card">
+                  <div class="field"><label for="lm-timeout">Timeout (s)</label><input id="lm-timeout" type="number" min="1" step="1" /></div>
+                  <div class="field-grid">
+                    <div class="field"><label for="m-orchestrator">Orchestrator model ID</label><input id="m-orchestrator" /></div>
+                    <div class="field"><label for="m-planner">Planner model ID</label><input id="m-planner" /></div>
+                    <div class="field"><label for="m-tool_control">Tool / PC Control model ID</label><input id="m-tool_control" /></div>
+                    <div class="field"><label for="m-vision">Vision model ID (on-demand)</label><input id="m-vision" /></div>
+                    <div class="field"><label for="m-small">Small agents model ID (3B)</label><input id="m-small" /></div>
+                  </div>
+                  <p class="hint">Model IDs must match names listed in LM Studio. Leave blank to fall back to the default model.</p>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div class="section" id="sec-safety">
+            <h3>Safety &amp; Permissions</h3>
+            <p class="sec-desc">How careful Jarvis should be before it acts.</p>
+
+            <div class="card">
+              <div class="card-title">Approval Mode</div>
+              <div class="field">
+                <label for="safety-mode">Mode</label>
+                <select id="safety-mode">
+                  <option value="conservative">Conservative (ask for risky actions)</option>
+                  <option value="smart">Smart (session grants)</option>
+                </select>
+              </div>
+              <p class="hint">High-risk actions (deleting files, sending messages, financial sites) always ask for confirmation. Smart mode remembers approvals for the session.</p>
+              <div class="field"><label for="approval-timeout">Approval prompt timeout (s)</label><input id="approval-timeout" type="number" min="5" step="5" /></div>
+              <p class="hint">How long the approval prompt waits before treating the action as denied.</p>
+            </div>
+          </div>
+
+          <div class="section" id="sec-performance">
+            <h3>Performance</h3>
+            <p class="sec-desc">Tune how long models stay loaded and how often vision runs. Defaults suit most PCs.</p>
+
+            <div class="card">
+              <div class="card-title">Model Memory (live)</div>
+              <div id="rm-status" class="rm-status" role="status" aria-live="polite">Asking backend&hellip;</div>
+              <p class="hint" id="rm-hint">Models load when a task needs them and unload after they sit idle, so memory stays free.</p>
+            </div>
+
+            <details class="adv">
+              <summary><svg class="ic"><use href="#i-chevron"/></svg>Advanced</summary>
+              <div class="adv-body">
+                <div class="card">
+                  <div class="field-grid">
+                    <div class="field"><label for="rm-vision-timeout">Vision timeout (s)</label><input id="rm-vision-timeout" type="number" min="1" step="1" /></div>
+                    <div class="field"><label for="rm-unload-idle">Unload idle after (s)</label><input id="rm-unload-idle" type="number" min="5" step="5" /></div>
+                    <div class="field"><label for="rm-cooldown">Load cooldown (s)</label><input id="rm-cooldown" type="number" min="0.5" step="0.5" /></div>
+                  </div>
+                  <p class="hint">Smaller idle values free video memory (VRAM) sooner; very small values can cause model reload stutter.</p>
+                </div>
+              </div>
+            </details>
+          </div>
+
+          <div id="settings-actions">
+            <button id="save" class="primary" disabled>Save changes</button>
+            <div id="settings-note" aria-live="polite">Loading...</div>
+          </div>
+        </div>
+      </main>
+    </div>
   </div>
   <script src="ws.js"></script>
   <script src="chat.js"></script>
+  <script src="activity.js"></script>
   <script src="settings.js"></script>
   <script src="main.js"></script>
 </body>
