@@ -51,6 +51,7 @@ This project is designed to run 100% locally using your 3060 12GB GPU with LM St
 - [30. Opencode UI Revamp Master Plan](./30-OPENCODE-UI-REVAMP-MASTER-PLAN.md) - Master fix & implementation blueprint for opencode: pet overhaul, dynamic island, and workspace polish
 - [31. 2D/3D Pet Switcher & Luxury UI Polish](./31-2D-3D-PET-SWITCHER-AND-UI-POLISH.md) - 2D Vector vs 3D WebGL dual-engine companion, cheek & lighting defect fixes, chat layout centering, settings tab isolation
 - [32. Tasks, Memory & Expanded Product Surfaces](./32-TASKS-MEMORY-AND-PRODUCT-SURFACES.md) - Persistent memory & Memory Studio UI, tasks & scheduled automations, PC input automation, first-run onboarding
+- [33. Bespoke Titlebar, Cloud Models & Luxury UI Polish](./33-CUSTOM-TITLEBAR-CLOUD-MODELS-AND-UI-POLISH.md) - Frameless custom titlebar, OpenAI & Anthropic Claude key support, intelligent auto-model routing, Memory Studio dark theme fix
 
 ---
 

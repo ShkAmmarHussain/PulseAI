@@ -56,10 +56,32 @@
     </defs>
   </svg>
 
+  <header id="window-titlebar" data-tauri-drag-region>
+    <div class="titlebar-left" data-tauri-drag-region>
+      <div class="titlebar-brand" data-tauri-drag-region>
+        <svg class="mochi-mini-logo" aria-hidden="true" data-tauri-drag-region><use href="#i-mochi"/></svg>
+        <span class="titlebar-app-name" data-tauri-drag-region>Jarvis</span>
+        <span class="titlebar-version-pill" data-tauri-drag-region>v0.2</span>
+      </div>
+    </div>
+    <div class="titlebar-center" data-tauri-drag-region></div>
+    <div class="titlebar-right">
+      <button class="win-btn" id="win-min" title="Minimize" aria-label="Minimize">
+        <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg>
+      </button>
+      <button class="win-btn" id="win-max" title="Maximize" aria-label="Maximize">
+        <svg viewBox="0 0 12 12"><rect x="2.5" y="2.5" width="7" height="7" fill="none"/></svg>
+      </button>
+      <button class="win-btn close" id="win-close" title="Close" aria-label="Close">
+        <svg viewBox="0 0 12 12"><line x1="2.5" y1="2.5" x2="9.5" y2="9.5"/><line x1="9.5" y1="2.5" x2="2.5" y2="9.5"/></svg>
+      </button>
+    </div>
+  </header>
+
   <div id="app">
     <aside id="sidebar">
       <div class="brand">
-        <div class="logo orb" aria-hidden="true"><i class="core"></i></div>
+        <svg class="logo mochi-logo" aria-hidden="true"><use href="#i-mochi"/></svg>
         <div class="brand-text">
           <span class="name">Jarvis</span>
           <span class="status" role="status" aria-live="polite">
@@ -78,7 +100,7 @@
 
       <div class="sidebar-foot">
         <div class="pet-mini">
-          <div class="pet-orb orb" aria-hidden="true"><i class="core"></i></div>
+          <svg class="mochi-mini" aria-hidden="true"><use href="#i-mochi"/></svg>
           <span class="pet-mini-label">Pet Visible</span>
           <label class="switch" title="Show / hide floating pet">
             <input type="checkbox" id="pet-side-toggle" data-pet-toggle checked />
@@ -466,13 +488,35 @@
             <p class="sec-desc">Where Jarvis runs its models and how it connects.</p>
 
             <div class="card">
-              <div class="card-title">Local Model Service</div>
-              <div class="field"><label for="lm-url">Endpoint URL</label><input id="lm-url" /></div>
-              <div class="field"><label for="lm-key">API key</label><input id="lm-key" placeholder="not required locally" /></div>
+              <div class="card-title">Model Provider</div>
+              <div class="field">
+                <label>Provider</label>
+                <div class="seg" id="provider-seg" role="group" aria-label="Model provider">
+                  <button type="button" data-provider="lm_studio" class="on">LM Studio</button>
+                  <button type="button" data-provider="openai">OpenAI</button>
+                  <button type="button" data-provider="anthropic">Claude</button>
+                </div>
+                <p class="hint">Pick a provider and paste its API key &mdash; endpoints are preconfigured. Auto-routing selects the best model per task.</p>
+              </div>
+              <div class="field prov-field" id="prov-lm-field">
+                <label for="lm-url">Endpoint URL</label><input id="lm-url" />
+              </div>
+              <div class="field prov-field" id="prov-lm-key-field">
+                <label for="lm-key">API key</label><input id="lm-key" placeholder="not required locally" />
+              </div>
+              <div class="field prov-field" id="prov-openai-field" hidden>
+                <label for="prov-openai-key">OpenAI API key</label>
+                <input id="prov-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+              </div>
+              <div class="field prov-field" id="prov-anthropic-field" hidden>
+                <label for="prov-anthropic-key">Anthropic API key</label>
+                <input id="prov-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+              </div>
               <div class="field test-field">
                 <button id="test" class="small"><svg class="ic"><use href="#i-globe"/></svg>Test connection</button>
-                <span class="hint">Checks the endpoint and lists loaded models.</span>
+                <span class="hint">Checks the selected provider and lists its models.</span>
               </div>
+              <div id="lm-test-card" class="model-connect-card" hidden></div>
             </div>
 
             <details class="adv">
@@ -618,14 +662,14 @@
     <div class="ob-backdrop"></div>
     <div class="ob-panel">
       <div class="ob-head">
-        <div class="ob-logo orb" aria-hidden="true"><i class="core"></i></div>
+        <svg class="ob-logo" aria-hidden="true"><use href="#i-mochi"/></svg>
         <h2>Welcome to Jarvis</h2>
         <p class="sec-desc">Three quick checks and your companion is ready.</p>
       </div>
       <ol class="ob-stepbar" id="ob-stepbar">
         <li data-step="1" class="on"><b>1</b>Meet your companion</li>
         <li data-step="2"><b>2</b>Microphone check</li>
-        <li data-step="3"><b>3</b>Local model</li>
+        <li data-step="3"><b>3</b>Model connection</li>
       </ol>
       <section class="ob-step" id="ob-step-1">
         <h3>Step 1: Meet your companion</h3>
@@ -651,13 +695,32 @@
         <div class="mic-meter"><div id="ob-level"></div></div>
       </section>
       <section class="ob-step" id="ob-step-3" hidden>
-        <h3>Step 3: Local model verification</h3>
-        <p class="sec-desc">Jarvis answers through your local LM Studio endpoint &mdash; no cloud, no account.</p>
-        <div class="field"><label for="ob-lm-url">Endpoint</label><input id="ob-lm-url" value="http://127.0.0.1:1234/v1" spellcheck="false" /></div>
+        <h3>Step 3: Model connection</h3>
+        <p class="sec-desc">Choose where replies come from &mdash; local LM Studio, OpenAI, or Anthropic Claude. Keys stay on this PC.</p>
+        <div class="ob-row">
+          <div class="seg" id="ob-provider-seg" role="group" aria-label="Model provider">
+            <button type="button" data-provider="lm_studio" class="on">LM Studio (Local)</button>
+            <button type="button" data-provider="openai">OpenAI</button>
+            <button type="button" data-provider="anthropic">Anthropic Claude</button>
+          </div>
+        </div>
+        <div class="field ob-prov-field" id="ob-lm-field">
+          <label for="ob-lm-url">Endpoint URL</label>
+          <input id="ob-lm-url" value="http://127.0.0.1:1234/v1" spellcheck="false" />
+        </div>
+        <div class="field ob-prov-field" id="ob-openai-field" hidden>
+          <label for="ob-openai-key">OpenAI API key</label>
+          <input id="ob-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="field ob-prov-field" id="ob-anthropic-field" hidden>
+          <label for="ob-anthropic-key">Anthropic API key</label>
+          <input id="ob-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+        </div>
         <div class="ob-row">
           <button id="ob-lm-test" class="small" type="button"><svg class="ic"><use href="#i-globe"/></svg>Check connection</button>
           <span class="hint" id="ob-lm-status" aria-live="polite">Not checked yet.</span>
         </div>
+        <div id="ob-connect-card" class="model-connect-card" hidden></div>
       </section>
       <div class="ob-foot">
         <button id="ob-back" class="ghost-btn" type="button" hidden>Back</button>
@@ -673,6 +736,7 @@
   <script src="memory.js"></script>
   <script src="settings.js"></script>
   <script src="onboarding.js"></script>
+  <script src="titlebar.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

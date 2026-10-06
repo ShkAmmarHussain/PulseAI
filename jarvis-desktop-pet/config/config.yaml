@@ -3,6 +3,13 @@ lm_studio:
   api_key: dummy
   timeout_ms: 30000
   max_retries: 3
+llm:
+  provider: lm_studio # lm_studio | openai | anthropic
+  auto_routing: true # auto-pick the best model per task tier (spec 33)
+  openai:
+    api_key: "" # e.g. sk-proj-... (endpoint preconfigured)
+  anthropic:
+    api_key: "" # e.g. sk-ant-... (endpoint preconfigured)
 runtime:
   mode: local
   debug: false

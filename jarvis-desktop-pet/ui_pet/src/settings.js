@@ -72,6 +72,62 @@ document.querySelectorAll("#pet-render-seg [data-render]").forEach((b) => {
   });
 });
 
+// ---- model provider picker: lm_studio / openai / anthropic (spec 33, section 5.1) ----
+function setProviderSeg(p) {
+  document.querySelectorAll("#provider-seg [data-provider]").forEach((b) => {
+    b.classList.toggle("on", b.getAttribute("data-provider") === p);
+  });
+}
+function selectedProvider() {
+  const on = document.querySelector("#provider-seg [data-provider].on");
+  return on ? on.getAttribute("data-provider") : "lm_studio";
+}
+function showProvFields(p) {
+  const map = {
+    "prov-lm-field": p === "lm_studio",
+    "prov-lm-key-field": p === "lm_studio",
+    "prov-openai-field": p === "openai",
+    "prov-anthropic-field": p === "anthropic",
+  };
+  Object.keys(map).forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.hidden = !map[id];
+  });
+}
+window.setProviderSeg = setProviderSeg;
+document.querySelectorAll("#provider-seg [data-provider]").forEach((b) => {
+  b.addEventListener("click", () => {
+    const p = b.getAttribute("data-provider");
+    setProviderSeg(p);
+    showProvFields(p);
+    setDirty(true);
+  });
+});
+function providerKeyOf(p) {
+  if (p === "openai") return (document.getElementById("prov-openai-key") || {}).value || "";
+  if (p === "anthropic") return (document.getElementById("prov-anthropic-key") || {}).value || "";
+  return (document.getElementById("lm-key") || {}).value || "";
+}
+function testProvider() {
+  const p = selectedProvider();
+  const key = providerKeyOf(p);
+  note.textContent = "Testing " + Jarvis.providerName(p) + " ...";
+  note.classList.remove("ok");
+  Jarvis.testLm(p === "lm_studio" ? val("lm-url") : null, p, key);
+}
+let provTestT = null;
+["prov-openai-key", "prov-anthropic-key"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("input", () => {
+    // a pasted key validates immediately - no endpoint to configure (spec 33)
+    clearTimeout(provTestT);
+    const key = el.value.trim();
+    if (key.length < 10) return;
+    provTestT = setTimeout(testProvider, 900);
+  });
+});
+
 function fill(s) {
   current = s;
   const cfg = s.config || {};
@@ -79,6 +135,13 @@ function fill(s) {
   setv("lm-url", lm.base_url);
   setv("lm-key", lm.api_key);
   setv("lm-timeout", lm.timeout_ms == null ? 30 : lm.timeout_ms / 1000);
+
+  const llm = cfg.llm || {};
+  const prov = llm.provider === "openai" || llm.provider === "anthropic" ? llm.provider : "lm_studio";
+  setProviderSeg(prov);
+  showProvFields(prov);
+  setv("prov-openai-key", ((llm.openai || {}).api_key) || "");
+  setv("prov-anthropic-key", ((llm.anthropic || {}).api_key) || "");
 
   const ar = s.agents && s.agents.agent_roles ? s.agents.agent_roles : {};
   setv("m-orchestrator", (ar.orchestrator || {}).model_id);
@@ -140,6 +203,11 @@ function collect() {
   s.config.lm_studio.base_url = val("lm-url");
   s.config.lm_studio.api_key = val("lm-key");
   s.config.lm_studio.timeout_ms = (Number(val("lm-timeout")) || 30) * 1000;
+  s.config.llm = s.config.llm || {};
+  s.config.llm.provider = selectedProvider();
+  if (typeof s.config.llm.auto_routing === "undefined") s.config.llm.auto_routing = true;
+  s.config.llm.openai = Object.assign({}, s.config.llm.openai || {}, { api_key: val("prov-openai-key").trim() });
+  s.config.llm.anthropic = Object.assign({}, s.config.llm.anthropic || {}, { api_key: val("prov-anthropic-key").trim() });
   s.config.resource_manager = s.config.resource_manager || {};
   s.config.resource_manager.vision_timeout_ms = (Number(val("rm-vision-timeout")) || 20) * 1000;
   s.config.resource_manager.unload_idle_ms = (Number(val("rm-unload-idle")) || 60) * 1000;
@@ -266,12 +334,7 @@ document.getElementById("save").onclick = () => {
   ownSaveAt = Date.now();
   Jarvis.saveSettings(collect());
 };
-document.getElementById("test").onclick = () => {
-  const url = val("lm-url");
-  note.textContent = "Testing " + url + " ...";
-  note.classList.remove("ok");
-  Jarvis.testLm(url);
-};
+document.getElementById("test").onclick = () => testProvider();
 
 document.getElementById("v-speed").addEventListener("input", (e) => {
   document.getElementById("v-speed-val").textContent = Number(e.target.value).toFixed(2);
@@ -387,11 +450,18 @@ if (asCb) {
 
 Jarvis.on("lm_test", (d) => {
   const p = d.payload || {};
+  const prov = p.provider || "lm_studio";
+  Jarvis.renderConnectCard(document.getElementById("lm-test-card"), p);
   if (p.ok) {
-    note.textContent = "LM Studio OK. Models: " + ((p.models || []).join(", ") || "none loaded");
+    note.textContent =
+      prov === "lm_studio"
+        ? "LM Studio OK. Models: " + ((p.models || []).join(", ") || "none loaded")
+        : Jarvis.providerName(prov) + " OK. " + ((p.models || []).length || 0) + " model(s) available.";
     note.classList.add("ok");
   } else {
-    note.textContent = "Cannot reach LM Studio (" + (p.base_url || "") + "): " + (p.error || "unknown error");
+    note.textContent =
+      "Cannot reach " + Jarvis.providerName(prov) + (p.base_url ? " (" + p.base_url + ")" : "") +
+      ": " + (p.error || "unknown error");
     note.classList.remove("ok");
   }
 });

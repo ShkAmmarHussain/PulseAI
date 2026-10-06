@@ -72,7 +72,12 @@ class MemoryAgent(BaseAgent):
             logger.exception("memory recall injection failed")
         if web_ctx:
             system += "\n\n" + web_ctx
-        model = role.get("model_id") or "llama-3.2-3b-instruct"
+        # auto-tier (spec 33, section 4): fast model for quick answers,
+        # heavy model when the prompt is complex
+        from core import model_router
+
+        fallback = role.get("model_id") or "llama-3.2-3b-instruct"
+        model = model_router.route_query(self.cfg or {}, query, fallback=fallback)
         return await chat(
             self.cfg or {},
             model,

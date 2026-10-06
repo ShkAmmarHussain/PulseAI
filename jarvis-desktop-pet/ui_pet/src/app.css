@@ -183,7 +183,7 @@ button:disabled { cursor: default; }
 
 /* ---------- App shell (sections 5, 6) ---------- */
 
-#app { height: 100vh; display: flex; position: relative; z-index: 1; }
+#app { height: calc(100vh - 36px); margin-top: 36px; display: flex; position: relative; z-index: 1; }
 
 #sidebar {
   width: 248px;
@@ -1178,7 +1178,7 @@ button:disabled { cursor: default; }
 .field label { font-size: var(--fs-label); color: var(--text-secondary); font-weight: 600; }
 .field-text label { color: var(--text-primary); font-size: 13.5px; }
 .field-text .hint { margin: 0; }
-.field input[type="text"], .field input[type="number"], .field input:not([type]), .field select {
+.field input[type="text"], .field input[type="password"], .field input[type="number"], .field input:not([type]), .field select {
   background: var(--bg-input);
   border: 1px solid var(--border-default);
   border-radius: 10px;
@@ -1188,6 +1188,13 @@ button:disabled { cursor: default; }
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
 .field input::placeholder { color: var(--text-disabled); }
+.field input:-webkit-autofill,
+.field input:-webkit-autofill:hover,
+.field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text-primary, #eceef4);
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-input) inset;
+  caret-color: var(--text-primary, #eceef4);
+}
 .field input:focus, .field select:focus {
   outline: none;
   border-color: rgba(245, 158, 11, 0.55);
@@ -2287,4 +2294,134 @@ body.dock-window-body { background: transparent !important; }
 @media (max-width: 560px) {
   .ob-choices { grid-template-columns: 1fr; }
   .ob-stepbar li span, .ob-stepbar li { font-size: 11px; }
+}
+
+/* ---------- Bespoke frameless titlebar (spec 33, section 2.4) ---------- */
+#window-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(18, 19, 23, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  user-select: none;
+  -webkit-user-select: none;
+  z-index: 999;
+}
+.titlebar-left { display: flex; align-items: center; height: 100%; }
+.titlebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 14px;
+  height: 100%;
+}
+.titlebar-brand .mochi-mini-logo { width: 18px; height: 18px; display: block; }
+.titlebar-app-name { font-size: 12.5px; font-weight: 700; color: #eceef4; letter-spacing: 0.02em; }
+.titlebar-version-pill {
+  font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08); color: #a0a4b8;
+}
+.titlebar-center { flex: 1; height: 100%; }
+.titlebar-right { display: flex; height: 100%; }
+.win-btn {
+  width: 44px; height: 100%; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; color: #8b8f9f; cursor: pointer;
+  transition: all 120ms ease; padding: 0;
+}
+.win-btn svg { width: 11px; height: 11px; stroke: currentColor; stroke-width: 1.25; fill: none; }
+.win-btn:hover { background: rgba(255, 255, 255, 0.08); color: #ffffff; }
+.win-btn.close:hover { background: #e11d48; color: #ffffff; }
+
+/* ---------- Mochi mascot replaces legacy Saturn orbs (spec 33, section 5.2) ---------- */
+.brand .mochi-logo { width: 30px; height: 30px; display: block; flex-shrink: 0; }
+.brand .mochi-logo.sounding { animation: logo-sound 0.5s var(--ease-out); }
+.pet-mini .mochi-mini { width: 26px; height: 26px; display: block; flex-shrink: 0; }
+.ob-logo { display: block; animation: mochi-float 6s ease-in-out 0.6s infinite; filter: drop-shadow(0 6px 14px rgba(245, 158, 11, 0.25)); }
+
+/* ---------- Memory Studio form: dark inputs, amber focus (spec 33, section 6.1) ---------- */
+.memory-add-form select,
+.memory-add-form textarea {
+  background: #14151a !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #eceef4 !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  font-family: inherit;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.memory-add-form select:focus,
+.memory-add-form textarea:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2) !important;
+}
+.memory-add-form select option { background: #1a1b22; color: #eceef4; }
+
+/* ---------- Pill-shaped primary controls (spec 33, section 6.2) ---------- */
+button.primary,
+.memory-add-actions button.primary,
+#memory-add-btn,
+#settings-actions .primary {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: none;
+  border-radius: 999px;
+  color: #121316;
+  font-weight: 700;
+  padding: 8px 18px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(245, 158, 11, 0.25);
+  transition: all 140ms ease;
+}
+button.primary:hover,
+.memory-add-actions button.primary:hover,
+#memory-add-btn:hover,
+#settings-actions .primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
+  color: #121316;
+}
+button.primary:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-tertiary, #7e8296);
+  box-shadow: none;
+  transform: none;
+}
+
+/* ---------- Model provider picker + connection cards (spec 33, section 5.1) ---------- */
+.prov-field[hidden],
+.ob-prov-field[hidden] { display: none !important; }
+#provider-seg button.on,
+#ob-provider-seg button.on {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.14));
+  color: #f5c26b;
+}
+.model-connect-card {
+  margin-top: 12px;
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+.model-connect-card.success { border-color: rgba(95, 203, 145, 0.4); background: rgba(95, 203, 145, 0.07); }
+.model-connect-card.error { border-color: rgba(255, 110, 110, 0.4); background: rgba(255, 110, 110, 0.07); }
+.model-connect-card[hidden] { display: none !important; }
+.mcc-head {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; font-weight: 700; color: var(--text-primary, #eceef4);
+}
+.model-connect-card.success .mcc-head { color: #7fd8ab; }
+.model-connect-card.error .mcc-head { color: #ff9b9b; }
+.mcc-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; flex: none; }
+.mcc-detail { margin-top: 5px; font-size: 12px; line-height: 1.55; color: var(--text-secondary, #b9bccb); word-break: break-word; }
+.mcc-models { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 5px; }
+.mcc-model {
+  font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07); color: var(--text-secondary, #b9bccb);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }

@@ -17,13 +17,17 @@
   const lmBtn = document.getElementById("ob-lm-test");
   const lmStatus = document.getElementById("ob-lm-status");
   const lmUrl = document.getElementById("ob-lm-url");
+  const lmCard = document.getElementById("ob-connect-card");
   const choices = document.getElementById("ob-choices");
+  const providerSeg = document.getElementById("ob-provider-seg");
 
   let step = 1;
   let petStyle = "2d";
+  let obProvider = "lm_studio";
   let micPeak = 0;
   let micStopTimer = null;
   let opened = false;
+  let provTestT = null;
 
   function setStep(n) {
     step = Math.max(1, Math.min(3, n));
@@ -104,21 +108,68 @@
     };
   }
 
-  // ---- step 3: local model check ----
+  // ---- step 3: provider picker + connection check (spec 33, section 5.1) ----
+  function obKeyOf(p) {
+    if (p === "openai") return (document.getElementById("ob-openai-key") || {}).value || "";
+    if (p === "anthropic") return (document.getElementById("ob-anthropic-key") || {}).value || "";
+    return lmUrl ? lmUrl.value : "";
+  }
+  function showObProvFields(p) {
+    const map = {
+      "ob-lm-field": p === "lm_studio",
+      "ob-openai-field": p === "openai",
+      "ob-anthropic-field": p === "anthropic",
+    };
+    Object.keys(map).forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.hidden = !map[id];
+    });
+  }
+  function setObProvider(p) {
+    obProvider = p === "openai" || p === "anthropic" ? p : "lm_studio";
+    if (providerSeg) {
+      providerSeg.querySelectorAll("[data-provider]").forEach((b) => {
+        b.classList.toggle("on", b.getAttribute("data-provider") === obProvider);
+      });
+    }
+    showObProvFields(obProvider);
+  }
+  function testProvider() {
+    if (lmStatus) lmStatus.textContent = "Checking " + Jarvis.providerName(obProvider) + "...";
+    if (lmCard) lmCard.hidden = true;
+    Jarvis.testLm(obProvider === "lm_studio" ? (lmUrl ? lmUrl.value : "") : null, obProvider, obKeyOf(obProvider));
+  }
+  if (providerSeg) {
+    providerSeg.querySelectorAll("[data-provider]").forEach((b) => {
+      b.addEventListener("click", () => {
+        setObProvider(b.getAttribute("data-provider"));
+        if (lmStatus) lmStatus.textContent = "Not checked yet.";
+        if (lmCard) lmCard.hidden = true;
+      });
+    });
+  }
+  ["ob-openai-key", "ob-anthropic-key"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("input", () => {
+      // pasted keys validate instantly - no endpoint to configure (spec 33)
+      clearTimeout(provTestT);
+      if (el.value.trim().length < 10) return;
+      provTestT = setTimeout(testProvider, 900);
+    });
+  });
   Jarvis.on("lm_test", (d) => {
     const p = d.payload || {};
+    Jarvis.renderConnectCard(lmCard, p, obProvider);
     if (lmStatus) {
       lmStatus.textContent = p.ok
-        ? "Connected \u2014 " + (p.models && p.models.length ? p.models.join(", ") : "endpoint reachable") + "."
-        : "Could not reach the endpoint: " + (p.error || "unknown error");
+        ? "Connected \u2014 " + (p.models && p.models.length ? p.models.length + " model(s) available." : "provider reachable.")
+        : "Could not connect: " + (p.error || "unknown error");
       lmStatus.classList.toggle("ok", !!p.ok);
     }
   });
   if (lmBtn) {
-    lmBtn.onclick = () => {
-      if (lmStatus) lmStatus.textContent = "Checking\u2026";
-      Jarvis.testLm(lmUrl ? lmUrl.value : "");
-    };
+    lmBtn.onclick = () => testProvider();
   }
 
   // ---- navigation ----
@@ -128,7 +179,7 @@
     finishBtn.onclick = () => {
       finishBtn.disabled = true;
       Jarvis.send({ type: "onboarding_done", payload: { pet_style: petStyle } });
-      // persist the chosen companion style with the regular settings payload
+      // persist the chosen companion style + provider with the settings payload
       let saved = false;
       const once = (d) => {
         if (saved) return;
@@ -136,12 +187,25 @@
         if (!s || !s.config) return;
         saved = true;
         s.config.runtime = s.config.runtime || {};
-        const cur = s.config.runtime.pet_render_mode || "2d";
-        if (cur === petStyle) {
+        const curStyle = s.config.runtime.pet_render_mode || "2d";
+        s.config.llm = s.config.llm || {};
+        const keyO = obKeyOf("openai").trim();
+        const keyA = obKeyOf("anthropic").trim();
+        const llmChanged =
+          (s.config.llm.provider || "lm_studio") !== obProvider ||
+          (((s.config.llm.openai || {}).api_key) || "") !== keyO ||
+          (((s.config.llm.anthropic || {}).api_key) || "") !== keyA;
+        if (curStyle === petStyle && !llmChanged) {
           close();
           return;
         }
-        s.config.runtime.pet_render_mode = petStyle;
+        if (curStyle !== petStyle) s.config.runtime.pet_render_mode = petStyle;
+        if (llmChanged) {
+          s.config.llm.provider = obProvider;
+          if (typeof s.config.llm.auto_routing === "undefined") s.config.llm.auto_routing = true;
+          s.config.llm.openai = Object.assign({}, s.config.llm.openai || {}, { api_key: keyO });
+          s.config.llm.anthropic = Object.assign({}, s.config.llm.anthropic || {}, { api_key: keyA });
+        }
         Jarvis.saveSettings(s);
         close();
       };

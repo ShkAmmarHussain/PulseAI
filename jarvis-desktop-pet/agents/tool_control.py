@@ -76,7 +76,13 @@ class ToolControlAgent(BaseAgent):
         if text.startswith("File not found") or text.startswith("Failed"):
             return text
         roles = (((self.cfg or {}).get("agents") or {}).get("agent_roles")) or {}
-        model = (roles.get("orchestrator") or {}).get("model_id") or "qwen3-8b"
+        from core import model_router
+
+        # file summarization is a heavy task (spec 33, section 4.1)
+        model = model_router.route(
+            self.cfg, "heavy",
+            fallback=(roles.get("orchestrator") or {}).get("model_id") or "qwen3-8b",
+        )
         from pathlib import Path
 
         name = Path(path).name

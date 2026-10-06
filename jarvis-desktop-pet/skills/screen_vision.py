@@ -33,8 +33,11 @@ def capture(region: dict | None = None, max_width: int = 1280) -> tuple[bytes, i
 
 
 def _vision_model(cfg: dict) -> str:
+    from core import model_router
+
     roles = (((cfg or {}).get("agents") or {}).get("agent_roles")) or {}
-    return (roles.get("vision") or {}).get("model_id") or "qwen2.5-vl-7b-instruct"
+    fallback = (roles.get("vision") or {}).get("model_id") or "qwen2.5-vl-7b-instruct"
+    return model_router.route(cfg, "vision", fallback=fallback)
 
 
 def describe_sync(cfg: dict, query: str, region: dict | None = None) -> str:

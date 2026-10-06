@@ -150,7 +150,11 @@ class WSBridge:
         elif et == "test_lm_studio":
             from core.llm import test_lm
 
-            res = await test_lm(payload.get("url"))
+            res = await test_lm(
+                payload.get("url"),
+                provider=payload.get("provider"),
+                api_key=payload.get("api_key"),
+            )
             await self._send(ws, {"type": "lm_test", "payload": res, "correlation_id": cid})
         elif et == "set_pet":
             enabled = bool(payload.get("enabled", True))
