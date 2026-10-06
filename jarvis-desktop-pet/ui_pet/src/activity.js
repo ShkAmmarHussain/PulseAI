@@ -231,4 +231,83 @@
       topDay = null;
     };
   }
+
+  // ---- active timers & reminders (spec 32, section 3.2) ----
+  const timersWrap = document.getElementById("task-timers");
+  const timersList = document.getElementById("task-timers-list");
+  let activeTasks = [];
+
+  function fmtLeft(sec) {
+    if (sec <= 0) return "0s";
+    if (sec < 60) return Math.ceil(sec) + "s";
+    if (sec < 3600) return Math.floor(sec / 60) + "m " + Math.round(sec % 60) + "s";
+    return Math.floor(sec / 3600) + "h " + Math.floor((sec % 3600) / 60) + "m";
+  }
+
+  function renderTimers() {
+    if (!timersWrap || !timersList) return;
+    const now = Date.now() / 1000;
+    const chips = activeTasks.filter(
+      (t) => t && t.status === "active" && t.type === "reminder" && Number(t.due_timestamp) > 0
+    );
+    timersWrap.hidden = chips.length === 0;
+    timersList.innerHTML = "";
+    chips.forEach((t) => {
+      const chip = document.createElement("div");
+      chip.className = "task-chip";
+      chip.dataset.id = t.id || "";
+      chip.dataset.due = String(t.due_timestamp || 0);
+      const title = document.createElement("span");
+      title.className = "task-chip-title";
+      title.textContent = t.title || "Reminder";
+      const left = document.createElement("span");
+      left.className = "task-chip-left";
+      const cancel = document.createElement("button");
+      cancel.className = "task-chip-cancel";
+      cancel.type = "button";
+      cancel.textContent = "Cancel";
+      chip.appendChild(title);
+      chip.appendChild(left);
+      chip.appendChild(cancel);
+      timersList.appendChild(chip);
+    });
+    updateCountdowns();
+  }
+
+  function updateCountdowns() {
+    if (!timersList || !timersWrap || timersWrap.hidden) return;
+    const now = Date.now() / 1000;
+    timersList.querySelectorAll(".task-chip").forEach((el) => {
+      const leftEl = el.querySelector(".task-chip-left");
+      if (!leftEl) return;
+      const due = Number(el.dataset.due || 0);
+      leftEl.textContent = fmtLeft(Math.max(0, due - now)) + " remaining";
+    });
+  }
+  setInterval(updateCountdowns, 1000);
+
+  if (timersList) {
+    timersList.addEventListener("click", (e) => {
+      const btn = e.target.closest(".task-chip-cancel");
+      if (!btn) return;
+      const chip = btn.closest(".task-chip");
+      if (!chip || !chip.dataset.id) return;
+      Jarvis.send({ type: "tasks.cancel", payload: { task_id: chip.dataset.id } });
+    });
+  }
+
+  function takeTasks(d) {
+    activeTasks = ((d && d.payload) || {}).tasks || [];
+    renderTimers();
+  }
+  ["tasks.updated", "tasks.list", "tasks.create", "tasks.cancel"].forEach((t) => {
+    Jarvis.on(t, takeTasks);
+  });
+  Jarvis.on("task.fired", () => {
+    if (window.Earcons && typeof window.Earcons.play === "function") window.Earcons.play("snd_wake");
+    renderTimers();
+  });
+  const requestTasks = () => Jarvis.send({ type: "tasks.list" });
+  document.addEventListener("jarvis:connected", requestTasks);
+  requestTasks();
 })();

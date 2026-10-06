@@ -109,6 +109,105 @@ def _route_timer(t: str):
     return {"action": "set", "seconds": seconds}
 
 
+# ---------- spec 32: memory capture + reminders ----------
+
+_REMEMBER_RE = re.compile(
+    r"^(?:please\s+)?(?:remember|note|remember\s+that|note\s+that|keep\s+in\s+mind|make\s+a\s+mental\s+note)"
+    r"\s*(?:that\s+|about\s+|:\s*|\s+)(?P<content>.+)$",
+    re.IGNORECASE,
+)
+_REMIND_IN_RE = re.compile(
+    r"^remind\s+me\s+in\s+(?P<n>\d{1,4})\s*(?P<unit>seconds?|secs?|minutes?|mins?|hours?|hrs?)"
+    r"\s*(?:to\s+(?P<title>.+?))?[.!?]*$",
+    re.IGNORECASE,
+)
+_REMIND_TO_RE = re.compile(
+    r"^remind\s+me\s+to\s+(?P<title>.+?)\s+in\s+(?P<n>\d{1,4})\s*(?P<unit>seconds?|secs?|minutes?|mins?|hours?|hrs?)[.!?]*$",
+    re.IGNORECASE,
+)
+_RECURRING_RE = re.compile(
+    r"^(?:every|each)\s+(?P<n>\d{1,4})\s*(?P<unit>seconds?|secs?|minutes?|mins?|hours?|hrs?)\s+"
+    r"(?:please\s+)?(?:check\s+)?(?:my\s+)?(?:system\s+)?(?P<what>memory|status)",
+    re.IGNORECASE,
+)
+
+def _unit_mult(unit: str) -> int:
+    u = unit.lower()
+    if u.startswith("sec"):
+        return 1
+    if u.startswith("min"):
+        return 60
+    return 3600
+
+
+def _route_memory(t: str):
+    m = _REMEMBER_RE.match(t.strip())
+    if not m:
+        return None
+    content = m.group("content").strip().strip("\"'")
+    if len(content) < 3:
+        return None
+    return {"content": content[:500]}
+
+
+def _route_remind(t: str):
+    m = _REMIND_IN_RE.match(t.strip())
+    if m:
+        seconds = int(m.group("n")) * _unit_mult(m.group("unit"))
+        title = (m.group("title") or "").strip() or "Reminder"
+    else:
+        m = _REMIND_TO_RE.match(t.strip())
+        if not m:
+            return None
+        seconds = int(m.group("n")) * _unit_mult(m.group("unit"))
+        title = (m.group("title") or "").strip() or "Reminder"
+    if seconds <= 0 or seconds > 24 * 3600:
+        return None
+    return {"action": "set", "seconds": seconds, "kind": "reminder", "title": title[:140]}
+
+
+def _route_recurring(t: str):
+    m = _RECURRING_RE.match(t.strip())
+    if not m:
+        return None
+    seconds = int(m.group("n")) * _unit_mult(m.group("unit"))
+    if seconds < 5 or seconds > 24 * 3600:
+        return None
+    what = m.group("what").lower()
+    return {
+        "action": "create",
+        "seconds": seconds,
+        "kind": what,
+        "title": f"Check system memory every {m.group('n')} {m.group('unit')}",
+    }
+
+
+_REMEMBER_PREFIX_RE = re.compile(
+    r"^\s*(?:please\s+)?(?:remember|note|keep\s+in\s+mind|make\s+a\s+mental\s+note)"
+    r"\s*(?:that\s+|about\s+|:\s*)?",
+    re.IGNORECASE,
+)
+
+
+def _restore_case(action: str, params: dict, raw: str) -> dict:
+    """route_one() matches on a lowercased copy; put the speaker's original
+    casing back onto stored memory content and reminder titles."""
+    if not raw:
+        return params
+    p = dict(params)
+    if action == "memory_remember":
+        content = _REMEMBER_PREFIX_RE.sub("", raw, count=1).strip().strip("\"'")
+        if content:
+            p["content"] = content[:500]
+    elif action == "system_timer" and p.get("kind") == "reminder":
+        raw = raw.strip()
+        m = re.match(r"^remind\s+me\s+to\s+(.+?)\s+in\s+\d{1,4}\s*[a-z]+", raw, re.I) \
+            or re.match(r"^remind\s+me\s+in\s+\d{1,4}\s*[a-z]+\s+to\s+(.+?)$", raw, re.I)
+        if m:
+            p["title"] = m.group(1).strip().rstrip(".!?")[:140]
+    return p
+
+
 def _route_app(t: str):
     m = re.match(r"^(?:please\s+)?(?:open|launch|start|run|bring\s+up)\s+(?:the\s+|my\s+)?(.+?)[.!?]*$", t)
     if not m:
@@ -129,7 +228,10 @@ def route_one(text: str):
     if not t:
         return None
     for family, fn in (
+        ("memory_remember", _route_memory),
         ("system_timer", _route_timer),
+        ("system_timer", _route_remind),
+        ("task_recurring", _route_recurring),
         ("system_power", _route_power),
         ("media_volume", _route_volume),
         ("media_control", _route_media),
@@ -419,6 +521,7 @@ class FastRouter:
             create_event("ui.chat", "chat", {"role": "user", "text": text.strip()}, correlation_id=cid)
         )
         replies = []
+        intents = [(a, _restore_case(a, p, text), c) for a, p, c in intents]
         for action, params, conf in intents:
             latency = (time.perf_counter() - t0) * 1000.0
             await self.bus.publish(
@@ -476,6 +579,10 @@ class FastRouter:
                 return await self._power(params.get("action"), cid)
             if action == "system_timer":
                 return await self._timer(params)
+            if action == "memory_remember":
+                return await self._remember(params)
+            if action == "task_recurring":
+                return await self._recurring(params)
         except Exception:
             logger.exception("fast path action failed (%s %s)", action, params)
             return f"Could not run {action}."
@@ -495,30 +602,86 @@ class FastRouter:
 
     async def _timer(self, params: dict):
         seconds = int(params.get("seconds") or 0)
+        tm = getattr(self, "tasks", None)
+        kind = str(params.get("kind") or "timer")
         if params.get("action") == "cancel" or seconds <= 0:
-            n = len(self._timers)
+            n = 0
+            if tm is not None:
+                n += tm.cancel_kind("timer")
             for tsk in list(self._timers):
                 tsk.cancel()
+            n += len(self._timers)
             self._timers.clear()
             return f"Cancelled {n} timer(s)." if n else "No timers to cancel."
         label = self._timer_label(seconds)
+        title = str(params.get("title") or label)
+        if tm is not None:
+            # persisted + surfaced as a live countdown pill in the Activity pane
+            tm.create_reminder(title=title, seconds=seconds, kind=kind)
+            await tm.notify()
+        else:
+            # standalone FastRouter (no app wiring): in-memory timer only
 
-        async def _fire():
-            try:
-                await asyncio.sleep(seconds)
-                await asyncio.to_thread(_chime_block)
-                await self.bus.publish(
-                    create_event("ui.chat", "chat", {"role": "assistant", "text": f"Done - {label} finished."})
-                )
-                await self.bus.publish(create_event("voice.say", "say", {"text": f"Done. {label} finished."}))
-            except asyncio.CancelledError:
-                raise
-            finally:
-                self._timers.discard(task)
+            async def _fire():
+                try:
+                    await asyncio.sleep(seconds)
+                    await asyncio.to_thread(_chime_block)
+                    await self.bus.publish(
+                        create_event("ui.chat", "chat", {"role": "assistant", "text": f"Done - {label} finished."})
+                    )
+                    await self.bus.publish(create_event("voice.say", "say", {"text": f"Done. {label} finished."}))
+                except asyncio.CancelledError:
+                    raise
+                finally:
+                    self._timers.discard(task)
 
-        task = asyncio.create_task(_fire())
-        self._timers.add(task)
-        return f"Timer set for {self._timer_label(seconds)}."
+            task = asyncio.create_task(_fire())
+            self._timers.add(task)
+        if kind == "reminder":
+            dur = self._duration_label(seconds)
+            if title and title.lower() != "reminder":
+                return f"Reminder set for {dur} - {title}."
+            return f"Reminder set for {dur}."
+        return f"Timer set for {label}."
+
+    async def _remember(self, params: dict) -> str:
+        content = str(params.get("content") or "").strip()
+        if not content:
+            return "Nothing to remember."
+        try:
+            from skills import memory_skills
+
+            fact = await asyncio.to_thread(memory_skills.remember, content)
+            snap = await asyncio.to_thread(memory_skills.snapshot)
+        except Exception:
+            logger.exception("memory remember failed")
+            return "I could not save that to memory."
+        if self.bus is not None:
+            await self.bus.publish(create_event("memory.updated", "memory.updated", snap))
+        return f"Saved to memory ({fact.get('category', 'facts')}): {content}"
+
+    async def _recurring(self, params: dict) -> str:
+        tm = getattr(self, "tasks", None)
+        seconds = int(params.get("seconds") or 0)
+        title = str(params.get("title") or "Recurring task")
+        if tm is None or seconds <= 0:
+            return "Recurring tasks are not available right now."
+        tm.create_recurring(title, seconds, "system_memory")
+        await tm.notify()
+        return f"Started recurring task: {title}."
+
+    @staticmethod
+    def _duration_label(seconds: int) -> str:
+        if seconds % 3600 == 0 and seconds >= 3600:
+            n = seconds // 3600
+            unit = "hour" if n == 1 else "hours"
+        elif seconds % 60 == 0 and seconds >= 60:
+            n = seconds // 60
+            unit = "minute" if n == 1 else "minutes"
+        else:
+            n = seconds
+            unit = "second" if n == 1 else "seconds"
+        return f"{n} {unit}"
 
     @staticmethod
     def _timer_label(seconds: int) -> str:

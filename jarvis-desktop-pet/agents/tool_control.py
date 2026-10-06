@@ -15,7 +15,7 @@ class ToolControlAgent(BaseAgent):
         self.bus.subscribe("tool.execute", self.handle)
 
     async def _execute(self, s: dict) -> str:
-        from skills import app_control, browser, file_ops, screen_vision, shell, web_search
+        from skills import app_control, browser, file_ops, input_control, screen_vision, shell, web_search
 
         name = s.get("action", "noop")
         if name == "vision_describe":
@@ -44,6 +44,18 @@ class ToolControlAgent(BaseAgent):
             return file_ops.list_dir(s.get("target", "."))
         if name == "run_shell":
             return shell.run_command(s.get("cmd", ""))
+        if name == "type_text":
+            # approved input automation (spec 32, section 4)
+            return input_control.type_text(s.get("text", ""))
+        if name == "press_hotkey":
+            return input_control.press_hotkey(s.get("keys") or [])
+        if name == "click":
+            return input_control.click(
+                int(s.get("x") or 0), int(s.get("y") or 0),
+                button=str(s.get("button") or "left"), clicks=int(s.get("clicks") or 1),
+            )
+        if name == "move_mouse":
+            return input_control.move_mouse(int(s.get("x") or 0), int(s.get("y") or 0))
         if name == "web_search":
             results = await web_search.search(s.get("query", ""), max_results=5)
             if not results:
@@ -51,8 +63,6 @@ class ToolControlAgent(BaseAgent):
             return "Web results:\n" + web_search.format_results(results)
         if name == "respond":
             return s.get("text", "ok")
-        if name == "type_text":
-            return f"Typed text (input control not yet enabled): {s.get('text', '')[:60]}"
         return f"executed {name}"
 
     async def _summarize_file(self, path: str) -> str:

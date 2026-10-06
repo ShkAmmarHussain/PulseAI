@@ -276,6 +276,132 @@ class WSBridge:
                     "correlation_id": cid,
                 },
             )
+        elif et in ("memory.list", "memory_list"):
+            state = await self._memory_state()
+            await self._send(ws, {"type": "memory.list", "payload": state, "correlation_id": cid})
+        elif et in ("memory.add", "memory_add"):
+            reply = await self._memory_add(payload, cid)
+            await self._send(ws, {"type": "memory.add", "payload": reply, "correlation_id": cid})
+        elif et in ("memory.delete", "memory_delete"):
+            reply = await self._memory_delete(str(payload.get("id") or ""), cid)
+            await self._send(ws, {"type": "memory.delete", "payload": reply, "correlation_id": cid})
+        elif et in ("memory.clear", "memory_clear"):
+            reply = await self._memory_clear(cid)
+            await self._send(ws, {"type": "memory.clear", "payload": reply, "correlation_id": cid})
+        elif et in ("tasks.list", "tasks_list"):
+            tm = getattr(self, "tasks", None)
+            await self._send(
+                ws, {"type": "tasks.list", "payload": tm.snapshot() if tm else {"tasks": []},
+                     "correlation_id": cid}
+            )
+        elif et in ("tasks.create", "tasks_create"):
+            reply = await self._task_create(payload, cid)
+            await self._send(ws, {"type": "tasks.create", "payload": reply, "correlation_id": cid})
+        elif et in ("tasks.cancel", "tasks_cancel"):
+            reply = await self._task_cancel(str(payload.get("task_id") or ""), cid)
+            await self._send(ws, {"type": "tasks.cancel", "payload": reply, "correlation_id": cid})
+        elif et == "onboarding_state":
+            await self._send(
+                ws, {"type": "onboarding_state", "payload": await self._onboarding_state(),
+                     "correlation_id": cid}
+            )
+        elif et == "onboarding_done":
+            await self._send(
+                ws, {"type": "onboarding_done", "payload": await self._onboarding_done(payload),
+                     "correlation_id": cid}
+            )
+
+    # ---------- memory / tasks / onboarding helpers (spec 32) ----------
+
+    async def _memory_state(self) -> dict:
+        from skills import memory_skills
+
+        return await asyncio.to_thread(memory_skills.snapshot)
+
+    async def _memory_add(self, payload: dict, cid) -> dict:
+        from skills import memory_skills
+
+        content = str(payload.get("content") or "").strip()
+        if not content:
+            return {"ok": False, "error": "empty content"}
+        fact = await asyncio.to_thread(
+            memory_skills.remember, content, payload.get("category"), float(payload.get("confidence") or 0.95)
+        )
+        state = await self._memory_state()
+        await self.bus.publish(create_event("memory.updated", "memory.updated", state, correlation_id=cid))
+        return {"ok": True, "fact": fact, **state}
+
+    async def _memory_delete(self, fact_id: str, cid) -> dict:
+        from skills import memory_skills
+
+        removed = await asyncio.to_thread(memory_skills.forget, fact_id) if fact_id else False
+        state = await self._memory_state()
+        await self.bus.publish(create_event("memory.updated", "memory.updated", state, correlation_id=cid))
+        return {"ok": removed, "id": fact_id, **state}
+
+    async def _memory_clear(self, cid) -> dict:
+        from skills import memory_skills
+
+        count = await asyncio.to_thread(memory_skills.clear_all)
+        state = await self._memory_state()
+        await self.bus.publish(create_event("memory.updated", "memory.updated", state, correlation_id=cid))
+        return {"ok": True, "removed": count, **state}
+
+    async def _task_create(self, payload: dict, cid) -> dict:
+        tm = getattr(self, "tasks", None)
+        if tm is None:
+            return {"ok": False, "error": "task manager unavailable"}
+        ttype = str(payload.get("type") or "reminder")
+        title = str(payload.get("title") or "Reminder")[:140]
+        if ttype == "recurring":
+            task = tm.create_recurring(title, float(payload.get("interval_seconds") or 3600),
+                                       str(payload.get("action") or "system_memory"))
+        else:
+            due = payload.get("due_timestamp")
+            seconds = payload.get("seconds")
+            if due:
+                task = tm.create_reminder(title, due_timestamp=float(due),
+                                          kind=str(payload.get("kind") or "reminder"))
+            else:
+                task = tm.create_reminder(title, seconds=float(seconds or 60),
+                                          kind=str(payload.get("kind") or "reminder"))
+        await tm.notify()
+        return {"ok": True, "task": task, **tm.snapshot()}
+
+    async def _task_cancel(self, task_id: str, cid) -> dict:
+        tm = getattr(self, "tasks", None)
+        removed = bool(tm and tm.cancel(task_id))
+        if tm:
+            await tm.notify()
+        return {"ok": removed, "id": task_id, **(tm.snapshot() if tm else {"tasks": []})}
+
+    async def _onboarding_state(self) -> dict:
+        from core.config import DATA_DIR
+
+        marker = DATA_DIR / "onboarded.json"
+        first_run = (_read_yaml("config.yaml").get("runtime") or {}).get("first_run", True)
+        show = bool(first_run is not False and not marker.exists())
+        return {"show": show}
+
+    async def _onboarding_done(self, payload: dict) -> dict:
+        import json as _json
+
+        from core.config import DATA_DIR
+
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        marker = DATA_DIR / "onboarded.json"
+        with open(marker, "w", encoding="utf-8") as f:
+            _json.dump({"completed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        "pet_style": str(payload.get("pet_style") or "")}, f)
+        # packaged installs also flip the config flag; the dev config doubles as
+        # the bundled template, so only touch it when running frozen
+        if getattr(sys, "frozen", False):
+            cfg = _read_yaml("config.yaml")
+            rt = cfg.get("runtime") or {}
+            rt["first_run"] = False
+            cfg["runtime"] = rt
+            _write_yaml("config.yaml", cfg)
+        return {"ok": True, "show": False}
 
     async def _dictation(self, ws, payload, cid):
         """spec 29 section 3.2: toggle/apply dictate-to-cursor."""
@@ -321,5 +447,5 @@ class WSBridge:
         async def fwd_ui(ev):
             await self.broadcast(ev.topic, ev.payload, ev.correlation_id)
 
-        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop", "intent.fast_path", "agent.hook.session", "agent.hook.diff", "agent.hook.approval_request", "ui.file_ingest"):
+        for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop", "intent.fast_path", "agent.hook.session", "agent.hook.diff", "agent.hook.approval_request", "ui.file_ingest", "memory.updated", "tasks.updated", "task.fired", "voice.say"):
             self.bus.subscribe(t, fwd_ui)

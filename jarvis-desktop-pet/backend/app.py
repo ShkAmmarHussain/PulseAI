@@ -84,6 +84,12 @@ class App:
         self.bridge = WSBridge(self.bus, voice=self.voice)
         self.bridge.wire_bus()
 
+        from skills.task_manager import get_task_manager
+
+        self.tasks = get_task_manager(self.bus)
+        await self.tasks.start()
+        self.bridge.tasks = self.tasks
+
         from backend.hook_bridge import HookBridge
 
         self.hook = HookBridge(self.bus)
@@ -112,6 +118,7 @@ class App:
 
         self.fast = FastRouter(self.bus, self.cfg)
         await self.fast.start()
+        self.fast.tasks = self.tasks
         self.bridge.stats_extra = self.fast.stats
 
         self.bus.start()

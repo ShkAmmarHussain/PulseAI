@@ -17,6 +17,10 @@ if getattr(sys, "frozen", False):
 else:
     CONFIG_DIR = BUNDLED_CONFIG_DIR
 
+# runtime state (memory, tasks, onboarding marker) lives next to the config:
+# %APPDATA%\JarvisDesktopPet\data when frozen, <pkg>/data in development
+DATA_DIR = CONFIG_DIR.parent / "data"
+
 
 def load_yaml(p: Path) -> dict:
     if not p.exists():

@@ -111,10 +111,40 @@ class PlannerAgent(BaseAgent):
                 else:
                     steps.append({"action": "respond", "text": f"Understood: {q}", "risk": 0})
 
+            elif re.search(r"\b(click|tap)\b", low):
+                m = re.search(r"(-?\d+)\s*[,\s]\s*(-?\d+)", q)
+                btn = "right" if re.search(r"\bright[- ]button\b|\bright click\b", low) else "left"
+                clicks = 2 if re.search(r"\bdouble\b", low) else 1
+                if m:
+                    steps.append({"action": "click", "x": int(m.group(1)), "y": int(m.group(2)),
+                                  "button": btn, "clicks": clicks, "risk": 7})
+                else:
+                    steps.append({"action": "respond", "text": "Where should I click? Give me screen coordinates like 400, 620.", "risk": 0})
+
+            elif re.search(r"\b(press|hotkey|key combination|shortcut)\b", low):
+                m = re.search(
+                    r"(?:press|hit|hotkey|key combination|shortcut)\s+(?:the\s+)?([a-z0-9+ \-]{2,40})",
+                    q, re.I,
+                )
+                combo = m.group(1).strip().rstrip(".!?") if m else ""
+                combo = combo or re.sub(r"^\s*", "", q)
+                keys = [k for k in re.split(r"[+\s]+", combo.replace(" and ", "+")) if k]
+                if keys and len(keys) <= 5:
+                    steps.append({"action": "press_hotkey", "keys": keys, "risk": 7})
+                else:
+                    steps.append({"action": "respond", "text": "Which keys should I press?", "risk": 0})
+
+            elif re.search(r"\bmove (the )?mouse\b|\bcursor to\b", low):
+                m = re.search(r"(-?\d+)\s*[,\s]\s*(-?\d+)", q)
+                if m:
+                    steps.append({"action": "move_mouse", "x": int(m.group(1)), "y": int(m.group(2)), "risk": 7})
+                else:
+                    steps.append({"action": "respond", "text": "Where should I move the cursor (x, y)?", "risk": 0})
+
             elif re.search(r"\b(type|write|input)\b", low):
                 m2 = re.search(r"""['"](.+?)['"]""", q)
                 text = m2.group(1) if m2 else re.sub(r"^\s*(type|write|input)\s*", "", q, flags=re.I)
-                steps.append({"action": "type_text", "text": text, "risk": 6})
+                steps.append({"action": "type_text", "text": text, "risk": 7})
 
             else:
                 # no action intent matched (e.g. the query merely mentioned a

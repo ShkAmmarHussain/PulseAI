@@ -185,3 +185,22 @@ When `runtime.first_run: true` (or on initial start), display a polished 3-step 
 3. **Timers & Reminders:** Saying *"Remind me in 10 seconds to stretch"* schedules a timer, shows a live countdown in the Activity pane, and triggers the pet bubble and audio chime when expired.
 4. **Input Control Safety:** Requesting a keyboard automation prompts the in-stream approval card before firing.
 5. **Quality Gates:** All 15 existing test gates remain 100% green without regressions.
+
+---
+
+## 8. As-Built Implementation Notes (shipped 2026-10-06)
+
+Implementation landed against the checklist in section 6 with these deliberate deviations:
+
+1. **Navigation order** — the Memory tab sits between Activity and Settings: nav is `chat / activity / memory / settings` (`main.js` `PANES`, `index.html` nav button, `revamp2_interact.py` assertion updated accordingly).
+2. **Timers surface** — instead of dual-view sub-tabs, active timers render as a dedicated `#task-timers` section inside the Activity pane (countdown chips with title, live `<span>` countdown, Cancel button). One glance, zero extra navigation.
+3. **Input automation without extra deps** — `skills/input_control.py` is implemented with pure `ctypes`/`SendInput` (Unicode typing, key events, absolute mouse moves with screen clamp, 20 actions/sec rate limit, cursor `(0,0)` failsafe, `FailsafeError` raised on violation). `pyautogui`/`pynput` stay in `requirements.txt` for PyInstaller collection only; the runtime path has no third-party input dependency.
+4. **WS wire format** — new commands are dot-namespaced to match the existing envelope: `memory.list / memory.add / memory.delete / memory.clear`, `tasks.list / tasks.create / tasks.cancel`, `onboarding_state / onboarding_done`. `task_manager.notify()` publishes `ui.chat` + `voice.say` + `task.fired`; `voice.say` was added to the `wire_bus` forward list so all clients see spoken lines.
+5. **Onboarding gating** — shown when config `runtime.first_run` is not `false` **and** the `data/onboarded.json` marker is absent. Finish writes the marker always, and writes `first_run: false` back to config only when running frozen (dev and bundled configs are identical, so the marker file is the dev/prod split). Step 3 only persists `runtime.pet_render_mode` when the chosen style differs from the current one, so a same-style completion leaves `config.yaml` untouched.
+6. **Memory routing case fidelity** — `core/fast_router.py` matches on lowercased text; `_restore_case()` re-applies the original casing to stored facts and reminder titles so "Python" does not become "python" in `data/memory.json`.
+7. **Data location** — `DATA_DIR = CONFIG_DIR.parent / "data"` in `core/config.py` (dev: `jarvis-desktop-pet/data/`, prod: `%APPDATA%\JarvisDesktopPet\data/`); `jarvis-desktop-pet/data/` is gitignored.
+
+### Acceptance run (2026-10-06)
+
+* Spec-32 functional verification: **32/32 PASS** — onboarding wizard (3 steps, mic meter, LM Studio "Connected", marker written, stays dismissed across reload), *"Remember that my preferred language is Python"* → fast-path `memory_remember` (0 ms, LLM bypassed) → Memory Studio card with `Preferences` badge → persisted in `data/memory.json`; search/category filters, Add Fact, Forget + undo toast, WS delete sync; *"Remind me in 10 seconds to stretch"* → active task + Activity countdown chip → `task.fired` → toast + chime + chat entry `Reminder: stretch` + `voice.say` broadcast + chip cleanup; `type "hello world"` → approval card (risk 7/10, "Type text") → deny → `Action denied. No changes made.` Screenshots in `jarvis-desktop-pet/artifacts/ui_inspection/spec32/`.
+* Quality gates: **15/15 PASS** (fast_router 71/71, vocab, injector, dictation flow+ui, audio_cache, earcons, approval 9/9, revamp2 static, revamp2 interact 56/56, hotkey e2e, hook e2e 37/37, phase5 e2e 14/14 + dock 27/27 + visual 28/28) plus `tests/smoke_test.py` Smoke OK.

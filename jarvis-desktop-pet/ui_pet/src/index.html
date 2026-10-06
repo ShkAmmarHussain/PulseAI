@@ -51,6 +51,8 @@
       <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.5 12h17M12 3c2.6 2.7 3.9 5.7 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.7-3.9-9S9.4 5.7 12 3z"/></symbol>
       <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1 1 15 0"/><path d="M12 13.5l4-4.5"/></symbol>
       <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></symbol>
+      <symbol id="i-brain" viewBox="0 0 24 24"><path d="M12 5a3 3 0 0 0-5.6-.8A2.7 2.7 0 0 0 4 8.5c0 .6.2 1.2.5 1.7A2.8 2.8 0 0 0 5.5 15 3 3 0 0 0 9 19.5h.5A2.5 2.5 0 0 0 12 21zM12 5a3 3 0 0 1 5.6-.8A2.7 2.7 0 0 1 20 8.5c0 .6-.2 1.2-.5 1.7A2.8 2.8 0 0 1 18.5 15 3 3 0 0 1 15 19.5h-.5A2.5 2.5 0 0 1 12 21zM12 5v16"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M8 7l.8 12h6.4L16 7"/></symbol>
     </defs>
   </svg>
 
@@ -70,6 +72,7 @@
       <nav id="nav" aria-label="Primary">
         <button class="nav-item active" data-tab="chat"><svg class="ic"><use href="#i-chat"/></svg><span class="nav-label">Chat</span></button>
         <button class="nav-item" data-tab="activity"><svg class="ic"><use href="#i-activity"/></svg><span class="nav-label">Activity</span></button>
+        <button class="nav-item" data-tab="memory"><svg class="ic"><use href="#i-brain"/></svg><span class="nav-label">Memory</span></button>
         <button class="nav-item" data-tab="settings"><svg class="ic"><use href="#i-sliders"/></svg><span class="nav-label">Settings</span></button>
       </nav>
 
@@ -182,12 +185,74 @@
           </div>
           <button id="activity-clear" class="ghost-btn" type="button">Clear</button>
         </div>
+        <div id="task-timers" class="task-timers" hidden aria-live="polite">
+          <div class="task-timers-head">Active timers &amp; reminders</div>
+          <div id="task-timers-list" class="task-timers-list"></div>
+        </div>
         <div id="activity-list" aria-live="polite">
           <div class="act-empty" id="activity-empty">
             <div class="act-empty-orb orb" aria-hidden="true"><i class="core"></i></div>
             <div class="act-empty-title">No activity yet</div>
             <p class="act-empty-sub">Actions Jarvis takes &mdash; requests, approvals, completed work &mdash; will show up here as they happen.</p>
           </div>
+        </div>
+      </main>
+
+      <main id="pane-memory" class="pane">
+        <div class="page-head">
+          <div>
+            <h2>Memory</h2>
+            <p class="sec-desc">Facts Jarvis has learned about you, your projects and your habits.</p>
+          </div>
+          <div class="page-head-actions">
+            <button id="memory-export" class="ghost-btn" type="button">Export</button>
+            <button id="memory-clear" class="ghost-btn" type="button">Clear all</button>
+          </div>
+        </div>
+
+        <div class="memory-toolbar">
+          <div class="memory-search">
+            <svg class="ic"><use href="#i-search"/></svg>
+            <input id="memory-search" type="search" placeholder="Search memories&hellip;" autocomplete="off" aria-label="Search memories" />
+          </div>
+          <button id="memory-add-btn" class="primary small" type="button"><svg class="ic"><use href="#i-plus"/></svg>Add Fact</button>
+        </div>
+
+        <div class="memory-filters" id="memory-filters" role="group" aria-label="Memory categories">
+          <button class="mem-chip active" data-cat="all" type="button">All</button>
+          <button class="mem-chip" data-cat="preferences" type="button">Preferences</button>
+          <button class="mem-chip" data-cat="facts" type="button">Facts</button>
+          <button class="mem-chip" data-cat="projects" type="button">Projects</button>
+          <button class="mem-chip" data-cat="workflows" type="button">Workflows</button>
+          <button class="mem-chip" data-cat="people" type="button">People</button>
+        </div>
+
+        <form id="memory-add-form" class="memory-add-form" hidden>
+          <select id="memory-add-cat" aria-label="Memory category">
+            <option value="preferences">Preferences</option>
+            <option value="facts">Facts</option>
+            <option value="projects">Projects</option>
+            <option value="workflows">Workflows</option>
+            <option value="people">People</option>
+          </select>
+          <textarea id="memory-add-text" rows="2" placeholder="What should I remember?" aria-label="Memory content"></textarea>
+          <div class="memory-add-actions">
+            <button class="primary small" type="submit">Save</button>
+            <button class="ghost-btn" type="button" id="memory-add-cancel">Cancel</button>
+          </div>
+        </form>
+
+        <div id="memory-list" aria-live="polite">
+          <div class="mem-empty" id="memory-empty">
+            <div class="mem-empty-orb orb" aria-hidden="true"><i class="core"></i></div>
+            <div class="mem-empty-title">Nothing remembered yet</div>
+            <p class="mem-empty-sub">Tell Jarvis &ldquo;remember that &hellip;&rdquo; and the fact will appear here &mdash; searchable, editable, forgettable.</p>
+          </div>
+        </div>
+
+        <div id="memory-toast" class="memory-toast" hidden>
+          <span id="memory-toast-text">Memory forgotten.</span>
+          <button type="button" id="memory-undo">Undo</button>
         </div>
       </main>
 
@@ -548,10 +613,66 @@
     <span class="db-label">Listening &mdash; speak to type</span>
     <span class="db-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
   </div>
+
+  <div id="onboarding" class="onboarding" hidden role="dialog" aria-modal="true" aria-label="Welcome to Jarvis">
+    <div class="ob-backdrop"></div>
+    <div class="ob-panel">
+      <div class="ob-head">
+        <div class="ob-logo orb" aria-hidden="true"><i class="core"></i></div>
+        <h2>Welcome to Jarvis</h2>
+        <p class="sec-desc">Three quick checks and your companion is ready.</p>
+      </div>
+      <ol class="ob-stepbar" id="ob-stepbar">
+        <li data-step="1" class="on"><b>1</b>Meet your companion</li>
+        <li data-step="2"><b>2</b>Microphone check</li>
+        <li data-step="3"><b>3</b>Local model</li>
+      </ol>
+      <section class="ob-step" id="ob-step-1">
+        <h3>Step 1: Meet your companion</h3>
+        <p class="sec-desc">Pick how Mochi renders on your desktop &mdash; switchable any time in Settings.</p>
+        <div class="ob-choices" id="ob-choices">
+          <button type="button" class="ob-choice active" data-render="2d">
+            <span class="ob-choice-title">2D Vector Mochi</span>
+            <span class="ob-choice-sub">Crisp, light, expressive</span>
+          </button>
+          <button type="button" class="ob-choice" data-render="3d">
+            <span class="ob-choice-title">3D WebGL</span>
+            <span class="ob-choice-sub">Dimensional, tactile</span>
+          </button>
+        </div>
+      </section>
+      <section class="ob-step" id="ob-step-2" hidden>
+        <h3>Step 2: Microphone &amp; audio check</h3>
+        <p class="sec-desc">Press Test and say &ldquo;Hey Jarvis&rdquo; &mdash; the meter should pulse with your voice.</p>
+        <div class="ob-row">
+          <button id="ob-mic-test" class="small" type="button"><svg class="ic"><use href="#i-mic"/></svg>Test microphone</button>
+          <span class="hint" id="ob-mic-status" aria-live="polite">Not tested yet.</span>
+        </div>
+        <div class="mic-meter"><div id="ob-level"></div></div>
+      </section>
+      <section class="ob-step" id="ob-step-3" hidden>
+        <h3>Step 3: Local model verification</h3>
+        <p class="sec-desc">Jarvis answers through your local LM Studio endpoint &mdash; no cloud, no account.</p>
+        <div class="field"><label for="ob-lm-url">Endpoint</label><input id="ob-lm-url" value="http://127.0.0.1:1234/v1" spellcheck="false" /></div>
+        <div class="ob-row">
+          <button id="ob-lm-test" class="small" type="button"><svg class="ic"><use href="#i-globe"/></svg>Check connection</button>
+          <span class="hint" id="ob-lm-status" aria-live="polite">Not checked yet.</span>
+        </div>
+      </section>
+      <div class="ob-foot">
+        <button id="ob-back" class="ghost-btn" type="button" hidden>Back</button>
+        <button id="ob-next" class="primary" type="button">Next</button>
+        <button id="ob-finish" class="primary" type="button" hidden>Start exploring Jarvis &rarr;</button>
+      </div>
+    </div>
+  </div>
+
   <script src="ws.js"></script>
   <script src="chat.js"></script>
   <script src="activity.js"></script>
+  <script src="memory.js"></script>
   <script src="settings.js"></script>
+  <script src="onboarding.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

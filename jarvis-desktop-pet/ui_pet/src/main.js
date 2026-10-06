@@ -1,7 +1,7 @@
 // Shell: navigation, sidebar collapse, pet visibility (single source of
 // truth for pet state stays the backend config).
 
-const PANES = ["chat", "activity", "settings"];
+const PANES = ["chat", "activity", "memory", "settings"];
 
 function showTab(name) {
   if (PANES.indexOf(name) < 0) name = "chat";

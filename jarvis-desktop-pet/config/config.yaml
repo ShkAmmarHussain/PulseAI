@@ -7,6 +7,10 @@ runtime:
   mode: local
   debug: false
   pet_enabled: true
+  first_run: true
+  companion: pet
+  pet_render_mode: 2d
+  pet_colorway: porcelain
 ipc:
   use_inproc: true
   max_queue_size: 1000

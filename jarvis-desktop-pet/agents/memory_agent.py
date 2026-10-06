@@ -60,6 +60,16 @@ class MemoryAgent(BaseAgent):
             "and mention the source. Otherwise answer from your knowledge in 1-3 sentences "
             "unless asked for detail."
         )
+        # recall injection (spec 32, section 6): persistent facts enter the
+        # model context here so answers reflect what Jarvis already learned
+        try:
+            from skills import memory_skills
+
+            recalled = memory_skills.recall(query, limit=6)
+            if recalled:
+                system += "\n\n" + recalled
+        except Exception:
+            logger.exception("memory recall injection failed")
         if web_ctx:
             system += "\n\n" + web_ctx
         model = role.get("model_id") or "llama-3.2-3b-instruct"

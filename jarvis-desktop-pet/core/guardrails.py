@@ -19,7 +19,12 @@ EXPLICIT_RISK = {
     "vision_describe": 0,
     "vision_file": 0,
     "summarize_file": 0,
-    "type_text": 6,
+    # input automation is always 7/10 (medium-high): approval card required
+    # unless the permission policy is autonomous (spec 32, section 4)
+    "type_text": 7,
+    "press_hotkey": 7,
+    "click": 7,
+    "move_mouse": 7,
     "move_file": 4,
     "create_file": 4,
     "delete_file": 9,

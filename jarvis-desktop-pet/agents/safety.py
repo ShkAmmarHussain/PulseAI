@@ -16,7 +16,14 @@ class SafetyAgent(BaseAgent):
             action = ev.payload.get("action", {})
             all_steps = ev.payload.get("all_steps", [action])
             r = max(risk_score(s.get("action", ""), s) for s in all_steps) if all_steps else 0
-            decision = "allow" if r < 6 else "deny"
+            # autonomous policy skips prompts entirely, including input
+            # automation at risk 7 (spec 32, section 4)
+            policy = str((((self.cfg or {}).get("permissions") or {})
+                          .get("default_policy")) or "conservative").lower()
+            if policy == "autonomous" or r < 6:
+                decision = "allow"
+            else:
+                decision = "deny"
             await self.bus.publish(
                 create_event(
                     "safety.decision",
