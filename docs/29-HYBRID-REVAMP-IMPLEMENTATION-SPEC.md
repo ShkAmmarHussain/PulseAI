@@ -444,48 +444,50 @@ To support the hybrid capabilities, the local Python/WebSocket event bus is exte
 ## 8. Phased Implementation Roadmap
 
 ### Phase 1: Fast-Path Audio & TTS Pre-Caching (Immediate Impact)
-- [ ] Implement `core/audio_cache.py`: Pre-render the 11 canonical Kokoro voice clips into `cache/tts/`.
-- [ ] Update `agents/orchestrator.py` and `core/voice_tts.py`: Check audio cache for stock acknowledgments before dispatching to Kokoro model.
-- [ ] Integrate 8 procedural UI earcons (`snd_wake`, `snd_success`, `snd_error`, `snd_approval`) into `ui_pet/src/app.css` and `chat.js`.
+- [x] Implement `core/audio_cache.py`: Pre-render the 11 canonical Kokoro voice clips into `cache/tts/`.
+- [x] Update `agents/orchestrator.py` and `core/voice_tts.py`: Check audio cache for stock acknowledgments before dispatching to Kokoro model.
+- [x] Integrate 8 procedural UI earcons (`snd_wake`, `snd_success`, `snd_error`, `snd_approval`) into `ui_pet/src/app.css` and `chat.js`.
 
 ### Phase 2: System-Wide Dictation & Phonetic Dictionary
-- [ ] Implement `tools/dictation_injector.py`: Win32 `SendInput` / clipboard paste injector.
-- [ ] Add global hotkey listener (`Ctrl+Alt+D`) in `main.py` / `core/hotkey.py`.
-- [ ] Create `config/vocabulary.json` and integrate dictionary replacement engine into `core/stt.py`.
-- [ ] Add **Dictionary** and **Dictation History** management tabs into the Settings UI.
+- [x] Implement `tools/dictation_injector.py`: Win32 `SendInput` / clipboard paste injector.
+- [x] Add global hotkey listener (`Ctrl+Alt+D`) in `main.py` / `core/hotkey.py`.
+- [x] Create `config/vocabulary.json` and integrate dictionary replacement engine into `core/stt.py`.
+- [x] Add **Dictionary** and **Dictation History** management tabs into the Settings UI.
 
 ### Phase 3: Fast-Path Deterministic Intent Router
-- [ ] Implement `core/fast_router.py`: Regex and keyword rule engine for volume (`pycaw`), media keys, application launching (`apps.json`), and system power.
-- [ ] Implement compound command splitter for multi-action utterances.
-- [ ] Add metric reporting in `rm-status` showing zero-latency LLM bypass counts.
+- [x] Implement `core/fast_router.py`: Regex and keyword rule engine for volume (`pycaw`), media keys, application launching (`apps.json`), and system power.
+- [x] Implement compound command splitter for multi-action utterances.
+- [x] Add metric reporting in `rm-status` showing zero-latency LLM bypass counts.
 
 ### Phase 4: Developer Agent Hook Relay (`jarvis-hook`)
-- [ ] Build `bin/jarvis-hook.exe` (Rust/C named pipe client with 300ms non-blocking timeout).
-- [ ] Implement named pipe server in `backend/hook_bridge.py`.
-- [ ] Create one-click installer in Settings $\rightarrow$ Integrations for Claude Code (`~/.claude/settings.json`) and Antigravity (`hooks.json`).
-- [ ] Build Live Diff Ticker UI in `ui_pet/src/chat.js` and in the 3D pet bubble.
+- [x] Build `bin/jarvis-hook.exe` (Rust/C named pipe client with 300ms non-blocking timeout).
+- [x] Implement named pipe server in `backend/hook_bridge.py`.
+- [x] Create one-click installer in Settings $\rightarrow$ Integrations for Claude Code (`~/.claude/settings.json`) and Antigravity (`hooks.json`).
+- [x] Build Live Diff Ticker UI in `ui_pet/src/chat.js` and in the 3D pet bubble.
 
 ### Phase 5: Ergonomic Presence & File Drag-and-Drop
-- [ ] Add HTML5 / Tauri file drop listener over the transparent 3D pet window.
-- [ ] Wire file drop to Vision / Summary ingestion pipelines.
-- [ ] Implement retractable Top-Edge Dock ("Dynamic Island") layout in `ui_pet/src/index.html` as an optional companion alternative to the floating pet.
-- [ ] Build product-grade Superellipse squircle pet renderer (`ui_pet/src/pet_canvas.ts`) with dual-pass matte silicone & subsurface glow.
-- [ ] Implement spherical projected eye kinematics with saccadic gaze cursor tracking.
-- [ ] Implement RK4 spring-damper squash, stretch, poking wobble, and taffy-drag physics (`ui_pet/src/pet_springs.ts`).
-- [ ] Integrate full 10-state emotional reactivity machine (Idle, Eco-Sleep, Poked, Dizzy, Listening, Thinking, Executing, Ingesting, Approval Alert).
-- [ ] Build file "eating/crunch" particle ingestion effect and wardrobe/colorway switcher (Obsidian, Porcelain, Cyberpunk, Titanium).
-- [ ] Implement adaptive 60 FPS / 10 FPS / 1 FPS low-power render throttling (<0.5% CPU).
+- [x] Add HTML5 / Tauri file drop listener over the transparent 3D pet window.
+- [x] Wire file drop to Vision / Summary ingestion pipelines.
+- [x] Implement retractable Top-Edge Dock ("Dynamic Island") layout in `ui_pet/src/index.html` as an optional companion alternative to the floating pet.
+- [x] Build product-grade Superellipse squircle pet renderer (`ui_pet/src/pet_canvas.ts`) with dual-pass matte silicone & subsurface glow.
+- [x] Implement spherical projected eye kinematics with saccadic gaze cursor tracking.
+- [x] Implement RK4 spring-damper squash, stretch, poking wobble, and taffy-drag physics (`ui_pet/src/pet_springs.ts`).
+- [x] Integrate full 10-state emotional reactivity machine (Idle, Eco-Sleep, Poked, Dizzy, Listening, Thinking, Executing, Ingesting, Approval Alert).
+- [x] Build file "eating/crunch" particle ingestion effect and wardrobe/colorway switcher (Obsidian, Porcelain, Cyberpunk, Titanium).
+- [x] Implement adaptive 60 FPS / 10 FPS / 1 FPS low-power render throttling (<0.5% CPU).
 
 ---
 
 ## 9. Verification & Acceptance Checklist
 
-1. **Sub-50ms Vocal Feedback:** Standard responses (*"Working on it"*, *"Done"*) begin audible playback within 50ms of command recognition.
-2. **Dictation to Any App:** Pressing `Ctrl+Alt+D` transcribes speech directly into Notepad, VS Code, or browser inputs without opening Jarvis.
-3. **Phonetic Replacement:** Adding `"kubectl"` $\rightarrow$ `"cube control"` in `vocabulary.json` ensures speech recognition always outputs the correct spelling.
-4. **Instant Media Control:** Saying *"turn down volume"* executes in <15ms without querying LM Studio or waking the GPU.
-5. **Claude Code Interception:** Running `claude` in Windows Terminal reflects active edits in the pet bubble and routes permission prompts to Jarvis's Allow/Deny card.
-6. **File Ingestion:** Dragging a PDF or code file onto the 3D pet displays the inspection animation and opens the summary prompt in the composer.
-7. **100% Privacy Retained:** Disconnecting the internet allows all voice commands, local inference, PC actions, and dictation to function with zero data loss or errors.
-8. **Product-Grade Pet Polish:** The pet exhibits continuous squircle curvature, spherical eye projection, organic saccadic gaze tracking, tactile squash-and-stretch on click/drag, dizzy spinning on rapid pokes, and file-eating particle ingestion—fully replacing primitive circles with a high-end designer toy aesthetic.
-9. **Zero Desktop Footprint When Idle:** The pet drops to <0.5% CPU and sleeps during user inactivity, waking instantly upon mouse hover or wake-word detection.
+- [x] **Sub-50ms Vocal Feedback:** Standard responses (*"Working on it"*, *"Done"*) begin audible playback within 50ms of command recognition.
+- [x] **Dictation to Any App:** Pressing `Ctrl+Alt+D` transcribes speech directly into Notepad, VS Code, or browser inputs without opening Jarvis.
+- [x] **Phonetic Replacement:** Adding `"kubectl"` $\rightarrow$ `"cube control"` in `vocabulary.json` ensures speech recognition always outputs the correct spelling.
+- [x] **Instant Media Control:** Saying *"turn down volume"* executes in <15ms without querying LM Studio or waking the GPU.
+- [x] **Claude Code Interception:** Running `claude` in Windows Terminal reflects active edits in the pet bubble and routes permission prompts to Jarvis's Allow/Deny card.
+- [x] **File Ingestion:** Dragging a PDF or code file onto the 3D pet displays the inspection animation and opens the summary prompt in the composer.
+- [x] **100% Privacy Retained:** Disconnecting the internet allows all voice commands, local inference, PC actions, and dictation to function with zero data loss or errors.
+- [x] **Product-Grade Pet Polish:** The pet exhibits continuous squircle curvature, spherical eye projection, organic saccadic gaze tracking, tactile squash-and-stretch on click/drag, dizzy spinning on rapid pokes, and file-eating particle ingestion - fully replacing primitive circles with a high-end designer toy aesthetic.
+- [x] **Zero Desktop Footprint When Idle:** The pet drops to <0.5% CPU and sleeps during user inactivity, waking instantly upon mouse hover or wake-word detection.
+
+> **Status:** All items verified by the gate suite (`fast_router`, `audio_cache`, `vocab`, `injector`, `dictation_*`, `hook_e2e`, `phase5_e2e`, `phase5_visual_check`, …) — 15/15 suites green as of doc 31.
