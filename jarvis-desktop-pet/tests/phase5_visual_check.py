@@ -1,7 +1,7 @@
 """Phase 5d-i e2e: next-gen pet renderer (spec 29 section 5.5 + roadmap 472-477).
 
 Static wiring checks + CDP probes against pet.html verifying:
-- superellipse (n=4.2) geometry flags and spherical eye projection
+- superellipse (n=2.5) geometry flags and spherical eye projection
 - RK4 poke squash / taffy stretch physics via Pet3D
 - ingestion particle stream
 - colorway switching
@@ -81,8 +81,8 @@ async def ev(ws, expr, timeout=20):
 
 async def main():
     # ---- static ----
-    check("static: superellipse geometry + n=4.2", grep("pet3d.js",
-          "superellipsoid", "SUPER_N = 4.2", "computeVertexNormals"))
+    check("static: superellipse geometry + n=2.5", grep("pet3d.js",
+          "superellipsoid", "SUPER_N = 2.5", "computeVertexNormals"))
     check("static: dual-pass silicone material", grep("pet3d.js",
           "MeshPhysicalMaterial", "sheen", "innerCore", "AdditiveBlending"))
     check("static: spherical eye projection + saccades", grep("pet3d.js",
@@ -132,7 +132,7 @@ async def main():
                 return
 
             check("superellipse geometry flagged", d.get("geometry") == "superellipse"
-                  and abs(d.get("n", 0) - 4.2) < 0.01, d.get("geometry"))
+                  and abs(d.get("n", 0) - 2.5) < 0.01, d.get("geometry"))
             el, er = d.get("eyeL"), d.get("eyeR")
             check("eyes projected onto face surface",
                   isinstance(el, list) and isinstance(er, list)

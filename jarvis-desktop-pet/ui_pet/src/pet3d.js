@@ -29,8 +29,9 @@ if (container) {
   fillLight.position.set(1.8, -1.4, 3.6);
   scene.add(fillLight);
 
-  // ---- continuous-curvature superellipse body (spec 29, section 5.5.2) ----
-  const SUPER_N = 4.2;
+  // ---- continuous-curvature superellipse body (spec 30, section 9.2) ----
+  // n = 2.5 -> soft chubby dumpling matching the 2D hero SVG (NOT a boxy dice)
+  const SUPER_N = 2.5;
   function sp(w, e) {
     return w < 0 ? -Math.pow(-w, e) : Math.pow(w, e);
   }
@@ -111,7 +112,7 @@ if (container) {
     opacity: 0.65,
   });
   const innerEarMat = new THREE.MeshStandardMaterial({
-    color: 0xf0c9a8,
+    color: 0xfb923c,
     roughness: 0.55,
     metalness: 0.0,
   });
@@ -125,7 +126,7 @@ if (container) {
   body.position.y = 0.1;
   robot.add(body);
 
-  const shell = new THREE.Mesh(superellipsoid(1.2, 1.16, 1.1, SUPER_N, 48, 64), shellMat);
+  const shell = new THREE.Mesh(superellipsoid(1.22, 1.08, 1.05, SUPER_N, 48, 64), shellMat);
   body.add(shell);
 
   const innerCore = new THREE.Mesh(
@@ -146,7 +147,7 @@ if (container) {
   body.add(innerLight);
 
   // projection surface = the body itself (no separate face panel)
-  const FA = 1.2, FB = 1.16, FC = 1.1, FCZ = 0;
+  const FA = 1.22, FB = 1.08, FC = 1.05, FCZ = 0;
   function faceSurf(dx, dy, dz, out) {
     const l = Math.hypot(dx, dy, dz) || 1;
     const x = dx / l, y = dy / l, z = dz / l;
@@ -159,100 +160,84 @@ if (container) {
     return out;
   }
 
-  // soft rounded bunny ear nubs - same shell colour so the piece reads seamless
-  const earGeo = new THREE.SphereGeometry(0.3, 24, 18);
+  // prominent bunny ears: 30% of body width (2*0.43*0.85 = 0.73 of 2.44),
+  // standing proud on the top corners, tilted 14 deg outward like the hero SVG
+  const earGeo = new THREE.SphereGeometry(0.43, 28, 20);
   const earL = new THREE.Mesh(earGeo, shellMat);
   const earR = new THREE.Mesh(earGeo, shellMat);
-  earL.position.set(-0.58, 1.16, -0.02);
-  earR.position.set(0.58, 1.16, -0.02);
-  earL.scale.set(0.6, 0.95, 0.55);
-  earR.scale.set(0.6, 0.95, 0.55);
-  earL.rotation.z = 0.3;
-  earR.rotation.z = -0.3;
+  earL.position.set(-0.55, 1.12, 0.02);
+  earR.position.set(0.55, 1.12, 0.02);
+  earL.scale.set(0.85, 1.15, 0.65);
+  earR.scale.set(0.85, 1.15, 0.65);
+  earL.rotation.z = 0.244;
+  earR.rotation.z = -0.244;
   body.add(earL, earR);
-  const innerEarGeo = new THREE.SphereGeometry(0.16, 16, 12);
+  // warm apricot inner ear cavities (#fb923c, hero SVG opacity 0.8)
+  const innerEarGeo = new THREE.SphereGeometry(0.22, 20, 16);
   const innerEarL = new THREE.Mesh(innerEarGeo, innerEarMat);
   const innerEarR = new THREE.Mesh(innerEarGeo, innerEarMat);
-  innerEarL.position.set(-0.6, 1.19, 0.11);
-  innerEarR.position.set(0.6, 1.19, 0.11);
-  innerEarL.scale.set(0.5, 0.75, 0.45);
-  innerEarR.scale.set(0.5, 0.75, 0.45);
+  innerEarL.position.set(-0.52, 1.09, 0.24);
+  innerEarR.position.set(0.52, 1.09, 0.24);
+  innerEarL.scale.set(0.65, 0.95, 0.35);
+  innerEarR.scale.set(0.65, 0.95, 0.35);
+  innerEarL.rotation.z = 0.244;
+  innerEarR.rotation.z = -0.244;
   body.add(innerEarL, innerEarR);
 
   // spherical surface projection helpers for facial elements (spec 29, 5.5.3)
   const _n = new THREE.Vector3();
 
-  // large expressive squircle eyes (not slits!) with curved eyelid rims
-  function capsuleGeo(w, h, r) {
-    const s = new THREE.Shape();
-    const hw = w / 2, hh = h / 2;
-    r = Math.min(r, hh, hw);
-    s.moveTo(-hw + r, -hh);
-    s.lineTo(hw - r, -hh);
-    s.quadraticCurveTo(hw, -hh, hw, -hh + r);
-    s.lineTo(hw, hh - r);
-    s.quadraticCurveTo(hw, hh, hw - r, hh);
-    s.lineTo(-hw + r, hh);
-    s.quadraticCurveTo(-hw, hh, -hw, hh - r);
-    s.lineTo(-hw, -hh + r);
-    s.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
-    return new THREE.ShapeGeometry(s, 6);
-  }
-  const eyeGeo = capsuleGeo(0.4, 0.48, 0.2);
+  // upright glossy oval pupils (spec 30, section 9.2) - NO torus eyelids,
+  // they rendered as angry slanted eyebrows. Base oval baked into the
+  // geometry so the frame loop's scale stays purely state-driven (blink etc.)
+  const eyeGeo = new THREE.CircleGeometry(0.24, 32);
+  eyeGeo.scale(0.82, 1.05, 1);
   const eyeL = new THREE.Mesh(eyeGeo, featureMat);
   const eyeR = new THREE.Mesh(eyeGeo, featureMat);
   body.add(eyeL, eyeR);
 
-  // curved upper-eyelid rim riding the top edge of each eye
-  const lidGeo = new THREE.TorusGeometry(0.2, 0.034, 8, 24, Math.PI);
-  const lidL = new THREE.Mesh(lidGeo, featureMat);
-  const lidR = new THREE.Mesh(lidGeo, featureMat);
-  lidL.position.set(0, 0.2, 0.012);
-  lidR.position.set(0, 0.2, 0.012);
-  eyeL.add(lidL);
-  eyeR.add(lidR);
-
+  // dual specular glints: big dot top-right, small dot bottom-left (hero SVG)
   const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const glintL = new THREE.Mesh(new THREE.CircleGeometry(0.08, 14), glintMat);
-  const glintR = new THREE.Mesh(new THREE.CircleGeometry(0.08, 14), glintMat);
-  glintL.position.set(0.08, 0.1, 0.014);
-  glintR.position.set(0.08, 0.1, 0.014);
+  const glintL = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), glintMat);
+  const glintR = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), glintMat);
+  glintL.position.set(0.06, 0.07, 0.015);
+  glintR.position.set(0.06, 0.07, 0.015);
   eyeL.add(glintL);
   eyeR.add(glintR);
-  const sparkL = new THREE.Mesh(new THREE.CircleGeometry(0.042, 10), glintMat);
-  const sparkR = new THREE.Mesh(new THREE.CircleGeometry(0.042, 10), glintMat);
-  sparkL.position.set(-0.07, -0.09, 0.014);
-  sparkR.position.set(-0.07, -0.09, 0.014);
+  const sparkL = new THREE.Mesh(new THREE.CircleGeometry(0.045, 12), glintMat);
+  const sparkR = new THREE.Mesh(new THREE.CircleGeometry(0.045, 12), glintMat);
+  sparkL.position.set(-0.06, -0.07, 0.015);
+  sparkR.position.set(-0.06, -0.07, 0.015);
   sparkL.userData.spark = sparkR.userData.spark = true;
   eyeL.add(sparkL);
   eyeR.add(sparkR);
 
-  // warm soft blush cheeks on the body front (oriented to the surface normal)
+  // wide horizontal soft-pink cheek ovals beneath the eyes (spec 30, 9.2)
   const blushGeo = new THREE.CircleGeometry(0.2, 24);
   const blushL = new THREE.Mesh(blushGeo, blushMat);
   const blushR = new THREE.Mesh(blushGeo, blushMat);
   const _bp = new THREE.Vector3();
   const _bn = new THREE.Vector3();
   const _fwd = new THREE.Vector3(0, 0, 1);
-  faceSurf(-0.56, -0.17, 1, _bp);
+  faceSurf(-0.85, -0.3, 1, _bp);
   faceNormal(_bp, _bn);
   blushL.position.copy(_bp).addScaledVector(_bn, 0.05);
   blushL.quaternion.setFromUnitVectors(_fwd, _bn);
-  faceSurf(0.56, -0.17, 1, _bp);
+  faceSurf(0.85, -0.3, 1, _bp);
   faceNormal(_bp, _bn);
   blushR.position.copy(_bp).addScaledVector(_bn, 0.05);
   blushR.quaternion.setFromUnitVectors(_fwd, _bn);
-  blushL.scale.set(1, 0.7, 1);
-  blushR.scale.set(1, 0.7, 1);
+  blushL.scale.set(1.25, 0.78, 1);
+  blushR.scale.set(1.25, 0.78, 1);
   body.add(blushL, blushR);
 
   // closed happy eyes (curved arcs at eye level)
   const happyGeo = new THREE.TorusGeometry(0.2, 0.05, 10, 24, Math.PI);
   const happyL = new THREE.Mesh(happyGeo, featureMat);
   const happyR = new THREE.Mesh(happyGeo, featureMat);
-  faceSurf(-0.34, 0.16, 1, _bp);
+  faceSurf(-0.44, 0.16, 1, _bp);
   happyL.position.set(_bp.x, _bp.y, _bp.z + 0.05);
-  faceSurf(0.34, 0.16, 1, _bp);
+  faceSurf(0.44, 0.16, 1, _bp);
   happyR.position.set(_bp.x, _bp.y, _bp.z + 0.05);
   happyL.rotation.z = Math.PI;
   happyR.rotation.z = Math.PI;
@@ -269,14 +254,18 @@ if (container) {
   browL.visible = browR.visible = false;
   body.add(browL, browR);
 
-  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.042, 10, 24, Math.PI), featureMat);
-  faceSurf(0, -0.34, 1, _bp);
+  // delicate friendly smile arc (spec 30, section 9.2 - hero SVG path)
+  const smile = new THREE.Mesh(
+    new THREE.TorusGeometry(0.13, 0.034, 10, 24, Math.PI * 0.85),
+    featureMat
+  );
+  faceSurf(0, -0.4, 1, _bp);
   smile.position.set(_bp.x, _bp.y, _bp.z + 0.045);
-  smile.rotation.z = Math.PI;
+  smile.rotation.z = Math.PI * 1.075;
   body.add(smile);
 
   const mouthOpen = new THREE.Mesh(new THREE.CircleGeometry(0.13, 24), featureMat);
-  faceSurf(0, -0.36, 1, _bp);
+  faceSurf(0, -0.4, 1, _bp);
   mouthOpen.position.set(_bp.x, _bp.y, _bp.z + 0.045);
   mouthOpen.scale.set(1, 0.5, 1);
   mouthOpen.visible = false;
@@ -301,7 +290,7 @@ if (container) {
     })
   );
   groundGlow.rotation.x = -Math.PI / 2;
-  groundGlow.position.y = -1.14;
+  groundGlow.position.y = -1.06;
   robot.add(groundGlow);
 
   const ringMat = new THREE.MeshBasicMaterial({
@@ -514,8 +503,8 @@ if (container) {
   const _ep = new THREE.Vector3();
   const _q = new THREE.Quaternion();
   const _zAxis = new THREE.Vector3(0, 0, 1);
-  const baseDirL = new THREE.Vector3(-0.34, 0.14, 1).normalize();
-  const baseDirR = new THREE.Vector3(0.34, 0.14, 1).normalize();
+  const baseDirL = new THREE.Vector3(-0.44, 0.14, 1).normalize();
+  const baseDirR = new THREE.Vector3(0.44, 0.14, 1).normalize();
 
   // adaptive 60 / 10 / 1 FPS render loop (spec 29, section 5.5.8)
   let renderBudget = 1000 / 60;
