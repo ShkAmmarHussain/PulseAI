@@ -40,9 +40,58 @@
       </div>
     </div>
 
-    <!-- The 3D living character stage -->
+    <!-- Dual-render character stage: 2D vector Mochi + 3D WebGL Mochi (doc 31, section 2.2) -->
     <div id="pet-stage">
-      <div id="pet" data-mood="idle"></div>
+      <!-- 1. 2D Animated Vector Mochi (default / toggleable) -->
+      <div id="pet-2d" class="pet-render-layer" role="img" aria-label="Jarvis 2D Pet">
+        <svg class="pet-svg-character" viewBox="0 0 128 128">
+          <defs>
+            <linearGradient id="p2d-body" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#fffdf8"/>
+              <stop offset="100%" stop-color="#f6e7d2"/>
+            </linearGradient>
+          </defs>
+          <!-- Ears -->
+          <g class="p2d-ears">
+            <ellipse class="p2d-ear-l" cx="42" cy="30" rx="14" ry="17" fill="url(#p2d-body)" transform="rotate(-14 42 30)"/>
+            <ellipse class="p2d-ear-r" cx="86" cy="30" rx="14" ry="17" fill="url(#p2d-body)" transform="rotate(14 86 30)"/>
+            <ellipse class="p2d-inner-l" cx="43" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.85" transform="rotate(-14 43 31)"/>
+            <ellipse class="p2d-inner-r" cx="85" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.85" transform="rotate(14 85 31)"/>
+          </g>
+          <!-- Chubby body squircle -->
+          <rect class="p2d-body-shape" x="17" y="34" width="94" height="82" rx="36" fill="url(#p2d-body)"/>
+          <!-- Rosy blush cheeks -->
+          <g class="p2d-cheeks">
+            <ellipse class="p2d-blush-l" cx="34" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
+            <ellipse class="p2d-blush-r" cx="94" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
+          </g>
+          <!-- Eyes with dual glints (saccade group) -->
+          <g class="p2d-eyes">
+            <g class="p2d-lids">
+              <ellipse class="p2d-eye-l" cx="47" cy="70" rx="7" ry="9" fill="#35292a"/>
+              <ellipse class="p2d-eye-r" cx="81" cy="70" rx="7" ry="9" fill="#35292a"/>
+              <circle class="p2d-glint-pri-l" cx="49.5" cy="66.5" r="2.6" fill="#fff"/>
+              <circle class="p2d-glint-pri-r" cx="83.5" cy="66.5" r="2.6" fill="#fff"/>
+              <circle class="p2d-glint-sec-l" cx="44.5" cy="74" r="1.4" fill="#fff" opacity="0.85"/>
+              <circle class="p2d-glint-sec-r" cx="78.5" cy="74" r="1.4" fill="#fff" opacity="0.85"/>
+            </g>
+          </g>
+          <!-- Sleepy arcs (shown in sleeping mood) -->
+          <g class="p2d-sleep-group" aria-hidden="true">
+            <path class="p2d-sleep" d="M40 70 Q47 76 54 70"/>
+            <path class="p2d-sleep" d="M74 70 Q81 76 88 70"/>
+          </g>
+          <!-- Cheerful smile arc -->
+          <path class="p2d-mouth" d="M57 92 Q64 99.5 71 92" stroke="#35292a" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+        </svg>
+      </div>
+
+      <!-- 2. 3D WebGL stage (Three.js) -->
+      <div id="pet-3d" class="pet-render-layer" style="display: none;">
+        <div id="pet" data-mood="idle"></div>
+      </div>
+
+      <!-- Warm ambient floor halo -->
       <div class="pet-floor-glow" aria-hidden="true"></div>
     </div>
 
@@ -56,6 +105,9 @@
       </button>
       <button class="dock-action-btn" id="dock-btn-dockmode" title="Switch to Top-Edge Dynamic Island" aria-label="Switch to top-edge dock">
         <svg class="ic"><use href="#i-dock"/></svg>
+      </button>
+      <button class="dock-action-btn" id="dock-btn-rendermode" title="Switch 2D / 3D Mode" aria-label="Toggle 2D or 3D pet">
+        <span id="dock-render-label">2D</span>
       </button>
       <button class="dock-action-btn" id="dock-btn-settings" title="Settings" aria-label="Open settings">
         <svg class="ic"><use href="#i-sliders"/></svg>
@@ -76,6 +128,7 @@
 
   <script src="ws.js"></script>
   <script src="pet.js"></script>
+  <script src="pet2d.js"></script>
   <script type="module" src="pet3d.js"></script>
 </body>
 </html>

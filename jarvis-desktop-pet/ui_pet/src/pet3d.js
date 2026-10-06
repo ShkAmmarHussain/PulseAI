@@ -17,9 +17,10 @@ if (container) {
   camera.position.set(0, 0.3, 9.8);
   camera.lookAt(0, 0.22, 0);
 
-  // warm diffuse desk-lamp lighting (doc 30, section 4.3)
-  scene.add(new THREE.HemisphereLight(0xfff6ea, 0x584a52, 1.2));
-  const key = new THREE.DirectionalLight(0xffeedd, 1.8);
+  // warm diffuse desk-lamp lighting (doc 31, section 3.2 - warm ambient +
+  // tungsten key so the shell reads as creamy porcelain, never waxy gray)
+  scene.add(new THREE.HemisphereLight(0xfff8ee, 0x584a52, 1.4));
+  const key = new THREE.DirectionalLight(0xffe8cc, 1.8);
   key.position.set(2.5, 4.0, 4.5);
   scene.add(key);
   const rim = new THREE.PointLight(0xffb07c, 18, 12);
@@ -69,17 +70,18 @@ if (container) {
     return g;
   }
 
-  // cozy soft matte ceramic material with subsurface-scattering feel (doc 30, 4.3)
+  // cozy soft matte ceramic material with subsurface-scattering feel (doc 31,
+  // section 3.2 - roughness 0.52 + clearcoat 0 kills the waxy glare)
   const shellMat = new THREE.MeshPhysicalMaterial({
     color: 0xfcf9f2,
-    roughness: 0.38,
+    roughness: 0.52,
     metalness: 0.04,
     transmission: 0.08,
     ior: 1.45,
     sheen: 1.0,
     sheenRoughness: 0.5,
     sheenColor: new THREE.Color(0xffdfd0),
-    clearcoat: 0.12,
+    clearcoat: 0.0,
     clearcoatRoughness: 0.4,
     transparent: true,
     opacity: 0.95,
@@ -88,7 +90,7 @@ if (container) {
     color: 0xfb923c,
     roughness: 0.4,
     metalness: 0.02,
-    clearcoat: 0.2,
+    clearcoat: 0.0,
   });
   // dark warm ink for eyes / smile / brows on the light face
   const featureMat = new THREE.MeshStandardMaterial({
@@ -212,23 +214,24 @@ if (container) {
   eyeL.add(sparkL);
   eyeR.add(sparkR);
 
-  // wide horizontal soft-pink cheek ovals beneath the eyes (spec 30, 9.2)
+  // wide horizontal soft-pink cheek ovals beneath the eyes (doc 31, section 3.1 -
+  // front-facing z>0.85 so they read as fluffy clouds, never banana slices)
   const blushGeo = new THREE.CircleGeometry(0.2, 24);
   const blushL = new THREE.Mesh(blushGeo, blushMat);
   const blushR = new THREE.Mesh(blushGeo, blushMat);
   const _bp = new THREE.Vector3();
   const _bn = new THREE.Vector3();
   const _fwd = new THREE.Vector3(0, 0, 1);
-  faceSurf(-0.85, -0.3, 1, _bp);
+  faceSurf(-0.52, -0.22, 1, _bp);
   faceNormal(_bp, _bn);
   blushL.position.copy(_bp).addScaledVector(_bn, 0.05);
   blushL.quaternion.setFromUnitVectors(_fwd, _bn);
-  faceSurf(0.85, -0.3, 1, _bp);
+  faceSurf(0.52, -0.22, 1, _bp);
   faceNormal(_bp, _bn);
   blushR.position.copy(_bp).addScaledVector(_bn, 0.05);
   blushR.quaternion.setFromUnitVectors(_fwd, _bn);
-  blushL.scale.set(1.25, 0.78, 1);
-  blushR.scale.set(1.25, 0.78, 1);
+  blushL.scale.set(1.45, 0.82, 1.0);
+  blushR.scale.set(1.45, 0.82, 1.0);
   body.add(blushL, blushR);
 
   // closed happy eyes (curved arcs at eye level)
@@ -399,7 +402,7 @@ if (container) {
   // modular colorway / theme engine (spec 29, sections 5.5.7 / roadmap h;
   // `ink` is the dark/light feature color for eyes + smile on the face panel)
   const COLORWAYS = {
-    porcelain: { shell: 0xfcf9f2, accent: 0xfb923c, face: 0xf0e2cf, ink: 0x35292a, glow: 0xffc98a, rough: 0.38, opacity: 0.95, blush: 0.85 },
+    porcelain: { shell: 0xfcf9f2, accent: 0xfb923c, face: 0xf0e2cf, ink: 0x35292a, glow: 0xffc98a, rough: 0.52, opacity: 0.95, blush: 0.85 },
     obsidian: { shell: 0x17181d, accent: 0x00f0ff, face: 0x0a0b10, ink: 0x8fe3ff, glow: 0x8fe3ff, rough: 0.45, opacity: 0.94, blush: 0.4 },
     cyberpunk: { shell: 0x2a1440, accent: 0xff3d9a, face: 0x160b26, ink: 0xffc2d9, glow: 0xf59e0b, rough: 0.32, opacity: 0.93, blush: 0.55 },
     titanium: { shell: 0xdfe6ee, accent: 0x9fd8ff, face: 0x9aa8b8, ink: 0x2e3742, glow: 0xbfeaff, rough: 0.2, opacity: 0.72, blush: 0.3 },
@@ -457,6 +460,14 @@ if (container) {
       taffy.release();
     },
     applyColorway,
+    resize() {
+      const w = container.clientWidth || W;
+      const h = container.clientHeight || H;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      return [w, h];
+    },
     ingestHover(pos) {
       ingest.active = true;
       if (pos && pos.length >= 2) {
@@ -698,4 +709,11 @@ if (container) {
     renderBudget = busy ? 1000 / 60 : 1000 / 10;
   }
   requestAnimationFrame(frame);
+  // the 3D layer can boot hidden (display:none until the switcher picks a
+  // mode) - re-fit the renderer whenever the container's box changes (doc 31)
+  if (window.ResizeObserver) {
+    new ResizeObserver(() => {
+      if (window.Pet3D && typeof window.Pet3D.resize === "function") window.Pet3D.resize();
+    }).observe(container);
+  }
 }

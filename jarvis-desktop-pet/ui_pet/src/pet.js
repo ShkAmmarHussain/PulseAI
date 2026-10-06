@@ -4,14 +4,49 @@ const approval = document.getElementById("approval");
 const approvalMsg = document.getElementById("approval-msg");
 const approvalCountdown = document.getElementById("approval-countdown");
 const petEl = document.getElementById("pet");
+const petStage = document.getElementById("pet-stage");
+const petHit = petStage || petEl;
 let bubbleTimer = null;
 let moodTimer = null;
 let pendingApproval = null;
 let approvalTick = null;
 
+// ---- 2D/3D render switcher (doc 31, section 2) ----
+const pet2dEl = document.getElementById("pet-2d");
+const pet3dEl = document.getElementById("pet-3d");
+const renderLabel = document.getElementById("dock-render-label");
+let renderMode = "2d";
+let lastSettings = null;
+
+function applyRenderModeDom(mode) {
+  if (pet2dEl) pet2dEl.style.display = mode === "2d" ? "" : "none";
+  if (pet3dEl) pet3dEl.style.display = mode === "3d" ? "" : "none";
+  if (renderLabel) renderLabel.textContent = mode.toUpperCase();
+  document.body.dataset.renderMode = mode;
+  if (mode === "3d" && window.Pet3D && typeof window.Pet3D.resize === "function") {
+    try { window.Pet3D.resize(); } catch (e) {}
+  }
+}
+function setRenderMode(mode, persist) {
+  const m = mode === "3d" ? "3d" : "2d";
+  renderMode = m;
+  applyRenderModeDom(m);
+  if (persist && lastSettings && lastSettings.config) {
+    try {
+      const p = JSON.parse(JSON.stringify(lastSettings));
+      p.config.runtime = p.config.runtime || {};
+      p.config.runtime.pet_render_mode = m;
+      Jarvis.saveSettings(p);
+    } catch (e) {}
+  }
+}
+window.setRenderMode = setRenderMode;
+applyRenderModeDom(renderMode); // HTML defaults match; set the state marker now
+
 function setMood(m) {
   petEl.dataset.mood = m;
   if (window.Pet3D) window.Pet3D.setMood(m);
+  if (window.Pet2D) window.Pet2D.setMood(m);
 }
 function moodTemp(m, ms) {
   setMood(m);
@@ -224,7 +259,7 @@ function tcmd(name) {
 
 let dragOrigin = null;
 let dragMoved = false;
-petEl.addEventListener("mousedown", (e) => {
+petHit.addEventListener("mousedown", (e) => {
   if (e.button !== 0) return;
   dragOrigin = { x: e.clientX, y: e.clientY };
   dragMoved = false;
@@ -292,12 +327,16 @@ function playChime(ok) {
   } catch (e) {}
 }
 function syncPetSound(d) {
-  const cfg = ((d || {}).payload || {}).config || {};
+  const payload = ((d || {}).payload) || {};
+  lastSettings = payload;
+  const cfg = payload.config || {};
   const v = cfg.voice || {};
   petSoundMuted = v.ui_sounds === false;
   // wardrobe/colorway (spec 29, section 5.5.7)
   const cw = (cfg.runtime || {}).pet_colorway || "porcelain";
   if (window.Pet3D && window.Pet3D.applyColorway) window.Pet3D.applyColorway(cw);
+  // 2D/3D render mode (doc 31, section 2.1) - runtime.pet_render_mode
+  setRenderMode((cfg.runtime || {}).pet_render_mode || "2d", false);
 }
 Jarvis.on("settings", syncPetSound);
 Jarvis.on("settings_saved", syncPetSound);
@@ -308,7 +347,7 @@ Jarvis.on("ui.state", (d) => {
 });
 Jarvis.getSettings();
 
-petEl.onclick = () => {
+petHit.onclick = () => {
   if (dragMoved) { dragMoved = false; return; }
   playSquish();
   tcmd("open_chat");
@@ -321,6 +360,9 @@ const btnDockmode = document.getElementById("dock-btn-dockmode");
 if (btnDockmode) btnDockmode.onclick = () => {
   if (window.__TAURI__ && window.__TAURI__.tauri) window.__TAURI__.tauri.invoke("set_companion", { mode: "dock" });
 };
+// 1-click 2D/3D toggle (doc 31, section 2.3) - persists runtime.pet_render_mode
+const btnRendermode = document.getElementById("dock-btn-rendermode");
+if (btnRendermode) btnRendermode.onclick = () => setRenderMode(renderMode === "3d" ? "2d" : "3d", true);
 
 // ---- file drag-and-drop ingestion (spec 29, sections 5.2 / 5.5.6) ----
 function playGulp() {
@@ -430,20 +472,23 @@ function markActive() {
 document.addEventListener("mousemove", markActive, { passive: true });
 document.addEventListener("mousedown", markActive, { passive: true });
 
-petEl.addEventListener("mouseenter", () => {
-  markActive();
-  if (petEl.dataset.mood === "idle") { clearTimeout(moodTimer); setMood("curious"); }
-});
-petEl.addEventListener("mouseleave", () => {
-  if (petEl.dataset.mood === "curious") { clearTimeout(moodTimer); setMood("idle"); }
+// hover curiosity: bound to both render layers (only the visible one fires)
+[pet2dEl, pet3dEl].filter(Boolean).forEach((el) => {
+  el.addEventListener("mouseenter", () => {
+    markActive();
+    if (petEl.dataset.mood === "idle") { clearTimeout(moodTimer); setMood("curious"); }
+  });
+  el.addEventListener("mouseleave", () => {
+    if (petEl.dataset.mood === "curious") { clearTimeout(moodTimer); setMood("idle"); }
+  });
 });
 // rapid clicking (>5 pokes in 1.5s -> dizzy)
-const origClick = petEl.onclick;
-petEl.onclick = (e) => {
+const origClick = petHit.onclick;
+petHit.onclick = (e) => {
   markActive();
   // poke impulse + volume-conserving squash (spec 29, section 5.5.4)
   if (window.Pet3D && window.Pet3D.poke && e) {
-    const r = petEl.getBoundingClientRect();
+    const r = petHit.getBoundingClientRect();
     window.Pet3D.poke(
       ((e.clientX - r.left) / (r.width || 1)) * 2 - 1,
       -(((e.clientY - r.top) / (r.height || 1)) * 2 - 1)

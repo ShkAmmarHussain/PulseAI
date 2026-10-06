@@ -166,8 +166,8 @@ function metaRow(who) {
   meta.className = "msg-meta";
   const av = document.createElement("div");
   if (who === "assistant") {
-    av.className = "msg-avatar assistant orb";
-    av.innerHTML = '<i class="core"></i>';
+    av.className = "msg-avatar assistant";
+    av.innerHTML = '<svg class="mochi-ic" aria-hidden="true"><use href="#i-mochi"/></svg>';
   } else {
     av.className = "msg-avatar user";
     av.innerHTML = '<svg class="ic"><use href="#i-user"/></svg>';
@@ -427,6 +427,11 @@ Jarvis.on("ui.chat", (d) => {
   // the hook relay mirrors file edits as italic system text; the rich diff
   // card above is the canonical rendering (doc 30, section 6.3)
   if ((d.payload.role || "") === "system" && /^Editing /.test(d.payload.text || "")) return;
+  // approval preambles render as the interactive card, never plain text
+  // (doc 31, section 4.2)
+  if ((d.payload.role || "") === "assistant" &&
+      /^(I need your approval|Shutting down needs your approval)/.test(d.payload.text || "") &&
+      document.querySelector(".approval-card")) return;
   addMsg(d.payload.role || "assistant", d.payload.text || "");
 });
 
@@ -484,7 +489,7 @@ Jarvis.on("ui.approval", (d) => {
   const tgt = p.action && p.action.target;
 
   const wrap = document.createElement("div");
-  wrap.className = "approval-card";
+  wrap.className = "approval-card chat-approval-card";
   if (d.correlation_id) wrap.dataset.cid = d.correlation_id;
 
   const head = document.createElement("div");

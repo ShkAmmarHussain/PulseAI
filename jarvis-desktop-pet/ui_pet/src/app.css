@@ -461,7 +461,7 @@ button:disabled { cursor: default; }
   gap: 18px;
   scroll-behavior: smooth;
 }
-#msgs > * { width: min(830px, 100%); margin-left: auto; margin-right: auto; flex-shrink: 0; }
+#msgs > * { width: min(820px, 100%); margin-left: auto; margin-right: auto; flex-shrink: 0; }
 
 /* hero / empty state (sections 7, 31) */
 #empty-state {
@@ -571,13 +571,23 @@ button:disabled { cursor: default; }
 .msg-group {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 7px;
   animation: msg-in var(--t-standard) var(--ease-out);
 }
+/* user messages flow to the right of the centered 820px thread (doc 31, 4.1) */
+.msg-group.user { align-items: flex-end; }
+.msg-group.user .msg-meta { flex-direction: row-reverse; }
 @keyframes msg-in {
   from { opacity: 0; transform: translateY(7px); }
   to { opacity: 1; transform: translateY(0); }
 }
+/* strict single-tab settings switch (doc 31, section 4.3) */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+#settings-content .section.fade-in { animation: fade-in var(--t-standard) var(--ease-out); }
 .msg-meta { display: flex; align-items: center; gap: 8px; }
 .msg-avatar {
   width: 24px;
@@ -590,7 +600,17 @@ button:disabled { cursor: default; }
 }
 .msg-avatar .ic { width: 13px; height: 13px; }
 .msg-avatar.user { background: var(--bg-pressed); border: 1px solid var(--border-subtle); color: var(--text-secondary); }
-.msg-avatar.assistant { padding: 0; }
+/* cute mochi mascot avatar instead of the flat orb (doc 31, section 4.1) */
+.msg-avatar.assistant {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: #fdfbf7;
+  border: 1.5px solid rgba(251, 146, 60, 0.6);
+  overflow: hidden;
+  box-shadow: 0 0 10px rgba(251, 146, 60, 0.25);
+}
+.msg-avatar.assistant .mochi-ic { width: 100%; height: 100%; display: block; }
 .msg-avatar.assistant .core { position: absolute; inset: 0; }
 .msg-name { font-size: var(--fs-helper); font-weight: 650; color: var(--text-secondary); letter-spacing: 0.1px; }
 .msg-time { font-size: var(--fs-micro); color: var(--text-tertiary); margin-left: auto; font-variant-numeric: tabular-nums; }
@@ -602,26 +622,33 @@ button:disabled { cursor: default; }
   overflow-wrap: break-word;
   white-space: pre-wrap;
 }
+/* sleek indigo pill for user messages (doc 31, section 4.1) */
 .msg.user {
-  align-self: flex-start;
-  background: var(--bg-surface-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  border-top-left-radius: 5px;
-  padding: 9px 14px;
-  max-width: 82%;
+  align-self: flex-end;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.22));
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 18px 18px 4px 18px;
+  padding: 12px 18px;
+  max-width: 75%;
   font-size: var(--fs-body);
   font-weight: 500;
-  color: var(--text-primary);
-  box-shadow: var(--shadow-sm);
+  color: #f8fafc;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
+/* soft warm card for Jarvis replies (doc 31, section 4.1) */
 .msg.assistant {
-  background: none;
-  border: none;
-  padding: 0;
-  max-width: 100%;
+  align-self: flex-start;
+  background: rgba(26, 28, 34, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 245, 230, 0.08);
+  border-radius: 18px 18px 18px 4px;
+  padding: 14px 20px;
+  max-width: 80%;
   font-size: var(--fs-body);
-  color: var(--text-primary);
+  line-height: 1.55;
+  color: #f3f0e8;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 .msg.system {
   align-self: center;
@@ -693,7 +720,10 @@ button:disabled { cursor: default; }
 
 /* ---------- Approval card (section 12 + mockup) ---------- */
 
-.approval-card {
+/* in-stream interactive approval card (doc 31, section 4.2 -
+   `.chat-approval-card` is the spec name, `.approval-card` the canonical one) */
+.approval-card,
+.chat-approval-card {
   width: min(470px, 100%) !important;
   margin: 4px auto 0 !important;
   background: var(--bg-surface-elevated);
@@ -1528,6 +1558,54 @@ body.approval-open #pet-stage {
 }
 #pet:active { cursor: grabbing; }
 #pet canvas { width: 100%; height: 100%; display: block; }
+
+/* dual render layers: 2D vector Mochi + 3D WebGL Mochi (doc 31, section 2.2) */
+.pet-render-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+#pet-2d {
+  cursor: grab;
+  transition: filter 600ms var(--ease-out), transform var(--t-standard) var(--ease-out);
+}
+#pet-2d:active { cursor: grabbing; }
+#pet-2d.tilt { transform: rotate(4deg); }
+#pet-2d.dim { filter: brightness(0.72) saturate(0.9); }
+.pet-svg-character {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: 50% 60%;
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.45));
+  animation: p2d-float 8.4s ease-in-out infinite;
+}
+.pet-svg-character.squish {
+  animation: p2d-float 8.4s ease-in-out infinite, p2d-squish 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes p2d-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes p2d-squish {
+  0% { transform: scale(1, 1); }
+  35% { transform: scale(1.15, 0.85); }
+  70% { transform: scale(0.96, 1.05); }
+  100% { transform: scale(1, 1); }
+}
+/* natural blink (doc 31, section 2.4) */
+.p2d-lids {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  transition: transform 70ms ease;
+}
+.p2d-lids.blink { transform: scaleY(0.08); }
+/* mood: brighter blush on happy / poked */
+.p2d-cheeks.bright ellipse { opacity: 0.95; }
+/* mood: sleepy arcs replace the open eyes */
+.p2d-sleep { display: none; fill: none; stroke: #35292a; stroke-width: 3.2; stroke-linecap: round; }
+#pet-2d.sleeping .p2d-lids { opacity: 0; }
+#pet-2d.sleeping .p2d-sleep { display: block; }
 .pet-floor-glow {
   position: absolute;
   left: 50%;
@@ -1588,6 +1666,8 @@ body.dock-show #pet-hover-dock {
 }
 .dock-action-btn:active { transform: scale(0.95); }
 .dock-action-btn .ic { width: 17px; height: 17px; }
+/* 2D/3D mode toggle label (doc 31, section 2.3) */
+#dock-render-label { font-size: 10px; font-weight: 800; letter-spacing: 0.4px; }
 #dock-btn-mic.rec {
   color: #fff;
   background: var(--danger);

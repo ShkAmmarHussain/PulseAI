@@ -544,3 +544,130 @@ Write-Host "Screenshots saved to $OutputDir. Agent must now review them."
 6. **Functional Sidebar Toggle:** The sidebar collapse button remains visible and clickable in both collapsed (68px) and expanded (240px) states.
 7. **Working Dynamic Island:** Standalone `dock.html` sits flush to monitor top edge and expands smoothly on hover.
 8. **Interactive Diff Cards:** Coding agent file edits render with colored badges and a working terminal focus jump button.
+
+---
+
+## 9. Addendum: The Definitive 3D Mochi Pet Specification (Matching the 2D Hero SVG 1:1)
+
+### 9.1 The Problem in the Latest 3D Capture (`pet_idle.png`)
+In commit `4bb6103`, the 2D hero illustration in `index.html` (`.hero-mochi`) was an immediate hit with the user—an adorable, chubby creamy marshmallow dumpling with friendly bunny ears, glossy anime eyes, soft blush cheeks, and a warm amber halo.
+
+However, the 3D version in `pet3d.js` diverged significantly:
+1. **The Body is a Boxy Cube:** `SUPER_N = 4.2` made the superellipsoid look like a rounded dice/cube rather than a soft, organic dumpling.
+2. **The Ears are Shrunken:** Scaled to only 0.18 wide (under 10% of body width), looking like tiny nits on top of the cube.
+3. **The Torus "Eyelids" Look Like Angry Eyebrows:** `lidGeo` Torus meshes at the top of the eyes rendered as slanted, villainous eyebrows (`\  /`).
+4. **The Eyes are Distorted Capsules:** The eyes became bean/kidney shapes instead of clean upright glossy ovals with dual glints.
+
+### 9.2 The Exact 1:1 3D Translation from `index.html` SVG
+To make the 3D pet match the 2D hero mascot identically:
+
+#### 1. Body Geometry (Soft Chubby Squircle, NOT a Cube)
+- **Source SVG:** `<rect x="17" y="34" width="94" height="82" rx="36" fill="url(#hm-body)"/>`
+- **Ratio:** Slightly wider than tall (ratio ~1.15 : 1.0).
+- **Three.js Translation:**
+  ```javascript
+  // Change exponent from 4.2 to 2.4-2.6 for an organic, chubby mochi feel
+  const SUPER_N = 2.5;
+  const shell = new THREE.Mesh(
+    superellipsoid(1.22, 1.08, 1.05, SUPER_N, 48, 64),
+    shellMat
+  );
+  ```
+
+#### 2. Ears (Prominent Bunny/Bear Ears with Warm Cavity)
+- **Source SVG:**
+  - Outer: `<ellipse cx="42" cy="30" rx="14" ry="17" ... transform="rotate(-14 42 30)"/>`
+  - Inner: `<ellipse cx="43" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.8" .../>`
+- **Ear Width:** ~30% of body width, standing proud on top-left and top-right of the dome.
+- **Three.js Translation:**
+  ```javascript
+  const earGeo = new THREE.SphereGeometry(0.38, 28, 20);
+  const earL = new THREE.Mesh(earGeo, shellMat);
+  const earR = new THREE.Mesh(earGeo, shellMat);
+  earL.position.set(-0.52, 1.06, 0.02);
+  earR.position.set(0.52, 1.06, 0.02);
+  earL.scale.set(0.85, 1.15, 0.65);
+  earR.scale.set(0.85, 1.15, 0.65);
+  earL.rotation.z = 0.22;
+  earR.rotation.z = -0.22;
+  body.add(earL, earR);
+
+  // Inner ear cavities (#fb923c apricot glow)
+  const innerEarGeo = new THREE.SphereGeometry(0.22, 20, 16);
+  const innerEarL = new THREE.Mesh(innerEarGeo, innerEarMat);
+  const innerEarR = new THREE.Mesh(innerEarGeo, innerEarMat);
+  innerEarL.position.set(-0.53, 1.06, 0.18);
+  innerEarR.position.set(0.53, 1.06, 0.18);
+  innerEarL.scale.set(0.65, 0.95, 0.35);
+  innerEarR.scale.set(0.65, 0.95, 0.35);
+  innerEarL.rotation.z = 0.22;
+  innerEarR.rotation.z = -0.22;
+  body.add(innerEarL, innerEarR);
+  ```
+
+#### 3. Eyes (Upright Glossy Ovals with Dual Glints, NO Angry Torus Lids!)
+- **Source SVG:**
+  - Pupils: `<ellipse cx="47" cy="70" rx="7" ry="9" fill="#35292a"/>`
+  - Primary Glint: `<circle cx="49.5" cy="66.5" r="2.6" fill="#fff"/>` (upper right)
+  - Secondary Glint: `<circle cx="44.5" cy="74" r="1.4" fill="#fff" opacity="0.85"/>` (lower left)
+- **DELETE `lidL` and `lidR` completely:** They create slanted angry eyebrows.
+- **Three.js Translation:**
+  ```javascript
+  // Upright dark glossy oval pupils
+  const eyeGeo = new THREE.CircleGeometry(0.24, 32);
+  const eyeL = new THREE.Mesh(eyeGeo, featureMat);
+  const eyeR = new THREE.Mesh(eyeGeo, featureMat);
+  eyeL.scale.set(0.82, 1.05, 1.0);
+  eyeR.scale.set(0.82, 1.05, 1.0);
+
+  // Dual specular glints (Pixar/Anime sparkle)
+  const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const glintPrimaryL = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), glintMat);
+  const glintPrimaryR = new THREE.Mesh(new THREE.CircleGeometry(0.08, 16), glintMat);
+  glintPrimaryL.position.set(0.06, 0.07, 0.015);
+  glintPrimaryR.position.set(0.06, 0.07, 0.015);
+  eyeL.add(glintPrimaryL);
+  eyeR.add(glintPrimaryR);
+
+  const glintSecondaryL = new THREE.Mesh(new THREE.CircleGeometry(0.045, 12), glintMat);
+  const glintSecondaryR = new THREE.Mesh(new THREE.CircleGeometry(0.045, 12), glintMat);
+  glintSecondaryL.position.set(-0.06, -0.07, 0.015);
+  glintSecondaryR.position.set(-0.06, -0.07, 0.015);
+  eyeL.add(glintSecondaryL);
+  eyeR.add(glintSecondaryR);
+  ```
+
+#### 4. Cheeks (Soft Horizontal Rosy Ovals)
+- **Source SVG:** `<ellipse cx="34" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>`
+- **Three.js Translation:**
+  ```javascript
+  const blushGeo = new THREE.CircleGeometry(0.20, 24);
+  const blushL = new THREE.Mesh(blushGeo, blushMat);
+  const blushR = new THREE.Mesh(blushGeo, blushMat);
+  blushL.scale.set(1.4, 0.85, 1.0); // wide horizontal pill
+  blushR.scale.set(1.4, 0.85, 1.0);
+  faceSurf(-0.64, -0.22, 1, _bp);
+  faceNormal(_bp, _bn);
+  blushL.position.copy(_bp).addScaledVector(_bn, 0.05);
+  blushL.quaternion.setFromUnitVectors(_fwd, _bn);
+  faceSurf(0.64, -0.22, 1, _bp);
+  faceNormal(_bp, _bn);
+  blushR.position.copy(_bp).addScaledVector(_bn, 0.05);
+  blushR.quaternion.setFromUnitVectors(_fwd, _bn);
+  body.add(blushL, blushR);
+  ```
+
+#### 5. Mouth (Gentle Friendly Smile Arc)
+- **Source SVG:** `<path d="M57 92 Q64 99.5 71 92" stroke="#35292a" stroke-width="3.2" stroke-linecap="round" fill="none"/>`
+- **Three.js Translation:**
+  ```javascript
+  const smile = new THREE.Mesh(
+    new THREE.TorusGeometry(0.13, 0.034, 10, 24, Math.PI * 0.85),
+    featureMat
+  );
+  faceSurf(0, -0.36, 1, _bp);
+  smile.position.set(_bp.x, _bp.y, _bp.z + 0.045);
+  smile.rotation.z = Math.PI * 1.075;
+  body.add(smile);
+  ```
+

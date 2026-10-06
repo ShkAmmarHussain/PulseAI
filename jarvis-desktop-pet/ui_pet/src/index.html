@@ -25,6 +25,28 @@
       <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+    <symbol id="i-mochi" viewBox="0 0 128 128">
+      <defs>
+        <linearGradient id="mochi-b" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#fffdf8"/>
+          <stop offset="100%" stop-color="#f6e7d2"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="42" cy="30" rx="14" ry="17" fill="url(#mochi-b)" transform="rotate(-14 42 30)"/>
+      <ellipse cx="86" cy="30" rx="14" ry="17" fill="url(#mochi-b)" transform="rotate(14 86 30)"/>
+      <ellipse cx="43" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.85" transform="rotate(-14 43 31)"/>
+      <ellipse cx="85" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.85" transform="rotate(14 85 31)"/>
+      <rect x="17" y="34" width="94" height="82" rx="36" fill="url(#mochi-b)"/>
+      <ellipse cx="34" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
+      <ellipse cx="94" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
+      <ellipse cx="47" cy="70" rx="7" ry="9" fill="#35292a"/>
+      <ellipse cx="81" cy="70" rx="7" ry="9" fill="#35292a"/>
+      <circle cx="49.5" cy="66.5" r="2.6" fill="#fff"/>
+      <circle cx="83.5" cy="66.5" r="2.6" fill="#fff"/>
+      <circle cx="44.5" cy="74" r="1.4" fill="#fff" opacity="0.85"/>
+      <circle cx="78.5" cy="74" r="1.4" fill="#fff" opacity="0.85"/>
+      <path d="M57 92 Q64 99.5 71 92" stroke="#35292a" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+    </symbol>
       <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A2 2 0 0 1 5 5.5h4l2 2.5h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
       <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.5 12h17M12 3c2.6 2.7 3.9 5.7 3.9 9s-1.3 6.3-3.9 9c-2.6-2.7-3.9-5.7-3.9-9S9.4 5.7 12 3z"/></symbol>
       <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1 1 15 0"/><path d="M12 13.5l4-4.5"/></symbol>
@@ -133,7 +155,7 @@
             <p class="es-hint">Say <kbd>Hey Jarvis</kbd> anytime, or press <kbd>Ctrl+Alt+J</kbd> to talk from anywhere.</p>
           </div>
           <div id="typing" class="msg-row" hidden>
-            <div class="avatar orb"><i class="core"></i></div>
+            <div class="msg-avatar assistant"><svg class="mochi-ic" aria-hidden="true"><use href="#i-mochi"/></svg></div>
             <div class="msg assistant typing-bubble"><i></i><i></i><i></i><span class="tb-text">Thinking&hellip;</span></div>
           </div>
         </div>
@@ -349,6 +371,18 @@
                   <option value="titanium">Titanium Frosted Glass</option>
                 </select>
                 <p class="hint">Shader theme for the floating pet (spec 30, cozy porcelain by default). Applies after Save.</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Companion Appearance</div>
+              <div class="field">
+                <label>Pet Render Style</label>
+                <div class="seg" id="pet-render-seg" role="group" aria-label="Pet render style">
+                  <button type="button" data-render="2d" class="on">2D Vector (Classic Mochi)</button>
+                  <button type="button" data-render="3d">3D WebGL (Dimensional)</button>
+                </div>
+                <p class="hint">2D Vector: ultra-crisp, battery-efficient, expressive SVG companion. 3D WebGL: tactile dimensional mesh. Applies immediately; press Save to keep.</p>
               </div>
             </div>
 

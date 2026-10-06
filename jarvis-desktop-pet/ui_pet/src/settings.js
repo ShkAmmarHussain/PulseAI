@@ -45,6 +45,33 @@ document.querySelectorAll("#companion-seg [data-mode]").forEach((b) => {
   });
 });
 
+// ---- pet render style: 2D vector vs 3D WebGL (doc 31, section 4.3) ----
+function setRenderSeg(mode) {
+  document.querySelectorAll("#pet-render-seg [data-render]").forEach((b) => {
+    b.classList.toggle("on", b.getAttribute("data-render") === mode);
+  });
+}
+function selectedRender() {
+  const on = document.querySelector("#pet-render-seg [data-render].on");
+  return on ? on.getAttribute("data-render") : "2d";
+}
+window.setRenderSeg = setRenderSeg;
+document.querySelectorAll("#pet-render-seg [data-render]").forEach((b) => {
+  b.addEventListener("click", () => {
+    const mode = b.getAttribute("data-render");
+    // applies instantly: persist now so the pet window switches on the
+    // settings broadcast (no Save press needed for this control)
+    const p = JSON.parse(JSON.stringify(current || {}));
+    if (!p.config) return;
+    p.config.runtime = p.config.runtime || {};
+    p.config.runtime.pet_render_mode = mode;
+    current = p;
+    setRenderSeg(mode);
+    ownSaveAt = Date.now(); // our direct settings_saved reply is authoritative
+    Jarvis.saveSettings(p);
+  });
+});
+
 function fill(s) {
   current = s;
   const cfg = s.config || {};
@@ -94,6 +121,7 @@ function fill(s) {
   const uiSounds = document.getElementById("v-ui-sounds");
   if (uiSounds) uiSounds.checked = voice.ui_sounds === false;
   setCompanionSeg(((cfg.runtime || {}).companion) === "dock" ? "dock" : "pet");
+  setRenderSeg(((cfg.runtime || {}).pet_render_mode) === "3d" ? "3d" : "2d");
   setv("pet-colorway", (cfg.runtime || {}).pet_colorway || "porcelain");
   note.textContent = "Loaded. Edit and press Save.";
   note.classList.remove("ok");
@@ -118,6 +146,7 @@ function collect() {
   s.config.resource_manager.cooldown_ms = (Number(val("rm-cooldown")) || 2) * 1000;
   s.config.runtime = s.config.runtime || {};
   s.config.runtime.companion = selectedCompanion();
+  s.config.runtime.pet_render_mode = selectedRender();
   s.config.runtime.pet_colorway = val("pet-colorway") || "porcelain";
 
   s.agents = s.agents || {};
@@ -370,28 +399,31 @@ Jarvis.on("lm_test", (d) => {
 Jarvis.getSettings();
 document.addEventListener("jarvis:connected", () => Jarvis.getSettings());
 
-// ---- settings index nav (scroll to section + active highlight) ----
+// ---- settings index nav: strict single-tab rendering (doc 31, section 4.3) ----
+// Only the active section is displayed - no scroll-bleed between sections.
 const secNav = document.getElementById("settings-index");
 if (secNav) {
   const navBtns = Array.prototype.slice.call(secNav.querySelectorAll("button[data-sec]"));
-  navBtns.forEach((b) => {
-    b.addEventListener("click", () => {
-      const el = document.getElementById(b.dataset.sec);
-      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  const showSettingsTab = (tabName) => {
+    const id = tabName && tabName.indexOf("sec-") === 0 ? tabName : "sec-" + tabName;
+    navBtns.forEach((b) => b.classList.toggle("active", b.dataset.sec === id));
+    document.querySelectorAll("#settings-content .section").forEach((sec) => {
+      const match = sec.id === id;
+      // "" falls back to the stylesheet's flex layout; "none" isolates the tab
+      sec.style.display = match ? "" : "none";
+      if (match) {
+        sec.classList.remove("fade-in");
+        void sec.offsetWidth; // restart the fade animation
+        sec.classList.add("fade-in");
+      }
     });
+  };
+  window.showSettingsTab = showSettingsTab;
+  navBtns.forEach((b) => {
+    b.addEventListener("click", () => showSettingsTab(b.dataset.sec));
   });
-  const setActive = (id) => navBtns.forEach((b) => b.classList.toggle("active", b.dataset.sec === id));
-  const root = document.getElementById("pane-settings");
-  if (root && window.IntersectionObserver) {
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (vis.length) setActive(vis[0].target.id);
-      },
-      { root: root, threshold: [0.25, 0.6], rootMargin: "-72px 0px -55% 0px" }
-    );
-    navBtns.forEach((b) => { const el = document.getElementById(b.dataset.sec); if (el) obs.observe(el); });
-  }
+  const start = navBtns.find((b) => b.classList.contains("active")) || navBtns[0];
+  if (start) showSettingsTab(start.dataset.sec);
 }
 
 // ---- model memory (live load/offload status from the lifecycle manager) ----
