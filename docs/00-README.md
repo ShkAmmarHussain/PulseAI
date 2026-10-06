@@ -48,6 +48,7 @@ This project is designed to run 100% locally using your 3060 12GB GPU with LM St
 - [27. UI Revamp](./27-UI-REVAMP.md) - Master UI specification, command center, component system
 - [28. Competitive Comparison](./28-COMPETITIVE-COMPARISON-COUCOU-HEYJEV.md) - Deep comparative analysis: PulseAI vs Coucou vs Hey Jev
 - [29. Hybrid Revamp Spec](./29-HYBRID-REVAMP-IMPLEMENTATION-SPEC.md) - Implementation blueprint adopting Coucou & Hey Jev strengths + product-grade pet revamp
+- [30. Opencode UI Revamp Master Plan](./30-OPENCODE-UI-REVAMP-MASTER-PLAN.md) - Master fix & implementation blueprint for opencode: pet overhaul, dynamic island, and workspace polish
 
 ---
 

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jarvis Dynamic Island</title>
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    html, body {
+      background: transparent !important;
+      margin: 0; padding: 0;
+      overflow: hidden !important;
+      width: 100vw; height: 100vh;
+      user-select: none;
+    }
+  </style>
+</head>
+<body class="dock-window-body">
+  <div id="dynamic-island" class="island-collapsed" data-state="idle">
+
+    <!-- Collapsed rail: always visible, flush to the top screen edge -->
+    <div class="island-rail" data-tauri-drag-region>
+      <div class="island-avatar-pill" aria-hidden="true">
+        <span class="island-eye left"></span>
+        <span class="island-eye right"></span>
+      </div>
+      <span class="island-status-dot" id="island-dot"></span>
+      <span class="island-headline" id="island-headline">Jarvis Standing By</span>
+      <span class="island-diff-badge" id="island-diff" hidden>+0 -0</span>
+    </div>
+
+    <!-- Expanded drawer: slides down smoothly on hover -->
+    <div class="island-drawer">
+      <div class="drawer-task-info">
+        <span class="drawer-task-title" id="island-subtext">Ready for instructions</span>
+        <div class="drawer-progress-track">
+          <div class="drawer-progress-fill" id="island-progress"></div>
+        </div>
+      </div>
+      <div class="drawer-controls">
+        <button class="drawer-btn" id="island-mic-btn" title="Push-to-Talk" aria-label="Talk to Jarvis">
+          <svg class="ic"><use href="#i-mic"/></svg>
+        </button>
+        <button class="drawer-btn" id="island-chat-btn" title="Open Workspace" aria-label="Open workspace">
+          <svg class="ic"><use href="#i-chat"/></svg>
+        </button>
+        <button class="drawer-btn" id="island-pet-btn" title="Switch to Floating Pet Mode" aria-label="Switch to floating pet">
+          <svg class="ic"><use href="#i-face"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Drag-and-drop ingestion overlay -->
+    <div class="island-drop-overlay" id="island-dropzone" hidden>
+      <span>Drop file to inspect&hellip;</span>
+    </div>
+
+  </div>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+      <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12c0 4-4 7-9 7-1.2 0-2.3-.2-3.3-.5L4 20l1.2-3.3C4.4 15.4 4 13.7 4 12c0-4 4-7 9-7s8 3 8 7z"/></symbol>
+      <symbol id="i-face" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="13" rx="5"/><circle cx="9.4" cy="12" r="1.5" fill="currentColor"/><circle cx="14.6" cy="12" r="1.5" fill="currentColor"/></symbol>
+    </defs>
+  </svg>
+
+  <script src="ws.js"></script>
+  <script src="dock_standalone.js"></script>
+</body>
+</html>

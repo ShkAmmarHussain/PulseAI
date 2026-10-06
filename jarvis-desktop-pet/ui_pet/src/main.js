@@ -109,6 +109,12 @@ function applyCompanion(mode) {
 }
 window.applyCompanion = applyCompanion;
 
+// Rust evals this after every set_companion so the window state never drifts
+window.onCompanionChanged = (mode) => {
+  companionMode = mode === "dock" ? "dock" : "pet";
+  if (window.setCompanionSeg) window.setCompanionSeg(companionMode);
+};
+
 // called from Rust tray menu
 window.togglePetFromTray = () => {
   if (companionMode === "dock") applyCompanion("pet");
@@ -117,7 +123,10 @@ window.togglePetFromTray = () => {
 
 // ---- dictate-to-cursor bubble (spec 29, section 3.2) ----
 const dictBubble = document.getElementById("dictation-bubble");
+const dictBtn = document.getElementById("dictate-btn");
+if (dictBtn) dictBtn.onclick = () => Jarvis.dictation("toggle");
 Jarvis.on("dictation.start", () => {
+  if (dictBtn) dictBtn.classList.add("rec");
   if (!dictBubble) return;
   dictBubble.hidden = false;
   dictBubble.classList.remove("flash");
@@ -125,6 +134,7 @@ Jarvis.on("dictation.start", () => {
   if (lbl) lbl.textContent = "Listening — speak to type";
 });
 Jarvis.on("dictation.stop", () => {
+  if (dictBtn) dictBtn.classList.remove("rec");
   if (dictBubble) dictBubble.hidden = true;
 });
 Jarvis.on("dictation.result", (d) => {

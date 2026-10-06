@@ -32,27 +32,6 @@
     </defs>
   </svg>
 
-  <div id="dock-island" data-state="idle" aria-label="Jarvis dock">
-    <div class="dock-rail">
-      <span class="dock-core" aria-hidden="true"></span>
-      <span class="dock-dot" id="dock-dot" aria-hidden="true"></span>
-      <span class="dock-pill" id="dock-status">Ready</span>
-    </div>
-    <div class="dock-panel">
-      <div class="dock-head">
-        <span class="dock-name">Jarvis</span>
-        <span class="dock-task" id="dock-task">Idle</span>
-        <span class="dock-progress" aria-hidden="true"><i id="dock-progress-bar"></i></span>
-      </div>
-      <div class="dock-actions">
-        <button id="dock-mic" class="dock-btn" type="button" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg class="ic"><use href="#i-mic"/></svg></button>
-        <button id="dock-chat" class="dock-btn" type="button" title="Open chat" aria-label="Open chat"><svg class="ic"><use href="#i-chat"/></svg></button>
-        <button id="dock-settings" class="dock-btn" type="button" title="Settings" aria-label="Settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
-      </div>
-    </div>
-    <div id="dock-toast" hidden></div>
-  </div>
-
   <div id="app">
     <aside id="sidebar">
       <div class="brand">
@@ -87,19 +66,62 @@
 
     <div id="main">
       <header id="topbar">
-        <div class="search-wrap">
-          <svg class="ic" aria-hidden="true"><use href="#i-search"/></svg>
-          <input id="global-search" type="text" placeholder="Ask Jarvis anything&hellip;" autocomplete="off" aria-label="Ask Jarvis anything" />
-          <button id="top-mic" class="icon-btn" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg class="ic"><use href="#i-mic"/></svg></button>
-          <span class="sw-sep" aria-hidden="true"></span>
-          <button id="top-settings" class="icon-btn" title="Settings" aria-label="Open settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
+        <div class="topbar-context">
+          <span class="session-pill">Active Session</span>
+          <span class="model-badge"><i class="core-dot"></i> Local Model</span>
+        </div>
+        <div class="topbar-actions">
+          <button class="topbar-tool-btn" id="cmd-palette-btn" title="Command Palette (Ctrl+K)" aria-label="Open command palette">
+            <svg class="ic"><use href="#i-search"/></svg>
+            <span class="kbd-hint">Ctrl K</span>
+          </button>
+          <button class="topbar-tool-btn" id="dictate-btn" title="Dictate to Cursor (Ctrl+Alt+D)" aria-label="Dictate to cursor">
+            <svg class="ic"><use href="#i-mic"/></svg>
+            <span class="kbd-hint">Ctrl Alt D</span>
+          </button>
+          <div class="topbar-divider" aria-hidden="true"></div>
+          <button class="icon-btn" id="top-settings" title="Settings" aria-label="Open settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
         </div>
       </header>
+
+      <div id="cmd-palette" hidden>
+        <div class="cp-backdrop"></div>
+        <div class="cp-panel" role="dialog" aria-label="Command palette">
+          <div class="cp-input-row">
+            <svg class="ic"><use href="#i-search"/></svg>
+            <input id="cmd-palette-input" type="text" placeholder="Ask Jarvis anything&hellip;" autocomplete="off" aria-label="Ask Jarvis anything" />
+            <span class="kbd-hint">Enter</span>
+          </div>
+        </div>
+      </div>
 
       <main id="pane-chat" class="pane active">
         <div id="msgs">
           <div id="empty-state">
-            <div class="hero-orb orb" aria-hidden="true"><i class="ring"></i><i class="core"></i></div>
+            <div class="hero-orb" aria-hidden="true">
+              <svg class="hero-mochi" viewBox="0 0 128 128" role="img" aria-label="Jarvis mascot">
+                <defs>
+                  <linearGradient id="hm-body" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stop-color="#fffdf8"/>
+                    <stop offset="1" stop-color="#f6e7d2"/>
+                  </linearGradient>
+                </defs>
+                <ellipse cx="42" cy="30" rx="14" ry="17" fill="url(#hm-body)" transform="rotate(-14 42 30)"/>
+                <ellipse cx="86" cy="30" rx="14" ry="17" fill="url(#hm-body)" transform="rotate(14 86 30)"/>
+                <ellipse cx="43" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.8" transform="rotate(-14 43 31)"/>
+                <ellipse cx="85" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.8" transform="rotate(14 85 31)"/>
+                <rect x="17" y="34" width="94" height="82" rx="36" fill="url(#hm-body)"/>
+                <ellipse cx="34" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
+                <ellipse cx="94" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
+                <ellipse cx="47" cy="70" rx="7" ry="9" fill="#35292a"/>
+                <ellipse cx="81" cy="70" rx="7" ry="9" fill="#35292a"/>
+                <circle cx="49.5" cy="66.5" r="2.6" fill="#fff"/>
+                <circle cx="83.5" cy="66.5" r="2.6" fill="#fff"/>
+                <circle cx="44.5" cy="74" r="1.4" fill="#fff" opacity="0.85"/>
+                <circle cx="78.5" cy="74" r="1.4" fill="#fff" opacity="0.85"/>
+                <path d="M57 92 Q64 99.5 71 92" stroke="#35292a" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+              </svg>
+            </div>
             <h1 class="es-title" id="greeting">Good morning, Ammar</h1>
             <p class="es-sub">Ready when you are. You can ask me to do something,<br />or use the quick actions below.</p>
             <div class="chips" id="hero-chips" role="group" aria-label="Quick actions">
@@ -321,12 +343,12 @@
               <div class="field">
                 <label for="pet-colorway">Pet colorway</label>
                 <select id="pet-colorway">
+                  <option value="porcelain" selected>Porcelain Mochi (cozy default)</option>
                   <option value="obsidian">Jarvis Obsidian</option>
-                  <option value="porcelain">Porcelain Mochi</option>
                   <option value="cyberpunk">Cyberpunk 2077</option>
                   <option value="titanium">Titanium Frosted Glass</option>
                 </select>
-                <p class="hint">Shader theme for the floating pet (spec 29, section 5.5.7). Applies after Save.</p>
+                <p class="hint">Shader theme for the floating pet (spec 30, cozy porcelain by default). Applies after Save.</p>
               </div>
             </div>
 
@@ -497,6 +519,5 @@
   <script src="activity.js"></script>
   <script src="settings.js"></script>
   <script src="main.js"></script>
-  <script src="dock.js"></script>
 </body>
 </html>

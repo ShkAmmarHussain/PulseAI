@@ -3,7 +3,7 @@
 use std::sync::Mutex;
 use tauri::{
     CustomMenuItem, Manager, PhysicalPosition, SystemTray, SystemTrayEvent, SystemTrayMenu,
-    SystemTrayMenuItem, WindowBuilder, WindowEvent, WindowUrl,
+    SystemTrayMenuItem, WindowEvent,
 };
 
 struct BackendChild(Mutex<Option<std::process::Child>>);
@@ -38,8 +38,8 @@ fn position_pet(tauri_app: &tauri::App) {
             let scale = mon.scale_factor();
             let size = mon.size();
             let pos = mon.position();
-            let win_w = (300.0 * scale) as i32;
-            let win_h = (240.0 * scale) as i32;
+            let win_w = (360.0 * scale) as i32;
+            let win_h = (360.0 * scale) as i32;
             let margin_x = (20.0 * scale) as i32;
             let margin_y = (44.0 * scale) as i32;
             let x = pos.x + (size.width as i32) - win_w - margin_x;
@@ -54,7 +54,7 @@ fn position_dock(w: &tauri::Window) {
         let scale = mon.scale_factor();
         let size = mon.size();
         let pos = mon.position();
-        let dock_w = (220.0 * scale) as i32;
+        let dock_w = (240.0 * scale) as i32;
         let x = pos.x + ((size.width as i32) - dock_w) / 2;
         let _ = w.set_position(PhysicalPosition::new(x, pos.y));
     }
@@ -95,6 +95,9 @@ fn main() {
                 }
             }
             position_pet(app);
+            if let Some(w) = app.get_window("dock") {
+                position_dock(&w);
+            }
             if std::env::args().any(|a| a == "--hidden") {
                 if let Some(w) = app.get_window("main") {
                     let _ = w.hide();
@@ -138,33 +141,31 @@ fn set_pet(app: tauri::AppHandle, visible: bool) {
 
 #[tauri::command]
 fn set_companion(app: tauri::AppHandle, mode: String) {
+    let mode = if mode == "dock" { "dock" } else { "pet" };
     if mode == "dock" {
-        if let Some(w) = app.get_window("dock") {
-            let _ = w.show();
-        } else {
-            let built = WindowBuilder::new(
-                &app,
-                "dock",
-                WindowUrl::App("index.html?mode=dock".into()),
-            )
-            .title("Jarvis Dock")
-            .inner_size(220.0, 38.0)
-            .resizable(false)
-            .decorations(false)
-            .transparent(true)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .focused(false)
-            .build();
-            match built {
-                Ok(w) => {
-                    position_dock(&w);
-                    let _ = w.show();
-                }
-                Err(e) => eprintln!("dock window build failed: {}", e),
-            }
+        if let Some(w) = app.get_window("pet") {
+            let _ = w.hide();
         }
-    } else if let Some(w) = app.get_window("dock") {
-        let _ = w.close();
+        match app.get_window("dock") {
+            Some(dock) => {
+                position_dock(&dock);
+                let _ = dock.show();
+            }
+            None => eprintln!("dock window missing from tauri.conf"),
+        }
+    } else {
+        if let Some(dock) = app.get_window("dock") {
+            let _ = dock.hide();
+        }
+        if let Some(pet) = app.get_window("pet") {
+            let _ = pet.show();
+        }
+    }
+    // keep the main window's companion state in sync (settings seg, pet toggle)
+    if let Some(m) = app.get_window("main") {
+        let _ = m.eval(&format!(
+            "window.onCompanionChanged && window.onCompanionChanged(\"{}\")",
+            mode
+        ));
     }
 }

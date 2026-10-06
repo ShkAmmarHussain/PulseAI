@@ -259,22 +259,90 @@ Jarvis.on("ui.file_ingest", (d) => {
   input.setSelectionRange(input.value.length, input.value.length);
 });
 
-// header search: asking from anywhere lands in the conversation
-const searchInput = document.getElementById("global-search");
-if (searchInput) {
-  searchInput.addEventListener("keydown", (e) => {
+// command palette (doc 30, section 6.4): asking from anywhere lands in the conversation
+const palette = document.getElementById("cmd-palette");
+const paletteInput = document.getElementById("cmd-palette-input");
+const paletteBtn = document.getElementById("cmd-palette-btn");
+function openCmdPalette() {
+  if (!palette) return;
+  palette.hidden = false;
+  if (paletteInput) {
+    paletteInput.value = "";
+    paletteInput.focus();
+  }
+}
+function closeCmdPalette() {
+  if (palette) palette.hidden = true;
+}
+window.openCmdPalette = openCmdPalette;
+if (paletteBtn) paletteBtn.onclick = openCmdPalette;
+const paletteBackdrop = palette && palette.querySelector(".cp-backdrop");
+if (paletteBackdrop) paletteBackdrop.onclick = closeCmdPalette;
+if (paletteInput) {
+  paletteInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeCmdPalette();
+      return;
+    }
     if (e.key !== "Enter") return;
-    const t = searchInput.value.trim();
+    const t = paletteInput.value.trim();
     if (!t) return;
-    searchInput.value = "";
+    closeCmdPalette();
     if (window.showTab) showTab("chat");
     input.value = t;
     send();
   });
 }
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === "k" || e.key === "K")) {
+    e.preventDefault();
+    if (palette && palette.hidden) openCmdPalette();
+    else closeCmdPalette();
+  }
+});
+
+// ---- coding-agent diff cards (doc 30, section 6.3) ----
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+function baseFilename(p) {
+  const parts = String(p).split(/[\\/]/);
+  return parts[parts.length - 1] || p;
+}
+function renderAgentDiffCard(data) {
+  const card = document.createElement("div");
+  card.className = "agent-diff-card";
+  card.innerHTML = `
+    <div class="diff-card-head">
+      <span class="diff-agent-badge">${escapeHtml(data.agent || "Coding Agent")}</span>
+      <span class="diff-file-path" title="${escapeHtml(data.file || "")}">${escapeHtml(baseFilename(data.file || ""))}</span>
+      <span class="diff-counts">
+        <span class="diff-add">+${data.added || 0}</span>
+        <span class="diff-del">-${data.removed || 0}</span>
+      </span>
+      ${data.pid ? `<button class="diff-jump-btn" data-pid="${data.pid}" title="Focus Terminal Window">Jump &#8629;</button>` : ""}
+    </div>
+    ${data.patch ? `
+      <details class="diff-patch-collapsible">
+        <summary>View diff snippet</summary>
+        <pre class="diff-patch-code"><code>${escapeHtml(data.patch)}</code></pre>
+      </details>
+    ` : ""}
+  `;
+  const jump = card.querySelector(".diff-jump-btn");
+  if (jump) jump.onclick = () => Jarvis.hookTerminal(Number(jump.dataset.pid));
+  return card;
+}
+Jarvis.on("agent.hook.diff", (d) => {
+  const p = d.payload || {};
+  if (!p.file) return;
+  hideEmpty();
+  msgs.insertBefore(renderAgentDiffCard(p), typingEl);
+  scrollLatest();
+});
 
 // ---- microphone / voice states ----
-const micBtns = [document.getElementById("mic"), document.getElementById("top-mic")].filter(Boolean);
+const micBtns = [document.getElementById("mic")].filter(Boolean);
 let micOn = false;
 function setMic(on) {
   micOn = on;
@@ -356,6 +424,9 @@ Jarvis.on("ui.chat", (d) => {
   if (d.correlation_id) {
     removeApprovalCards(String(d.correlation_id));
   }
+  // the hook relay mirrors file edits as italic system text; the rich diff
+  // card above is the canonical rendering (doc 30, section 6.3)
+  if ((d.payload.role || "") === "system" && /^Editing /.test(d.payload.text || "")) return;
   addMsg(d.payload.role || "assistant", d.payload.text || "");
 });
 

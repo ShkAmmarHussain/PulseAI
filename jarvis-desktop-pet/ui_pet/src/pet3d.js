@@ -13,20 +13,21 @@ if (container) {
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(34, W / H, 0.1, 100);
-  camera.position.set(0, 0.12, 6.3);
-  camera.lookAt(0, -0.15, 0);
+  const camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 100);
+  camera.position.set(0, 0.3, 9.8);
+  camera.lookAt(0, 0.22, 0);
 
-  scene.add(new THREE.HemisphereLight(0xcbb8ff, 0x1a1430, 1.05));
-  const key = new THREE.DirectionalLight(0xffffff, 1.7); // dual soft specular #1
-  key.position.set(2.5, 3.5, 4);
+  // warm diffuse desk-lamp lighting (doc 30, section 4.3)
+  scene.add(new THREE.HemisphereLight(0xfff6ea, 0x584a52, 1.2));
+  const key = new THREE.DirectionalLight(0xffeedd, 1.8);
+  key.position.set(2.5, 4.0, 4.5);
   scene.add(key);
-  const rim = new THREE.PointLight(0x8b5cf6, 26, 14);
-  rim.position.set(-3, -1.2, 2.5);
+  const rim = new THREE.PointLight(0xffb07c, 18, 12);
+  rim.position.set(-3.2, -1.0, 2.5);
   scene.add(rim);
-  const fill = new THREE.PointLight(0x5b8bff, 9, 12); // dual soft specular #2
-  fill.position.set(3, -2, -2);
-  scene.add(fill);
+  const fillLight = new THREE.PointLight(0xffe4c4, 5, 12);
+  fillLight.position.set(1.8, -1.4, 3.6);
+  scene.add(fillLight);
 
   // ---- continuous-curvature superellipse body (spec 29, section 5.5.2) ----
   const SUPER_N = 4.2;
@@ -67,63 +68,68 @@ if (container) {
     return g;
   }
 
-  // dual-pass material: warm matte silicone shell + internal luminous core
+  // cozy soft matte ceramic material with subsurface-scattering feel (doc 30, 4.3)
   const shellMat = new THREE.MeshPhysicalMaterial({
-    color: 0xf0ecff,
-    roughness: 0.55,
-    metalness: 0.0,
-    sheen: 0.6,
-    sheenRoughness: 0.55,
-    sheenColor: new THREE.Color(0xffffff),
-    clearcoat: 0.18,
-    clearcoatRoughness: 0.5,
+    color: 0xfcf9f2,
+    roughness: 0.38,
+    metalness: 0.04,
+    transmission: 0.08,
+    ior: 1.45,
+    sheen: 1.0,
+    sheenRoughness: 0.5,
+    sheenColor: new THREE.Color(0xffdfd0),
+    clearcoat: 0.12,
+    clearcoatRoughness: 0.4,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.95,
   });
   const accentMat = new THREE.MeshPhysicalMaterial({
-    color: 0x8b7cf6,
-    roughness: 0.3,
-    metalness: 0.05,
-    clearcoat: 0.4,
+    color: 0xfb923c,
+    roughness: 0.4,
+    metalness: 0.02,
+    clearcoat: 0.2,
   });
-  const faceMat = new THREE.MeshPhysicalMaterial({
-    color: 0x221d38,
-    roughness: 0.16,
-    metalness: 0.1,
-    clearcoat: 0.7,
-    emissive: 0x171233,
-    emissiveIntensity: 0.6,
+  // dark warm ink for eyes / smile / brows on the light face
+  const featureMat = new THREE.MeshStandardMaterial({
+    color: 0x35292a,
+    roughness: 0.55,
+    metalness: 0.0,
   });
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0x8fe3ff });
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffc98a });
   const glowMatDim = new THREE.MeshBasicMaterial({
-    color: 0x8b7cf6,
+    color: 0xffc98a,
     transparent: true,
     opacity: 0.9,
   });
   const browMat = new THREE.MeshStandardMaterial({
-    color: 0xbfb2ff,
-    emissive: 0x5b4bd8,
-    emissiveIntensity: 0.7,
-    roughness: 0.4,
+    color: 0x8a6a4c,
+    roughness: 0.6,
   });
   const blushMat = new THREE.MeshBasicMaterial({
-    color: 0xff9ed8,
+    color: 0xff9e9e,
     transparent: true,
-    opacity: 0.5,
+    opacity: 0.65,
+  });
+  const innerEarMat = new THREE.MeshStandardMaterial({
+    color: 0xf0c9a8,
+    roughness: 0.55,
+    metalness: 0.0,
   });
 
   const robot = new THREE.Group();
   scene.add(robot);
 
-  const head = new THREE.Group();
-  head.position.y = 0.78;
-  robot.add(head);
+  // single-piece squishy "Mochi" body (doc 30 course correction): one seamless
+  // squircle dumpling with soft ear nubs - no antenna, screen face, or torso
+  const body = new THREE.Group();
+  body.position.y = 0.1;
+  robot.add(body);
 
-  const skull = new THREE.Mesh(superellipsoid(1.16, 1.13, 1.09, SUPER_N, 48, 64), shellMat);
-  head.add(skull);
+  const shell = new THREE.Mesh(superellipsoid(1.2, 1.16, 1.1, SUPER_N, 48, 64), shellMat);
+  body.add(shell);
 
   const innerCore = new THREE.Mesh(
-    superellipsoid(0.9, 0.87, 0.84, SUPER_N, 24, 32),
+    superellipsoid(0.94, 0.9, 0.86, SUPER_N, 24, 32),
     new THREE.MeshBasicMaterial({
       color: 0x00f0ff,
       transparent: true,
@@ -132,15 +138,15 @@ if (container) {
       depthWrite: false,
     })
   );
-  head.add(innerCore);
+  body.add(innerCore);
 
-  const FA = 0.968, FB = 0.88, FC = 1.056, FCZ = 0.1;
-  const face = new THREE.Mesh(superellipsoid(FA, FB, FC, SUPER_N, 40, 48), faceMat);
-  face.position.z = FCZ;
-  head.add(face);
+  // soft warm inner glow (state colour) living inside the marshmallow
+  const innerLight = new THREE.PointLight(0xf59e0b, 2.2, 4.5);
+  innerLight.position.set(0, 0, 0.55);
+  body.add(innerLight);
 
-  // spherical surface projection of facial elements (spec 29, section 5.5.3)
-  const _n = new THREE.Vector3();
+  // projection surface = the body itself (no separate face panel)
+  const FA = 1.2, FB = 1.16, FC = 1.1, FCZ = 0;
   function faceSurf(dx, dy, dz, out) {
     const l = Math.hypot(dx, dy, dz) || 1;
     const x = dx / l, y = dy / l, z = dz / l;
@@ -153,7 +159,30 @@ if (container) {
     return out;
   }
 
-  // capsule eye geometry (rounded squircle capsules, spec 29, section 5.5.3)
+  // soft rounded bunny ear nubs - same shell colour so the piece reads seamless
+  const earGeo = new THREE.SphereGeometry(0.3, 24, 18);
+  const earL = new THREE.Mesh(earGeo, shellMat);
+  const earR = new THREE.Mesh(earGeo, shellMat);
+  earL.position.set(-0.58, 1.16, -0.02);
+  earR.position.set(0.58, 1.16, -0.02);
+  earL.scale.set(0.6, 0.95, 0.55);
+  earR.scale.set(0.6, 0.95, 0.55);
+  earL.rotation.z = 0.3;
+  earR.rotation.z = -0.3;
+  body.add(earL, earR);
+  const innerEarGeo = new THREE.SphereGeometry(0.16, 16, 12);
+  const innerEarL = new THREE.Mesh(innerEarGeo, innerEarMat);
+  const innerEarR = new THREE.Mesh(innerEarGeo, innerEarMat);
+  innerEarL.position.set(-0.6, 1.19, 0.11);
+  innerEarR.position.set(0.6, 1.19, 0.11);
+  innerEarL.scale.set(0.5, 0.75, 0.45);
+  innerEarR.scale.set(0.5, 0.75, 0.45);
+  body.add(innerEarL, innerEarR);
+
+  // spherical surface projection helpers for facial elements (spec 29, 5.5.3)
+  const _n = new THREE.Vector3();
+
+  // large expressive squircle eyes (not slits!) with curved eyelid rims
   function capsuleGeo(w, h, r) {
     const s = new THREE.Shape();
     const hw = w / 2, hh = h / 2;
@@ -169,112 +198,97 @@ if (container) {
     s.quadraticCurveTo(-hw, -hh, -hw + r, -hh);
     return new THREE.ShapeGeometry(s, 6);
   }
-  const eyeGeo = capsuleGeo(0.3, 0.34, 0.13);
-  const eyeL = new THREE.Mesh(eyeGeo, glowMat);
-  const eyeR = new THREE.Mesh(eyeGeo, glowMat);
-  head.add(eyeL, eyeR);
+  const eyeGeo = capsuleGeo(0.4, 0.48, 0.2);
+  const eyeL = new THREE.Mesh(eyeGeo, featureMat);
+  const eyeR = new THREE.Mesh(eyeGeo, featureMat);
+  body.add(eyeL, eyeR);
+
+  // curved upper-eyelid rim riding the top edge of each eye
+  const lidGeo = new THREE.TorusGeometry(0.2, 0.034, 8, 24, Math.PI);
+  const lidL = new THREE.Mesh(lidGeo, featureMat);
+  const lidR = new THREE.Mesh(lidGeo, featureMat);
+  lidL.position.set(0, 0.2, 0.012);
+  lidR.position.set(0, 0.2, 0.012);
+  eyeL.add(lidL);
+  eyeR.add(lidR);
 
   const glintMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const glintL = new THREE.Mesh(new THREE.CircleGeometry(0.05, 12), glintMat);
-  const glintR = new THREE.Mesh(new THREE.CircleGeometry(0.05, 12), glintMat);
-  glintL.position.set(0.06, 0.07, 0.012);
-  glintR.position.set(0.06, 0.07, 0.012);
+  const glintL = new THREE.Mesh(new THREE.CircleGeometry(0.08, 14), glintMat);
+  const glintR = new THREE.Mesh(new THREE.CircleGeometry(0.08, 14), glintMat);
+  glintL.position.set(0.08, 0.1, 0.014);
+  glintR.position.set(0.08, 0.1, 0.014);
   eyeL.add(glintL);
   eyeR.add(glintR);
+  const sparkL = new THREE.Mesh(new THREE.CircleGeometry(0.042, 10), glintMat);
+  const sparkR = new THREE.Mesh(new THREE.CircleGeometry(0.042, 10), glintMat);
+  sparkL.position.set(-0.07, -0.09, 0.014);
+  sparkR.position.set(-0.07, -0.09, 0.014);
+  sparkL.userData.spark = sparkR.userData.spark = true;
+  eyeL.add(sparkL);
+  eyeR.add(sparkR);
 
-  const blushGeo = new THREE.CircleGeometry(0.13, 24);
+  // warm soft blush cheeks on the body front (oriented to the surface normal)
+  const blushGeo = new THREE.CircleGeometry(0.2, 24);
   const blushL = new THREE.Mesh(blushGeo, blushMat);
   const blushR = new THREE.Mesh(blushGeo, blushMat);
-  blushL.position.set(-0.64, -0.2, 1.15);
-  blushR.position.set(0.64, -0.2, 1.15);
+  const _bp = new THREE.Vector3();
+  const _bn = new THREE.Vector3();
+  const _fwd = new THREE.Vector3(0, 0, 1);
+  faceSurf(-0.56, -0.17, 1, _bp);
+  faceNormal(_bp, _bn);
+  blushL.position.copy(_bp).addScaledVector(_bn, 0.05);
+  blushL.quaternion.setFromUnitVectors(_fwd, _bn);
+  faceSurf(0.56, -0.17, 1, _bp);
+  faceNormal(_bp, _bn);
+  blushR.position.copy(_bp).addScaledVector(_bn, 0.05);
+  blushR.quaternion.setFromUnitVectors(_fwd, _bn);
   blushL.scale.set(1, 0.7, 1);
   blushR.scale.set(1, 0.7, 1);
-  head.add(blushL, blushR);
+  body.add(blushL, blushR);
 
-  const happyGeo = new THREE.TorusGeometry(0.17, 0.05, 10, 24, Math.PI);
-  const happyL = new THREE.Mesh(happyGeo, glowMat);
-  const happyR = new THREE.Mesh(happyGeo, glowMat);
-  happyL.position.set(-0.36, 0.03, 1.17);
-  happyR.position.set(0.36, 0.03, 1.17);
+  // closed happy eyes (curved arcs at eye level)
+  const happyGeo = new THREE.TorusGeometry(0.2, 0.05, 10, 24, Math.PI);
+  const happyL = new THREE.Mesh(happyGeo, featureMat);
+  const happyR = new THREE.Mesh(happyGeo, featureMat);
+  faceSurf(-0.34, 0.16, 1, _bp);
+  happyL.position.set(_bp.x, _bp.y, _bp.z + 0.05);
+  faceSurf(0.34, 0.16, 1, _bp);
+  happyR.position.set(_bp.x, _bp.y, _bp.z + 0.05);
   happyL.rotation.z = Math.PI;
   happyR.rotation.z = Math.PI;
   happyL.visible = happyR.visible = false;
-  head.add(happyL, happyR);
+  body.add(happyL, happyR);
 
-  const browGeo = new THREE.BoxGeometry(0.3, 0.05, 0.05);
+  const browGeo = new THREE.BoxGeometry(0.28, 0.055, 0.05);
   const browL = new THREE.Mesh(browGeo, browMat);
   const browR = new THREE.Mesh(browGeo, browMat);
-  browL.position.set(-0.36, 0.4, 1.19);
-  browR.position.set(0.36, 0.4, 1.19);
+  faceSurf(-0.36, 0.52, 1, _bp);
+  browL.position.set(_bp.x, _bp.y, _bp.z + 0.05);
+  faceSurf(0.36, 0.52, 1, _bp);
+  browR.position.set(_bp.x, _bp.y, _bp.z + 0.05);
   browL.visible = browR.visible = false;
-  head.add(browL, browR);
+  body.add(browL, browR);
 
-  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.038, 10, 24, Math.PI), glowMat);
-  smile.position.set(0, -0.34, 1.17);
+  const smile = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.042, 10, 24, Math.PI), featureMat);
+  faceSurf(0, -0.34, 1, _bp);
+  smile.position.set(_bp.x, _bp.y, _bp.z + 0.045);
   smile.rotation.z = Math.PI;
-  head.add(smile);
+  body.add(smile);
 
-  const mouthOpen = new THREE.Mesh(new THREE.CircleGeometry(0.12, 24), glowMat);
-  mouthOpen.position.set(0, -0.36, 1.17);
+  const mouthOpen = new THREE.Mesh(new THREE.CircleGeometry(0.13, 24), featureMat);
+  faceSurf(0, -0.36, 1, _bp);
+  mouthOpen.position.set(_bp.x, _bp.y, _bp.z + 0.045);
   mouthOpen.scale.set(1, 0.5, 1);
   mouthOpen.visible = false;
-  head.add(mouthOpen);
-
-  const earGeo = new THREE.SphereGeometry(0.2, 24, 18);
-  const earL = new THREE.Mesh(earGeo, accentMat);
-  const earR = new THREE.Mesh(earGeo, accentMat);
-  earL.position.set(-1.14, 0, 0);
-  earR.position.set(1.14, 0, 0);
-  earL.scale.set(0.5, 1, 1);
-  earR.scale.set(0.5, 1, 1);
-  head.add(earL, earR);
-
-  const antStick = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.46, 10), accentMat);
-  antStick.position.y = 1.24;
-  head.add(antStick);
-  const antTip = new THREE.Mesh(new THREE.SphereGeometry(0.13, 20, 16), glowMat.clone());
-  antTip.position.y = 1.54;
-  head.add(antTip);
-  const antGlow = new THREE.PointLight(0x8b5cf6, 4, 3);
-  antGlow.position.y = 1.54;
-  head.add(antGlow);
-
-  const body = new THREE.Group();
-  body.position.y = -0.88;
-  robot.add(body);
-
-  const torso = new THREE.Mesh(superellipsoid(0.6, 0.48, 0.53, SUPER_N, 36, 44), shellMat);
-  body.add(torso);
-  const bellyPatch = new THREE.Mesh(new THREE.CircleGeometry(0.2, 24), glowMatDim);
-  bellyPatch.position.set(0, 0.02, 0.56);
-  body.add(bellyPatch);
-  const chestLight = new THREE.PointLight(0x8b5cf6, 2.6, 2.2);
-  chestLight.position.set(0, 0.02, 0.8);
-  body.add(chestLight);
-
-  const handGeo = new THREE.SphereGeometry(0.17, 20, 16);
-  const handL = new THREE.Mesh(handGeo, accentMat);
-  const handR = new THREE.Mesh(handGeo, accentMat);
-  handL.position.set(-0.76, -0.1, 0.15);
-  handR.position.set(0.76, -0.1, 0.15);
-  body.add(handL, handR);
-
-  const footGeo = new THREE.SphereGeometry(0.21, 22, 16);
-  const footL = new THREE.Mesh(footGeo, accentMat);
-  const footR = new THREE.Mesh(footGeo, accentMat);
-  footL.position.set(-0.3, -0.55, 0.14);
-  footR.position.set(0.3, -0.55, 0.14);
-  footL.scale.set(1, 0.62, 1.35);
-  footR.scale.set(1, 0.62, 1.35);
-  body.add(footL, footR);
+  body.add(mouthOpen);
 
   const glowCanvas = document.createElement("canvas");
   glowCanvas.width = glowCanvas.height = 128;
   const gctx = glowCanvas.getContext("2d");
   const grad = gctx.createRadialGradient(64, 64, 4, 64, 64, 62);
-  grad.addColorStop(0, "rgba(167,139,250,0.75)");
-  grad.addColorStop(0.45, "rgba(139,92,246,0.32)");
-  grad.addColorStop(1, "rgba(139,92,246,0)");
+  grad.addColorStop(0, "rgba(251,146,60,0.7)");
+  grad.addColorStop(0.45, "rgba(245,158,11,0.3)");
+  grad.addColorStop(1, "rgba(245,158,11,0)");
   gctx.fillStyle = grad;
   gctx.fillRect(0, 0, 128, 128);
   const groundGlow = new THREE.Mesh(
@@ -287,7 +301,7 @@ if (container) {
     })
   );
   groundGlow.rotation.x = -Math.PI / 2;
-  groundGlow.position.y = -1.58;
+  groundGlow.position.y = -1.14;
   robot.add(groundGlow);
 
   const ringMat = new THREE.MeshBasicMaterial({
@@ -376,33 +390,32 @@ if (container) {
 
   // internal luminous core colour per state (spec 29, section 5.5.2)
   const CORE = {
-    idle: 0x00f0ff, listening: 0x00f0ff, thinking: 0xa855f7, speaking: 0x00f0ff,
-    happy: 0x10b981, concerned: 0xf59e0b, curious: 0x00f0ff, sleep: 0xf59e0b,
+    idle: 0xf59e0b, listening: 0xfbbf24, thinking: 0xa855f7, speaking: 0xfbbf24,
+    happy: 0x10b981, concerned: 0xf59e0b, curious: 0xffb07c, sleep: 0xf59e0b,
     poked: 0x10b981, dizzy: 0xa855f7, ingesting: 0xa855f7, executing: 0xa855f7,
     approval: 0xf59e0b,
   };
   const coreCol = new THREE.Color(CORE.idle);
-  const whiteCol = new THREE.Color(0xffffff);
   let glowTargetMul = 1;
   let glowMul = 1;
   let coreFlash = 0;
   function applyCore(m) {
     coreCol.setHex(CORE[m] || CORE.idle);
-    rim.color.copy(coreCol);
-    chestLight.color.copy(coreCol);
+    innerLight.color.copy(coreCol);
     innerCore.material.color.copy(coreCol);
     pMat.color.copy(coreCol);
     glowTargetMul = m === "sleep" ? 0.15 : 1; // eco-sleep dims the rim to an ember
   }
 
-  // modular colorway / theme engine (spec 29, sections 5.5.7 / roadmap h)
+  // modular colorway / theme engine (spec 29, sections 5.5.7 / roadmap h;
+  // `ink` is the dark/light feature color for eyes + smile on the face panel)
   const COLORWAYS = {
-    obsidian: { shell: 0x17181d, accent: 0x00f0ff, face: 0x0a0b10, glow: 0x8fe3ff, rough: 0.45, opacity: 0.94, blush: 0.4 },
-    porcelain: { shell: 0xf4efe7, accent: 0xc4b5fd, face: 0x3a3550, glow: 0xd8ccff, rough: 0.68, opacity: 0.96, blush: 0.8 },
-    cyberpunk: { shell: 0x2a1440, accent: 0xff3d9a, face: 0x160b26, glow: 0xf59e0b, rough: 0.32, opacity: 0.93, blush: 0.55 },
-    titanium: { shell: 0xdfe6ee, accent: 0x9fd8ff, face: 0x9aa8b8, glow: 0xbfeaff, rough: 0.2, opacity: 0.72, blush: 0.3 },
+    porcelain: { shell: 0xfcf9f2, accent: 0xfb923c, face: 0xf0e2cf, ink: 0x35292a, glow: 0xffc98a, rough: 0.38, opacity: 0.95, blush: 0.85 },
+    obsidian: { shell: 0x17181d, accent: 0x00f0ff, face: 0x0a0b10, ink: 0x8fe3ff, glow: 0x8fe3ff, rough: 0.45, opacity: 0.94, blush: 0.4 },
+    cyberpunk: { shell: 0x2a1440, accent: 0xff3d9a, face: 0x160b26, ink: 0xffc2d9, glow: 0xf59e0b, rough: 0.32, opacity: 0.93, blush: 0.55 },
+    titanium: { shell: 0xdfe6ee, accent: 0x9fd8ff, face: 0x9aa8b8, ink: 0x2e3742, glow: 0xbfeaff, rough: 0.2, opacity: 0.72, blush: 0.3 },
   };
-  let colorway = "obsidian";
+  let colorway = "porcelain";
   function applyColorway(key) {
     const cw = COLORWAYS[key];
     if (!cw) return;
@@ -411,13 +424,13 @@ if (container) {
     shellMat.roughness = cw.rough;
     shellMat.opacity = cw.opacity;
     accentMat.color.setHex(cw.accent);
-    faceMat.color.setHex(cw.face);
+    innerEarMat.color.setHex(cw.accent);
+    featureMat.color.setHex(cw.ink || 0x35292a);
     glowMat.color.setHex(cw.glow);
     glowMatDim.color.setHex(cw.glow);
-    bellyPatch.material.color.setHex(cw.glow);
     blushMat.opacity = cw.blush;
   }
-  applyColorway("obsidian");
+  applyColorway("porcelain");
 
   // file ingestion animation state (spec 29, sections 5.2 / 5.5.6)
   const ingest = { active: false, x: 0, y: 0, dropAt: -1e9 };
@@ -501,8 +514,8 @@ if (container) {
   const _ep = new THREE.Vector3();
   const _q = new THREE.Quaternion();
   const _zAxis = new THREE.Vector3(0, 0, 1);
-  const baseDirL = new THREE.Vector3(-0.36, 0.01, 1).normalize();
-  const baseDirR = new THREE.Vector3(0.36, 0.01, 1).normalize();
+  const baseDirL = new THREE.Vector3(-0.34, 0.14, 1).normalize();
+  const baseDirR = new THREE.Vector3(0.34, 0.14, 1).normalize();
 
   // adaptive 60 / 10 / 1 FPS render loop (spec 29, section 5.5.8)
   let renderBudget = 1000 / 60;
@@ -533,11 +546,10 @@ if (container) {
     const tsy = 1 + taffy.y.x;
     const tsz = 1 - (taffy.x.x + taffy.y.x) * 0.45;
     body.scale.set(vs.sx * tsx, vs.sy * tsy, vs.sz * tsz);
-    head.scale.set(1 + (1 - vs.sx * tsx) * 0.5, 1 + (1 - vs.sy * tsy) * 0.35, 1 + (1 - vs.sz * tsz) * 0.5);
 
     robot.position.y = Math.sin(t * cur.bobSpeed * 2.1) * 0.06 * cur.bob;
-    head.rotation.x = cur.lean + Math.sin(t * 7) * 0.06 * cur.nod;
-    head.rotation.z = cur.tilt * Math.sin(t * 2.6) * 0.16 + leanS.x * 0.2;
+    body.rotation.x = cur.lean + Math.sin(t * 7) * 0.06 * cur.nod;
+    body.rotation.z = cur.tilt * Math.sin(t * 2.6) * 0.16 + leanS.x * 0.2;
 
     // saccadic gaze target: cursor + preset bias + micro-jitter (section 5.5.3)
     sac.next -= dt;
@@ -582,8 +594,8 @@ if (container) {
       _n.x += gx;
       _n.y += gy;
       faceSurf(_n.x, _n.y, _n.z, _ep);
-      eye.position.copy(_ep);
       faceNormal(_ep, _n);
+      eye.position.copy(_ep).addScaledVector(_n, 0.055); // keep flat eye proud of the curved shell
       _q.setFromUnitVectors(_zAxis, _n);
       eye.quaternion.copy(_q);
     }
@@ -595,12 +607,13 @@ if (container) {
     happyL.visible = happyR.visible = happyOn;
     eyeL.visible = eyeR.visible = !happyOn;
     glintL.visible = glintR.visible = blinkVisible && !happyOn;
+    sparkL.visible = sparkR.visible = blinkVisible && !happyOn;
 
     const browOn = cur.brows > 0.06;
     browL.visible = browR.visible = browOn;
     if (browOn) {
-      browL.position.y = 0.4 + gy * 0.4;
-      browR.position.y = 0.4 + gy * 0.4;
+      browL.position.y = 0.52 + gy * 0.4;
+      browR.position.y = 0.52 + gy * 0.4;
       browL.rotation.z = -0.42 * cur.brows;
       browR.rotation.z = 0.42 * cur.brows;
     }
@@ -615,20 +628,16 @@ if (container) {
       smile.scale.set(cur.smileS, (1 - cur.flat * 0.7) * cur.smileS, 1);
     }
 
-    const antPulse = 0.85 + Math.sin(t * cur.ant * 2.4) * 0.35;
     glowMul = glowMul + (glowTargetMul - glowMul) * (1 - Math.exp(-3 * dt));
     coreFlash = Math.max(0, coreFlash - dt * 2.4);
     const flash = 1 + coreFlash;
-    rim.intensity = 26 * glowMul;
-    chestLight.intensity = 2.6 * glowMul * flash;
+    rim.intensity = 18 * glowMul;
+    innerLight.intensity = (2.2 + coreFlash * 2.5) * glowMul;
     innerCore.material.opacity = (0.12 + coreFlash * 0.45) * glowMul;
     innerCore.scale.setScalar(1 + coreFlash * 0.05);
-    antTip.material.color.copy(coreCol).lerp(whiteCol, antPulse * 0.22);
-    antTip.scale.setScalar(1 + Math.sin(t * cur.ant * 2.4) * 0.15 + coreFlash * 0.3);
-    antGlow.intensity = (2.5 + antPulse * 2.5) * glowMul;
     if (ingest.active) {
-      head.rotation.x += ingest.y * 0.1;
-      head.rotation.z += ingest.x * 0.14;
+      body.rotation.x += ingest.y * 0.1;
+      body.rotation.z += ingest.x * 0.14;
     }
 
     gulpAmt *= Math.exp(-dt * 6);
@@ -636,15 +645,6 @@ if (container) {
     if (hop > 0.05) {
       const b = Math.abs(Math.sin(t * 6.5));
       robot.position.y += b * 0.1 * hop;
-    }
-    handL.position.y = -0.1 + Math.sin(t * 1.4) * 0.05;
-    handR.position.y = -0.1 + Math.sin(t * 1.4 + 0.6) * 0.05;
-    if (hop > 0.05) {
-      handL.rotation.z = Math.sin(t * 9) * 0.5;
-      handR.rotation.z = -Math.sin(t * 9) * 0.5;
-    } else {
-      handL.rotation.z = damp(handL.rotation.z, 0, 6, dt);
-      handR.rotation.z = damp(handR.rotation.z, 0, 6, dt);
     }
 
     // ingestion particle stream: cursor -> core spiral (spec 29, section 5.5.6)

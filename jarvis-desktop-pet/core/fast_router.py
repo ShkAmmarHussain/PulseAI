@@ -289,26 +289,38 @@ def _volume_endpoint():
 
 
 def volume_state():
-    vol = _volume_endpoint()
-    return int(round(vol.GetMasterVolumeLevelScalar() * 100)), bool(vol.GetMute())
+    import pythoncom
+
+    pythoncom.CoInitialize()
+    try:
+        vol = _volume_endpoint()
+        return int(round(vol.GetMasterVolumeLevelScalar() * 100)), bool(vol.GetMute())
+    finally:
+        pythoncom.CoUninitialize()
 
 
 def apply_volume(params: dict) -> dict:
+    import pythoncom
+
     op = (params or {}).get("op")
-    vol = _volume_endpoint()
-    cur = vol.GetMasterVolumeLevelScalar()
-    if op == "up":
-        vol.SetMasterVolumeLevelScalar(min(1.0, cur + 0.1), None)
-    elif op == "down":
-        vol.SetMasterVolumeLevelScalar(max(0.0, cur - 0.1), None)
-    elif op == "set":
-        vol.SetMasterVolumeLevelScalar(max(0.0, min(1.0, float(params.get("level", cur)))), None)
-    elif op == "mute":
-        vol.SetMute(1, None)
-    elif op == "unmute":
-        vol.SetMute(0, None)
-    pct, muted = int(round(vol.GetMasterVolumeLevelScalar() * 100)), bool(vol.GetMute())
-    return {"percent": pct, "muted": muted}
+    pythoncom.CoInitialize()
+    try:
+        vol = _volume_endpoint()
+        cur = vol.GetMasterVolumeLevelScalar()
+        if op == "up":
+            vol.SetMasterVolumeLevelScalar(min(1.0, cur + 0.1), None)
+        elif op == "down":
+            vol.SetMasterVolumeLevelScalar(max(0.0, cur - 0.1), None)
+        elif op == "set":
+            vol.SetMasterVolumeLevelScalar(max(0.0, min(1.0, float(params.get("level", cur)))), None)
+        elif op == "mute":
+            vol.SetMute(1, None)
+        elif op == "unmute":
+            vol.SetMute(0, None)
+        pct, muted = int(round(vol.GetMasterVolumeLevelScalar() * 100)), bool(vol.GetMute())
+        return {"percent": pct, "muted": muted}
+    finally:
+        pythoncom.CoUninitialize()
 
 
 def apply_media(params: dict) -> str:

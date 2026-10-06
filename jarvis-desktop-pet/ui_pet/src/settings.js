@@ -94,7 +94,7 @@ function fill(s) {
   const uiSounds = document.getElementById("v-ui-sounds");
   if (uiSounds) uiSounds.checked = voice.ui_sounds === false;
   setCompanionSeg(((cfg.runtime || {}).companion) === "dock" ? "dock" : "pet");
-  setv("pet-colorway", (cfg.runtime || {}).pet_colorway || "obsidian");
+  setv("pet-colorway", (cfg.runtime || {}).pet_colorway || "porcelain");
   note.textContent = "Loaded. Edit and press Save.";
   note.classList.remove("ok");
   setDirty(false);
@@ -118,7 +118,7 @@ function collect() {
   s.config.resource_manager.cooldown_ms = (Number(val("rm-cooldown")) || 2) * 1000;
   s.config.runtime = s.config.runtime || {};
   s.config.runtime.companion = selectedCompanion();
-  s.config.runtime.pet_colorway = val("pet-colorway") || "obsidian";
+  s.config.runtime.pet_colorway = val("pet-colorway") || "porcelain";
 
   s.agents = s.agents || {};
   const ar = s.agents.agent_roles = s.agents.agent_roles || {};
@@ -164,12 +164,23 @@ function collect() {
 
 Jarvis.on("settings", (d) => fill(d.payload));
 let saveTimeout = null;
+let ownSaveAt = 0;
 Jarvis.on("settings_saved", (d) => {
   clearTimeout(saveTimeout);
   saveTimeout = null;
   fill(d.payload);
   note.textContent = "Saved.";
   note.classList.add("ok");
+});
+// saves made in ANOTHER window only arrive here as ui.state {settings_saved};
+// refetch so companion / colorway / permission changes apply in this window too.
+// Skip when we initiated the save ourselves - our direct reply already refilled.
+let refetchT = null;
+Jarvis.on("ui.state", (d) => {
+  if (!(d.payload || {}).settings_saved) return;
+  if (Date.now() - ownSaveAt < 5000) return;
+  clearTimeout(refetchT);
+  refetchT = setTimeout(() => Jarvis.getSettings(), 200);
 });
 
 // ---- microphone selection + live input level ----
@@ -223,6 +234,7 @@ document.getElementById("save").onclick = () => {
     note.classList.remove("ok");
     saveBtn.disabled = false;
   }, 8000);
+  ownSaveAt = Date.now();
   Jarvis.saveSettings(collect());
 };
 document.getElementById("test").onclick = () => {

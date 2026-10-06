@@ -1,47 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Jarvis Pet</title>
   <link rel="stylesheet" href="app.css" />
   <style>
-    html, body { background: transparent; overflow: hidden; }
+    html, body {
+      background: transparent !important;
+      overflow: hidden !important;
+      margin: 0; padding: 0;
+      width: 100vw; height: 100vh;
+      user-select: none;
+    }
   </style>
 </head>
-<body>
+<body class="pet-transparent-surface">
+  <div id="pet-container" data-tauri-drag-region>
+
+    <!-- Floating speech bubble: strictly ABOVE the head with clearance -->
+    <div id="pet-bubble-anchor">
+      <div id="bubble" class="floating-bubble" role="status" aria-live="polite">
+        <div class="bubble-content" id="bubble-text"></div>
+        <span class="bubble-tail" aria-hidden="true"></span>
+      </div>
+    </div>
+
+    <!-- Human-in-the-loop approval card: strictly ABOVE the head -->
+    <div id="approval-anchor">
+      <div id="approval" class="floating-approval-card" role="alertdialog">
+        <div class="approval-header">
+          <span class="approval-badge"><svg class="ic"><use href="#i-shield"/></svg>Safety Confirmation</span>
+          <span class="approval-timer" id="approval-countdown">30s</span>
+        </div>
+        <div class="approval-body" id="approval-msg"></div>
+        <div class="approval-actions">
+          <button class="btn-allow" id="pet-allow-btn">Allow once</button>
+          <button class="btn-deny" id="pet-deny-btn">Deny</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- The 3D living character stage -->
+    <div id="pet-stage">
+      <div id="pet" data-mood="idle"></div>
+      <div class="pet-floor-glow" aria-hidden="true"></div>
+    </div>
+
+    <!-- Contextual floating micro-dock: AUTO-HIDING, appears only on hover -->
+    <div id="pet-hover-dock" class="context-dock" aria-label="Quick Actions">
+      <button class="dock-action-btn" id="dock-btn-mic" title="Talk to Jarvis (Push-to-Talk)" aria-label="Talk to Jarvis">
+        <svg class="ic"><use href="#i-mic"/></svg>
+      </button>
+      <button class="dock-action-btn" id="dock-btn-chat" title="Open Command Center" aria-label="Open chat">
+        <svg class="ic"><use href="#i-chat"/></svg>
+      </button>
+      <button class="dock-action-btn" id="dock-btn-dockmode" title="Switch to Top-Edge Dynamic Island" aria-label="Switch to top-edge dock">
+        <svg class="ic"><use href="#i-dock"/></svg>
+      </button>
+      <button class="dock-action-btn" id="dock-btn-settings" title="Settings" aria-label="Open settings">
+        <svg class="ic"><use href="#i-sliders"/></svg>
+      </button>
+    </div>
+
+  </div>
+
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
       <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12c0 4-4 7-9 7-1.2 0-2.3-.2-3.3-.5L4 20l1.2-3.3C4.4 15.4 4 13.7 4 12c0-4 4-7 9-7s8 3 8 7z"/></symbol>
       <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></symbol>
       <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
+      <symbol id="i-dock" viewBox="0 0 24 24"><path d="M4 4h16M4 20h16M12 9l-4 4h8l-4-4z"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.8-7 10-4-2.2-7-5.5-7-10V6l7-3z"/></symbol>
     </defs>
   </svg>
 
-  <div id="pet-page">
-    <div id="pet-head" data-tauri-drag-region>
-      <div class="pet-logo orb" aria-hidden="true"><i class="core"></i></div>
-      <span class="pet-name">Jarvis</span>
-      <span class="pet-status" id="pet-status" role="status" aria-live="polite">
-        <i class="dot"></i><span id="pet-status-text">Ready</span>
-      </span>
-    </div>
-    <div id="pet-stage">
-      <div id="bubble"></div>
-      <div id="approval">
-        <div class="msg"></div>
-        <div class="btns">
-          <button class="allow">Allow once</button>
-          <button class="deny">Deny</button>
-        </div>
-      </div>
-      <div id="pet" data-mood="idle"></div>
-    </div>
-    <div id="mini-btns">
-      <button id="btn-mic" title="Talk to Jarvis" aria-label="Talk to Jarvis"><svg class="ic"><use href="#i-mic"/></svg></button>
-      <button id="btn-chat" title="Open chat" aria-label="Open chat"><svg class="ic"><use href="#i-chat"/></svg></button>
-      <button id="btn-settings" title="Settings" aria-label="Open settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
-    </div>
-  </div>
   <script src="ws.js"></script>
   <script src="pet.js"></script>
   <script type="module" src="pet3d.js"></script>

@@ -115,6 +115,8 @@ async def main():
         async with s.ws_connect(pet_t["webSocketDebuggerUrl"], timeout=30) as ws:
             await rpc(ws, "Runtime.enable")
             await rpc(ws, "Page.enable")
+            # background tabs suspend requestAnimationFrame -> bring to front
+            await rpc(ws, "Page.bringToFront")
             await rpc(ws, "Page.reload")
 
             d = None

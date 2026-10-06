@@ -1,19 +1,13 @@
 const bubble = document.getElementById("bubble");
+const bubbleText = document.getElementById("bubble-text");
 const approval = document.getElementById("approval");
+const approvalMsg = document.getElementById("approval-msg");
+const approvalCountdown = document.getElementById("approval-countdown");
 const petEl = document.getElementById("pet");
 let bubbleTimer = null;
 let moodTimer = null;
 let pendingApproval = null;
-
-const statusEl = document.getElementById("pet-status");
-const statusText = document.getElementById("pet-status-text");
-function setStatus(text, mode) {
-  if (statusText) statusText.textContent = text;
-  if (statusEl) {
-    statusEl.classList.toggle("active", mode === "active");
-    statusEl.classList.toggle("off", mode === "off");
-  }
-}
+let approvalTick = null;
 
 function setMood(m) {
   petEl.dataset.mood = m;
@@ -25,10 +19,32 @@ function moodTemp(m, ms) {
   moodTimer = setTimeout(() => setMood("idle"), ms);
 }
 function showBubble(text, ms) {
-  bubble.textContent = text;
+  if (bubbleText) bubbleText.textContent = text;
   bubble.style.display = "block";
   clearTimeout(bubbleTimer);
   bubbleTimer = setTimeout(() => { bubble.style.display = "none"; }, ms || 5000);
+}
+
+function startApprovalCountdown(sec) {
+  let left = Math.max(0, sec | 0);
+  if (approvalCountdown) approvalCountdown.textContent = left + "s";
+  clearInterval(approvalTick);
+  approvalTick = setInterval(() => {
+    left -= 1;
+    if (approvalCountdown) approvalCountdown.textContent = Math.max(0, left) + "s";
+    if (left <= 0) clearInterval(approvalTick);
+  }, 1000);
+}
+function stopApprovalCountdown() {
+  clearInterval(approvalTick);
+  approvalTick = null;
+}
+
+function resetApprovalButtons() {
+  const a = approval.querySelector(".btn-allow");
+  const dn = approval.querySelector(".btn-deny");
+  if (a) { a.disabled = false; a.textContent = "Allow once"; }
+  if (dn) { dn.disabled = false; dn.textContent = "Deny"; }
 }
 
 function showApproval(data, cid) {
@@ -37,19 +53,14 @@ function showApproval(data, cid) {
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   let html = esc(pp.message || "Approve?");
   if (pp.action && pp.action.target) html += '<div class="ac-target">Target: ' + esc(pp.action.target) + "</div>";
-  approval.querySelector(".msg").innerHTML =
-    html + ' <span class="risk">Risk level ' + (pp.risk == null ? "?" : pp.risk) + "/10</span>";
-  const a = approval.querySelector(".allow");
-  const dn = approval.querySelector(".deny");
-  a.disabled = false;
-  dn.disabled = false;
-  a.textContent = "Allow once";
-  dn.textContent = "Deny";
+  html += ' <span class="risk">Risk level ' + (pp.risk == null ? "?" : pp.risk) + "/10</span>";
+  if (approvalMsg) approvalMsg.innerHTML = html;
+  resetApprovalButtons();
   approval.querySelectorAll(".hook-extra").forEach((b) => b.remove());
   if (pp.hook) {
-    const row = approval.querySelector(".btns");
+    const row = approval.querySelector(".approval-actions");
     const al = document.createElement("button");
-    al.className = "hook-extra";
+    al.className = "hook-extra btn-deny";
     al.textContent = "Always allow";
     al.onclick = () => {
       if (!pendingApproval) return;
@@ -59,7 +70,7 @@ function showApproval(data, cid) {
     row.appendChild(al);
     if (pp.pid) {
       const tm = document.createElement("button");
-      tm.className = "hook-extra";
+      tm.className = "hook-extra btn-deny";
       tm.textContent = "Terminal";
       tm.onclick = () => Jarvis.hookTerminal(pp.pid);
       row.appendChild(tm);
@@ -67,9 +78,10 @@ function showApproval(data, cid) {
   }
   delete approval.dataset.pending;
   approval.style.display = "block";
+  document.body.classList.add("approval-open");
   bubble.style.display = "none";
+  startApprovalCountdown(pp.timeout || 30);
   setMood("approval");
-  setStatus("Needs approval", "active");
   clearTimeout(moodTimer);
 }
 
@@ -78,32 +90,35 @@ function showApproval(data, cid) {
 function settleApproval(btn, label) {
   if (!pendingApproval) return;
   approval.dataset.pending = "1";
-  approval.querySelectorAll(".allow, .deny, .hook-extra").forEach((b) => { b.disabled = true; });
+  approval.querySelectorAll(".btn-allow, .btn-deny, .hook-extra").forEach((b) => { b.disabled = true; });
   btn.textContent = label;
+  stopApprovalCountdown();
   showBubble("Working\u2026", 8000);
   setMood("thinking");
-  setStatus("Working\u2026", "active");
   clearTimeout(moodTimer);
   setTimeout(() => {
     if (approval.dataset.pending === "1") {
       approval.style.display = "none";
+      document.body.classList.remove("approval-open");
       delete approval.dataset.pending;
       pendingApproval = null;
-      approval.querySelectorAll(".allow, .deny, .hook-extra").forEach((b) => { b.disabled = false; });
+      approval.querySelectorAll(".btn-allow, .btn-deny, .hook-extra").forEach((b) => { b.disabled = false; });
     }
   }, 90000);
 }
 
-approval.querySelector(".allow").onclick = () => {
+const petAllowBtn = document.getElementById("pet-allow-btn");
+const petDenyBtn = document.getElementById("pet-deny-btn");
+if (petAllowBtn) petAllowBtn.onclick = () => {
   if (pendingApproval) {
     Jarvis.approval(true, { action: pendingApproval.payload.action }, pendingApproval.cid);
-    settleApproval(approval.querySelector(".allow"), "Allowing\u2026");
+    settleApproval(petAllowBtn, "Allowing\u2026");
   }
 };
-approval.querySelector(".deny").onclick = () => {
+if (petDenyBtn) petDenyBtn.onclick = () => {
   if (pendingApproval) {
     Jarvis.approval(false, { action: pendingApproval.payload.action }, pendingApproval.cid);
-    settleApproval(approval.querySelector(".deny"), "Denying\u2026");
+    settleApproval(petDenyBtn, "Denying\u2026");
   }
 };
 
@@ -117,23 +132,18 @@ Jarvis.on("ui.chat", (d) => {
   if (d.correlation_id && pendingApproval &&
       String(pendingApproval.cid) === String(d.correlation_id)) {
     approval.style.display = "none";
+    document.body.classList.remove("approval-open");
     delete approval.dataset.pending;
     pendingApproval = null;
-    const a = approval.querySelector(".allow");
-    const dn = approval.querySelector(".deny");
-    a.disabled = false;
-    dn.disabled = false;
-    a.textContent = "Allow once";
-    dn.textContent = "Deny";
+    stopApprovalCountdown();
+    resetApprovalButtons();
   }
   if (d.payload.role === "assistant" && d.payload.text) {
     showBubble(d.payload.text);
-    setStatus("Ready", "idle");
     if (petEl.dataset.mood !== "speaking") moodTemp("happy", 2200);
   }
   if (d.payload.role === "user") {
     setMood("thinking");
-    setStatus("Thinking\u2026", "active");
     clearTimeout(moodTimer);
   }
 });
@@ -155,28 +165,21 @@ Jarvis.on("agent.hook.session", (d) => {
   if (st === "running") {
     clearTimeout(moodTimer);
     setMood("executing");
-    setStatus("Working \u2014 " + (p.agent || "coding agent"), "active");
   } else if (st === "waiting") {
     clearTimeout(moodTimer);
     setMood("concerned");
-    setStatus("Agent needs input", "active");
   } else if (petEl.dataset.mood === "executing") {
     moodTemp("happy", 1800);
-    setStatus("Ready", "idle");
   }
 });
 Jarvis.on("ui.approval_cancelled", (d) => {
   if (pendingApproval && d.correlation_id && String(pendingApproval.cid) === String(d.correlation_id)) {
     approval.style.display = "none";
+    document.body.classList.remove("approval-open");
     delete approval.dataset.pending;
     pendingApproval = null;
-    const a = approval.querySelector(".allow");
-    const dn = approval.querySelector(".deny");
-    a.disabled = false;
-    dn.disabled = false;
-    a.textContent = "Allow once";
-    dn.textContent = "Deny";
-    setStatus("Ready", "idle");
+    stopApprovalCountdown();
+    resetApprovalButtons();
     showBubble("Timed out \u2014 denied.", 3500);
   }
 });
@@ -186,10 +189,8 @@ Jarvis.on("tts_state", (d) => {
   if (speaking) {
     clearTimeout(moodTimer);
     setMood("speaking");
-    setStatus("Speaking\u2026", "active");
   } else if (petEl.dataset.mood === "speaking") {
     moodTemp("happy", 1400);
-    setStatus("Ready", "idle");
   }
 });
 
@@ -198,28 +199,22 @@ Jarvis.on("ui.voice_state", (d) => {
   if (st === "listening") {
     setMood("listening");
     clearTimeout(moodTimer);
-    setStatus("Listening\u2026", "active");
     showBubble("Listening...", 6000);
   } else if (st === "transcribing") {
     setMood("thinking");
     clearTimeout(moodTimer);
-    setStatus("Transcribing\u2026", "active");
   } else if (st === "wake" || st === "idle") {
     if (["listening", "thinking"].includes(petEl.dataset.mood)) setMood("idle");
-    setStatus("Ready", "idle");
   } else if (st === "error") {
     moodTemp("concerned", 4000);
-    setStatus("Voice error", "active");
     showBubble("Voice: " + ((d.payload || {}).error || "error"), 4000);
   }
 });
 
 document.addEventListener("jarvis:connected", () => {
-  setStatus("Ready", "idle");
   showBubble('Say "Hey Jarvis" or type a message.', 5000);
 });
 document.addEventListener("jarvis:disconnected", () => {
-  setStatus("Offline", "off");
   showBubble("Reconnecting...", 3000);
 });
 
@@ -301,11 +296,16 @@ function syncPetSound(d) {
   const v = cfg.voice || {};
   petSoundMuted = v.ui_sounds === false;
   // wardrobe/colorway (spec 29, section 5.5.7)
-  const cw = (cfg.runtime || {}).pet_colorway || "obsidian";
+  const cw = (cfg.runtime || {}).pet_colorway || "porcelain";
   if (window.Pet3D && window.Pet3D.applyColorway) window.Pet3D.applyColorway(cw);
 }
 Jarvis.on("settings", syncPetSound);
 Jarvis.on("settings_saved", syncPetSound);
+// saves made in other windows only broadcast ui.state {settings_saved} -
+// refetch so colorway / sound changes from the main window apply here too
+Jarvis.on("ui.state", (d) => {
+  if ((d.payload || {}).settings_saved) Jarvis.getSettings();
+});
 Jarvis.getSettings();
 
 petEl.onclick = () => {
@@ -313,8 +313,14 @@ petEl.onclick = () => {
   playSquish();
   tcmd("open_chat");
 };
-document.getElementById("btn-chat").onclick = () => tcmd("open_chat");
-document.getElementById("btn-settings").onclick = () => tcmd("open_settings");
+const btnChat = document.getElementById("dock-btn-chat");
+if (btnChat) btnChat.onclick = () => tcmd("open_chat");
+const btnSettings = document.getElementById("dock-btn-settings");
+if (btnSettings) btnSettings.onclick = () => tcmd("open_settings");
+const btnDockmode = document.getElementById("dock-btn-dockmode");
+if (btnDockmode) btnDockmode.onclick = () => {
+  if (window.__TAURI__ && window.__TAURI__.tauri) window.__TAURI__.tauri.invoke("set_companion", { mode: "dock" });
+};
 
 // ---- file drag-and-drop ingestion (spec 29, sections 5.2 / 5.5.6) ----
 function playGulp() {
@@ -345,13 +351,12 @@ function ingestFiles(paths) {
   if (!list.length) return;
   const name = String(list[0]).split(/[\\/]/).pop();
   showBubble("Inspecting " + name + (list.length > 1 ? ` (+${list.length - 1} more)` : "") + "...", 6000);
-  setStatus("Inspecting " + name, "active");
   clearTimeout(moodTimer);
   setMood("ingesting");
   if (window.Pet3D && window.Pet3D.ingestDrop) window.Pet3D.ingestDrop();
   playGulp();
   Jarvis.fileIngest(list);
-  moodTimer = setTimeout(() => { setMood("idle"); setStatus("Ready", "idle"); }, 4500);
+  moodTimer = setTimeout(() => { setMood("idle"); }, 4500);
   markActive();
 }
 
@@ -420,7 +425,7 @@ let pokes = [];
 let lastActivity = Date.now();
 function markActive() {
   lastActivity = Date.now();
-  if (petEl.dataset.mood === "sleep") { setMood("idle"); setStatus("Ready", "idle"); }
+  if (petEl.dataset.mood === "sleep") { setMood("idle"); }
 }
 document.addEventListener("mousemove", markActive, { passive: true });
 document.addEventListener("mousedown", markActive, { passive: true });
@@ -463,22 +468,23 @@ setInterval(() => {
   if (petEl.dataset.mood === "sleep") return;
   if (Date.now() - lastActivity > 5 * 60 * 1000 && petEl.dataset.mood === "idle") {
     setMood("sleep");
-    setStatus("Sleeping", "idle");
   }
 }, 15000);
 
-const micBtn = document.getElementById("btn-mic");
+const micBtn = document.getElementById("dock-btn-mic");
 let micOn = false;
-micBtn.onclick = () => {
+if (micBtn) micBtn.onclick = () => {
   micOn = !micOn;
   Jarvis.voiceListen(micOn);
 };
 Jarvis.on("ui.voice_state", (d) => {
   const st = (d.payload || {}).state || "idle";
-  micBtn.classList.toggle("rec", st === "listening");
-  micBtn.classList.toggle("busy", st === "transcribing");
+  if (micBtn) {
+    micBtn.classList.toggle("rec", st === "listening");
+    micBtn.classList.toggle("busy", st === "transcribing");
+  }
   micOn = st === "listening";
   document.body.classList.toggle("dock-show", st === "listening" || st === "transcribing");
 });
 
-setTimeout(() => showBubble("Hi, I'm Jarvis.", 4000), 800);
+setTimeout(() => showBubble("Hi, I'm Jarvis \u2014 need a hand?", 4000), 800);
