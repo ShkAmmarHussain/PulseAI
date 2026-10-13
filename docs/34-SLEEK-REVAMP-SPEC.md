@@ -79,3 +79,23 @@ Rules:
 3. Island states (overview, approval, question, result, error, chat).
 4. Character redraw + rename, then pet simplification.
 5. Production items in §7 + captures + docs.
+
+## 9. As-built: Phase 1 (tokens + shell + Chat)
+
+Branch `revamp/spec34`. The character and its `mochi` identifiers are untouched (§1.1 is still open).
+
+**Tokens (§2).** `:root` in `app.css` now defines `--bg`, `--card`, `--card-flat`, `--tab-on`, `--hairline`, `--ink`, `--dim`, `--dim-3`, the four state glows, `--font-ui` / `--font-mono` and the card/row radii. The older tokens (`--bg-app`, `--bg-surface`, `--text-*`, `--border-*`, `--accent*`, `--success`, `--danger`, `--info`) are remapped onto them, so Activity, Memory, Settings, the pet and the island pick up the palette before Phase 2 restyles them. Deviations:
+- `--dim-3` is `#7d828b`, not `#6b7079`. The spec value is about 3.9:1 on `--card`, and §7.3 asks for WCAG AA.
+- `--border-default` / `--border-strong` stay a little brighter than the hairline (0.06 / 0.1), so form controls in Settings keep an edge until their Phase 2 restyle.
+- The legacy aliases `--bg`, `--card` and `--dim` were unused (only `--grad` was referenced), so they now carry the spec 34 values directly.
+
+**Shell (§4).** `#window-titlebar` is the only bar: character mark plus a connection dot (`#conn-dot`, with `#conn` visually hidden while connected and shown in red when down), tab pills `#nav .nav-item[data-tab]` (same `showTab()`, `aria-current`), a drag region, then the provider pill `.model-badge`, `#cmd-palette-btn`, `#dictate-btn` and the `+` menu `#quick-actions-btn` → `#plus-menu` (pet switch `#pet-side-toggle[data-pet-toggle]`, Quick actions, Command palette, Dictate, Settings `#top-settings`; Esc and outside clicks close it). `#sidebar`, `#sb-toggle`, `#topbar` and the `sb-collapsed` logic are gone; every other id is kept.
+
+**Chat (§4).** Centred 720px column. The greeting reads `personality.yaml` → `user.name` (added: `Ammar`) through `window.setGreeting()` from `onSettingsLoaded`, and is nameless when unset (`USER_NAME` removed from `chat.js`). Four suggestion pills. Assistant replies have no bubble (22px character avatar, name, time, then plain text). User messages are right-aligned `--tab-on` pills with no meta row. System lines and coding-agent diff cards render as `--card-flat` step rows. The composer is a floating `--card` bar with a white round send button and an indigo glow while listening.
+
+**Inspection.** `scripts/inspect_states.py` probes the header (tabs left-anchored; `+` mapped by its distance from the right edge, because the mirror viewport is a different width) and captures `main_app_menu`, `main_activity`, `main_memory` and `main_settings` in place of `main_app_collapsed`: 19/19 steps. `inspect_ui.ps1` and the driver also raise the main window with a TOPMOST/NOTOPMOST round trip. Without it, the first run captured whatever window covered the app.
+
+Before/after captures (real windows, 1100×760):
+- before: `jarvis-desktop-pet/artifacts/ui_inspection/spec34/before/` (`main_app_expanded`, `main_app_collapsed`, `empty/main_app_expanded`, pet and dock states)
+- after: `jarvis-desktop-pet/artifacts/ui_inspection/spec34/after/` (`main_app_expanded`, `main_app_menu`, `main_activity`, `main_memory`, `main_settings`, `empty/main_app_expanded`, pet and dock states)
+Gates (non-mic, 2026-10-14): smoke OK, ws_ping, model_router 30/30, fast_router 71/71, vocab 17/17, audio_cache, tts_wake, injector 17/17, hook_e2e 37/37, dictation_ui 27/27, phase5_e2e 14/14, phase5_dock_check 27/27, phase5_visual_check 28/28, chat_e2e, agent_e2e, voice_e2e ALL OK, pet_springs 9/9, inspect_states 19/19. wake_e2e prints `WAKE E2E PASS` but the interpreter exits with 0xC0000374 during native teardown. This branch has no backend changes. Not run, because they need a live mic: hotkey_e2e, dictation_flow_test. Run notes: smoke_test needs `PYTHONPATH` set to `jarvis-desktop-pet`; wake/voice e2e boot their own backend, so stop the one on :8765 first; and the Edge mirror must be started with `--allow-file-access-from-files`, or pet3d.js (an ES module) cannot load and `Pet3D.debug` fails.

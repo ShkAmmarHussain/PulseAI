@@ -56,15 +56,45 @@
     </defs>
   </svg>
 
+  <!-- spec 34 section 4: one 36px black header = titlebar + tabs (no sidebar, no topbar) -->
   <header id="window-titlebar" data-tauri-drag-region>
     <div class="titlebar-left" data-tauri-drag-region>
-      <div class="titlebar-brand" data-tauri-drag-region>
-        <svg class="mochi-mini-logo" aria-hidden="true" data-tauri-drag-region><use href="#i-mochi"/></svg>
-        <span class="titlebar-app-name" data-tauri-drag-region>Jarvis</span>
-        <span class="titlebar-version-pill" data-tauri-drag-region>v0.2</span>
+      <div class="brand titlebar-brand" data-tauri-drag-region>
+        <svg class="logo mochi-mini-logo" aria-hidden="true" data-tauri-drag-region><use href="#i-mochi"/></svg>
+        <span class="status conn-status" role="status" aria-live="polite" title="Local service">
+          <i class="dot" id="conn-dot"></i><span id="conn">Connecting&hellip;</span>
+        </span>
       </div>
+      <nav id="nav" aria-label="Primary">
+        <button class="nav-item active" data-tab="chat" aria-current="page"><span class="nav-label">Chat</span></button>
+        <button class="nav-item" data-tab="activity"><span class="nav-label">Activity</span></button>
+        <button class="nav-item" data-tab="memory"><span class="nav-label">Memory</span></button>
+        <button class="nav-item" data-tab="settings"><span class="nav-label">Settings</span></button>
+      </nav>
     </div>
     <div class="titlebar-center" data-tauri-drag-region></div>
+    <div class="titlebar-tools">
+      <span class="model-badge"><i class="core-dot"></i> Local Model</span>
+      <button class="tb-btn" id="cmd-palette-btn" title="Command palette (Ctrl+K)" aria-label="Open command palette"><svg class="ic"><use href="#i-search"/></svg></button>
+      <button class="tb-btn" id="dictate-btn" title="Dictate to cursor (Ctrl+Alt+D)" aria-label="Dictate to cursor"><svg class="ic"><use href="#i-mic"/></svg></button>
+      <div class="plus-wrap">
+        <button class="tb-btn" id="quick-actions-btn" type="button" title="More" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" aria-controls="plus-menu"><svg class="ic"><use href="#i-plus"/></svg></button>
+        <div id="plus-menu" role="menu" aria-label="More actions" hidden>
+          <div class="pm-row pet-mini">
+            <svg class="mochi-mini" aria-hidden="true"><use href="#i-mochi"/></svg>
+            <span class="pet-mini-label">Show pet</span>
+            <label class="switch" title="Show / hide floating pet">
+              <input type="checkbox" id="pet-side-toggle" data-pet-toggle checked aria-label="Show floating pet" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <button type="button" role="menuitem" class="pm-item" data-act="quick"><svg class="ic"><use href="#i-plus"/></svg>Quick actions</button>
+          <button type="button" role="menuitem" class="pm-item" data-act="palette"><svg class="ic"><use href="#i-search"/></svg>Command palette<span class="key">Ctrl K</span></button>
+          <button type="button" role="menuitem" class="pm-item" data-act="dictate"><svg class="ic"><use href="#i-mic"/></svg>Dictate to cursor<span class="key">Ctrl Alt D</span></button>
+          <button type="button" role="menuitem" class="pm-item" id="top-settings" data-act="settings"><svg class="ic"><use href="#i-sliders"/></svg>Settings</button>
+        </div>
+      </div>
+    </div>
     <div class="titlebar-right">
       <button class="win-btn" id="win-min" title="Minimize" aria-label="Minimize">
         <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg>
@@ -79,58 +109,7 @@
   </header>
 
   <div id="app">
-    <aside id="sidebar">
-      <div class="brand">
-        <svg class="logo mochi-logo" aria-hidden="true"><use href="#i-mochi"/></svg>
-        <div class="brand-text">
-          <span class="name">Jarvis</span>
-          <span class="status" role="status" aria-live="polite">
-            <i class="dot" id="conn-dot"></i><span class="svc">Local Service</span><span class="sep">&bull;</span><span id="conn">Connecting&hellip;</span>
-          </span>
-        </div>
-        <button id="sb-toggle" class="icon-btn ghost" title="Collapse sidebar" aria-label="Collapse sidebar"><svg class="ic"><use href="#i-collapse"/></svg></button>
-      </div>
-
-      <nav id="nav" aria-label="Primary">
-        <button class="nav-item active" data-tab="chat"><svg class="ic"><use href="#i-chat"/></svg><span class="nav-label">Chat</span></button>
-        <button class="nav-item" data-tab="activity"><svg class="ic"><use href="#i-activity"/></svg><span class="nav-label">Activity</span></button>
-        <button class="nav-item" data-tab="memory"><svg class="ic"><use href="#i-brain"/></svg><span class="nav-label">Memory</span></button>
-        <button class="nav-item" data-tab="settings"><svg class="ic"><use href="#i-sliders"/></svg><span class="nav-label">Settings</span></button>
-      </nav>
-
-      <div class="sidebar-foot">
-        <div class="pet-mini">
-          <svg class="mochi-mini" aria-hidden="true"><use href="#i-mochi"/></svg>
-          <span class="pet-mini-label">Pet Visible</span>
-          <label class="switch" title="Show / hide floating pet">
-            <input type="checkbox" id="pet-side-toggle" data-pet-toggle checked />
-            <span class="slider"></span>
-          </label>
-        </div>
-        <button id="quick-actions-btn" class="qa-btn" type="button"><svg class="ic"><use href="#i-plus"/></svg><span class="nav-label">Quick actions</span></button>
-      </div>
-    </aside>
-
     <div id="main">
-      <header id="topbar">
-        <div class="topbar-context">
-          <span class="session-pill">Active Session</span>
-          <span class="model-badge"><i class="core-dot"></i> Local Model</span>
-        </div>
-        <div class="topbar-actions">
-          <button class="topbar-tool-btn" id="cmd-palette-btn" title="Command Palette (Ctrl+K)" aria-label="Open command palette">
-            <svg class="ic"><use href="#i-search"/></svg>
-            <span class="kbd-hint">Ctrl K</span>
-          </button>
-          <button class="topbar-tool-btn" id="dictate-btn" title="Dictate to Cursor (Ctrl+Alt+D)" aria-label="Dictate to cursor">
-            <svg class="ic"><use href="#i-mic"/></svg>
-            <span class="kbd-hint">Ctrl Alt D</span>
-          </button>
-          <div class="topbar-divider" aria-hidden="true"></div>
-          <button class="icon-btn" id="top-settings" title="Settings" aria-label="Open settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
-        </div>
-      </header>
-
       <div id="cmd-palette" hidden>
         <div class="cp-backdrop"></div>
         <div class="cp-panel" role="dialog" aria-label="Command palette">
@@ -169,8 +148,8 @@
                 <path d="M57 92 Q64 99.5 71 92" stroke="#35292a" stroke-width="3.2" stroke-linecap="round" fill="none"/>
               </svg>
             </div>
-            <h1 class="es-title" id="greeting">Good morning, Ammar</h1>
-            <p class="es-sub">Ready when you are. You can ask me to do something,<br />or use the quick actions below.</p>
+            <h1 class="es-title" id="greeting">Hello</h1>
+            <p class="es-sub">Ask for anything, or start with one of these.</p>
             <div class="chips" id="hero-chips" role="group" aria-label="Quick actions">
               <button class="chip" type="button" data-prompt="Help me open an app "><svg class="ic"><use href="#i-plus"/></svg>Open an app</button>
               <button class="chip" type="button" data-prompt="Help me find a file on this PC "><svg class="ic"><use href="#i-folder"/></svg>Find a file</button>
