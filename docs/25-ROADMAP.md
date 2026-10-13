@@ -1,22 +1,19 @@
 ﻿# 25. ROADMAP (Future Work)
 
-Where to go next, ordered by leverage. Specs 27–31 are complete; 32 is the active blueprint.
+Where to go next, ordered by leverage. Specs 27–33 are complete (32: memory, tasks, input automation, onboarding; 33: titlebar, multi-provider LLM, auto-router). The next spec is not written yet.
 
-## 25.1 Next Up — Spec 32 (planned, not started)
+## 25.1 Shipped Since the Last Roadmap
 
-[32-TASKS-MEMORY-AND-PRODUCT-SURFACES](./32-TASKS-MEMORY-AND-PRODUCT-SURFACES.md):
-- **Memory Studio UI** — browse/edit/forget ChromaDB-backed facts (`data/memory.json` mirror).
-- **Tasks, reminders & automations** — scheduled routines, live countdown in Activity, expiry chime.
-- **PC input automation** — implement `skills/input_control.py` (currently a placeholder) with approval gating.
-- **First-run onboarding** — guided model/mic/permission setup.
+- **Spec 32** — Memory Studio, tasks/reminders/timers, `skills/input_control.py` (ctypes `SendInput`, approval-gated), 3-step onboarding. See [32](./32-TASKS-MEMORY-AND-PRODUCT-SURFACES.md) §8.
+- **Spec 33** — frameless titlebar, OpenAI / Anthropic / LM Studio providers, auto-model router with a Settings on/off switch. See [33](./33-CUSTOM-TITLEBAR-CLOUD-MODELS-AND-UI-POLISH.md) §9.
 
 ## 25.2 Product Surfaces (from doc 27, deferred)
 
-Only `chat | activity | settings` panes exist today. Deferred: **Tasks**, **Automations**, **Memory** panes; **Integrations** detail screens; first-run flow; toast/notification system; offline/empty/error state taxonomy; **global search is deliberately excluded** (test markers forbid `id="global-search"` — do not add without a new spec decision).
+Panes today: `chat | activity | memory | settings` (tasks/timers live inside Activity). Still deferred: a dedicated **Automations** pane; **Integrations** detail screens; toast/notification system beyond the Memory undo toast; offline/empty/error state taxonomy; **global search is deliberately excluded** (test markers forbid `id="global-search"` — do not add without a new spec decision).
 
 ## 25.3 Engineering Backlog
 
-- **Skills completion** — 8 of 15 `skills/*` are placeholders (`input_control`, `memory_skills`, `notify`, `planning`, `stt`, `task_manager`, `tts`, `wakeword`).
+- **Skills completion** — 4 of 15 `skills/*` are still placeholders (`planning`, `stt`, `tts`, `wakeword`; the real STT/TTS/wake code lives in `core/` and `backend/voice_service.py`).
 - **Wire the safety config** — `permissions.yaml` `shell.allowlist/denylist` are not consumed by `skills/shell.py`; `core/permissions.py::SessionGrants` is implemented but unreferenced (hook bridge has its own 8 h grants).
 - **Dependency hygiene** — declare `ddgs`, `kokoro_onnx`, `pycaw`, `pypdf` in `pyproject.toml` (currently only in `requirements.txt` or undeclared); consider dropping unused `smolagents`.
 - **Test modernization** — migrate plain scripts to pytest (fixtures for WS/App) while keeping exit-code gates; move mirrored static checks into `tests/`.

@@ -43,6 +43,14 @@ def save_settings(payload: dict) -> dict:
     for key, value in payload.items():
         if key in allowed and isinstance(value, dict):
             _write_yaml(f"{key}.yaml", value)
+    if "config" in payload and isinstance(payload.get("config"), dict):
+        try:
+            from core import model_router
+
+            model_router.invalidate()
+            logger.info("save_settings: model_router cache invalidated")
+        except Exception as exc:  # router is optional; never fail the save
+            logger.warning("model_router invalidate failed: %s", exc)
     return get_settings()
 
 

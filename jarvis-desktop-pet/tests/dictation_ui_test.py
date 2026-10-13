@@ -185,7 +185,14 @@ async def main():
                 targets = await r.json()
             main_t = next((t for t in targets if t["type"] == "page" and "index.html" in t["url"]), None)
             if not main_t:
-                main_t = next((t for t in targets if t["type"] == "page" and "pet.html" not in t["url"]), None)
+                main_t = next(
+                    (
+                        t
+                        for t in targets
+                        if t["type"] == "page" and "pet.html" not in t["url"] and "dock.html" not in t["url"]
+                    ),
+                    None,
+                )
             if not main_t:
                 print("NO MAIN TARGET"); return 2
 

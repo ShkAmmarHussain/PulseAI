@@ -37,6 +37,9 @@
     if (stepbar) {
       stepbar.querySelectorAll("li").forEach((li) => {
         li.classList.toggle("on", Number(li.dataset.step) <= step);
+        li.classList.toggle("cur", Number(li.dataset.step) === step);
+        if (Number(li.dataset.step) === step) li.setAttribute("aria-current", "step");
+        else li.removeAttribute("aria-current");
       });
     }
     if (backBtn) backBtn.hidden = step === 1;

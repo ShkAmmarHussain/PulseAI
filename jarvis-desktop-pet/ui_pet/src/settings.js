@@ -128,6 +128,19 @@ let provTestT = null;
   });
 });
 
+// eye toggle for API key fields (settings + onboarding share this document)
+document.addEventListener("click", (e) => {
+  const btn = e.target && e.target.closest ? e.target.closest(".key-reveal") : null;
+  if (!btn) return;
+  const inp = document.getElementById(btn.getAttribute("data-target"));
+  if (!inp) return;
+  const showing = inp.type === "text";
+  inp.type = showing ? "password" : "text";
+  btn.classList.toggle("on", !showing);
+  btn.setAttribute("aria-label", showing ? "Show API key" : "Hide API key");
+  inp.focus();
+});
+
 function fill(s) {
   current = s;
   const cfg = s.config || {};
@@ -140,6 +153,8 @@ function fill(s) {
   const prov = llm.provider === "openai" || llm.provider === "anthropic" ? llm.provider : "lm_studio";
   setProviderSeg(prov);
   showProvFields(prov);
+  const arCb = document.getElementById("prov-auto-routing");
+  if (arCb) arCb.checked = llm.auto_routing !== false;
   setv("prov-openai-key", ((llm.openai || {}).api_key) || "");
   setv("prov-anthropic-key", ((llm.anthropic || {}).api_key) || "");
 
@@ -205,7 +220,8 @@ function collect() {
   s.config.lm_studio.timeout_ms = (Number(val("lm-timeout")) || 30) * 1000;
   s.config.llm = s.config.llm || {};
   s.config.llm.provider = selectedProvider();
-  if (typeof s.config.llm.auto_routing === "undefined") s.config.llm.auto_routing = true;
+  const arCb = document.getElementById("prov-auto-routing");
+  s.config.llm.auto_routing = arCb ? !!arCb.checked : true;
   s.config.llm.openai = Object.assign({}, s.config.llm.openai || {}, { api_key: val("prov-openai-key").trim() });
   s.config.llm.anthropic = Object.assign({}, s.config.llm.anthropic || {}, { api_key: val("prov-anthropic-key").trim() });
   s.config.resource_manager = s.config.resource_manager || {};

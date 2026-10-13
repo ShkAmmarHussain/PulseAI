@@ -7,6 +7,8 @@ function showTab(name) {
   if (PANES.indexOf(name) < 0) name = "chat";
   document.querySelectorAll(".nav-item").forEach((t) => {
     t.classList.toggle("active", t.dataset.tab === name);
+    if (t.dataset.tab === name) t.setAttribute("aria-current", "page");
+    else t.removeAttribute("aria-current");
   });
   PANES.forEach((n) => {
     const el = document.getElementById("pane-" + n);
@@ -94,7 +96,20 @@ window.onSettingsLoaded = (s) => {
     applyPet(rt.pet_enabled, false);
   }
   applyCompanion(rt.companion || "pet");
+  updateModelBadge((s.config && s.config.llm) || {});
 };
+
+// topbar badge follows the selected provider (was hardcoded "Local Model")
+const PROVIDER_LABELS = { lm_studio: "Local Model", openai: "OpenAI", anthropic: "Claude" };
+function updateModelBadge(llm) {
+  const badge = document.querySelector(".model-badge");
+  if (!badge) return;
+  const label = PROVIDER_LABELS[llm.provider] || PROVIDER_LABELS.lm_studio;
+  const dot = badge.querySelector(".core-dot");
+  badge.textContent = " " + label + (llm.auto_routing === false ? "" : " \u00b7 Auto");
+  if (dot) badge.prepend(dot);
+  badge.title = llm.auto_routing === false ? "Fixed model per agent" : "Auto-routing picks the model per task";
+}
 
 // ---- companion presentation: floating pet vs top-edge dock (spec 29, section 5.1) ----
 let companionMode = null;
