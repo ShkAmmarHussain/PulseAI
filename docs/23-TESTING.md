@@ -1,4 +1,4 @@
-﻿# 23. TESTING (Suites, Gates, Visual Inspection)
+# 23. TESTING (Suites, Gates, Visual Inspection)
 
 ## 23.1 Conventions
 
@@ -40,12 +40,12 @@
 ## 23.3 Visual Inspection (doc 30 §3 / §7)
 
 ```powershell
-# 8 states across the three real windows → artifacts/ui_inspection/*.png
-& .venv\Scripts\python.exe scripts\inspect_states.py      # expect: 16/16 inspection steps PASS
+# 11 states across the three real windows → artifacts/ui_inspection/*.png
+& .venv\Scripts\python.exe scripts\inspect_states.py      # expect: 19/19 inspection steps PASS
 # single state
 powershell -ExecutionPolicy Bypass -File scripts\inspect_ui.ps1 -State pet_idle
 ```
-States: `pet_idle | pet_hover | pet_speech | pet_approval | dock_collapsed | dock_expanded | main_app_expanded | main_app_collapsed`. The driver parks the real cursor at the screen corner for clean idles, then captures with `CopyFromScreen`. **Always read the PNGs** — pixel-level review questions are in doc 30 §3.
+States: `pet_idle | pet_hover | pet_speech | pet_approval | dock_collapsed | dock_expanded | main_app_expanded | main_app_menu | main_activity | main_memory | main_settings` (spec 34 removed the sidebar, so `main_app_collapsed` became the header `+` menu plus one capture per pane). The driver parks the real cursor at the screen corner for clean idles, raises the main window with a TOPMOST/NOTOPMOST round trip (SetForegroundWindow is refused when the shell is not foreground, which let other windows occlude the capture), then captures with `CopyFromScreen`. **Always read the PNGs** — pixel-level review questions are in doc 30 §3.
 
 Render-mode captures: flip `runtime.pet_render_mode` (full-settings save!), run `inspect_ui.ps1 -State pet_idle -OutputDir artifacts\ui_inspection\pet3d`, restore `2d`.
 

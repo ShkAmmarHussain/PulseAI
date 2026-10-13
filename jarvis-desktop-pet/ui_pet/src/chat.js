@@ -9,7 +9,6 @@ const voiceText = document.getElementById("vs-text");
 const peekBtn = document.getElementById("approval-peek");
 let typingTimer = null;
 let stickBottom = true;
-const USER_NAME = "Ammar";
 
 // ---- procedural UI earcons (spec 29, section 5.4) ----
 // 8 subtle state cues synthesized live via Web Audio (no audio assets).
@@ -103,13 +102,19 @@ const Earcons = (function () {
 })();
 window.Earcons = Earcons;
 
-// time-based greeting (spec 7.3 - subtle, second line does the work)
-(function setGreeting() {
+// time-based greeting (spec 7.3 - subtle, second line does the work).
+// spec 34 section 4: the name comes from personality.yaml (user.name), not a
+// hardcoded string; without one the greeting stays nameless.
+function setGreeting(personality) {
   const h = new Date().getHours();
   const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const user = (personality && personality.user) || {};
+  const name = typeof user.name === "string" ? user.name.trim() : "";
   const el = document.getElementById("greeting");
-  if (el) el.textContent = part + ", " + USER_NAME;
-})();
+  if (el) el.textContent = name ? part + ", " + name : part;
+}
+window.setGreeting = setGreeting;
+setGreeting(null);
 
 function hideEmpty() {
   if (emptyEl && emptyEl.parentElement) emptyEl.remove();
