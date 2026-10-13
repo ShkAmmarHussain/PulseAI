@@ -70,7 +70,7 @@
     d.innerHTML =
       '<div class="mem-empty-orb orb" aria-hidden="true"><i class="core"></i></div>' +
       '<div class="mem-empty-title">Nothing remembered yet</div>' +
-      '<p class="mem-empty-sub">Tell Jarvis &ldquo;remember that &hellip;&rdquo; and the fact will appear here &mdash; searchable, editable, forgettable.</p>';
+      '<p class="mem-empty-sub">Tell Jarvis &ldquo;remember that &hellip;&rdquo; and the fact will appear here &mdash; searchable, and easy to forget.</p>';
     return d;
   }
 

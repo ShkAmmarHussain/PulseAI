@@ -2425,3 +2425,51 @@ button.primary:disabled {
   background: rgba(255, 255, 255, 0.07); color: var(--text-secondary, #b9bccb);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* API key reveal (spec 33 follow-up): eye toggle inside the password field row */
+.key-wrap { position: relative; display: block; }
+.key-wrap input { width: 100%; padding-right: 38px; }
+.key-reveal {
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0;
+  background: none; border: none; border-radius: 8px;
+  color: var(--text-secondary, #b9bccb); cursor: pointer;
+  transition: color var(--t-fast, 0.15s), background var(--t-fast, 0.15s);
+}
+.key-reveal:hover { color: var(--text-primary, #eceef4); background: rgba(255, 255, 255, 0.07); }
+.key-reveal.on { color: #f5c26b; }
+.key-reveal .ic { width: 16px; height: 16px; }
+
+/* ---- UI review fixes (post spec 33) ---- */
+/* Memory pane had no padding/scroll rule: content sat flush against the sidebar,
+   "Add Fact" clipped at the right edge and long lists could not scroll. */
+#pane-memory { overflow-y: auto; padding: 26px 32px 44px; }
+#pane-memory .memory-toolbar,
+#pane-memory .memory-filters,
+#pane-memory .memory-add-form,
+#pane-memory #memory-list,
+#pane-memory .memory-toast { width: min(830px, 100%); margin-left: auto; margin-right: auto; }
+#pane-memory .memory-toolbar { margin-top: 4px; margin-bottom: 12px; }
+#pane-memory .memory-filters { margin-top: 0; margin-bottom: 14px; }
+#pane-memory .memory-add-form { margin-top: 0; margin-bottom: 14px; }
+#memory-add-btn { flex: none; white-space: nowrap; }
+/* timers card lined up with the 830px activity column */
+.task-timers { width: min(830px, 100%); margin: 0 auto 14px; box-sizing: border-box; }
+/* empty-state orb had no size and collapsed into a thin line */
+.mem-empty-orb { width: 52px; height: 52px; margin: 0 auto 16px; opacity: 0.85; }
+/* onboarding test buttons were only styled inside .test-field */
+.ob-row button.small {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 14px; min-height: 38px; border-radius: 9px;
+  font-size: var(--fs-label); font-weight: 620;
+  border: 1px solid var(--border-strong); background: var(--bg-surface-elevated); color: var(--text-primary);
+  transition: border-color var(--t-micro), color var(--t-micro), background var(--t-micro);
+}
+.ob-row button.small:hover { border-color: rgba(245, 158, 11, 0.55); color: var(--accent); }
+.ob-row button.small .ic { width: 14px; height: 14px; }
+/* onboarding stepbar: completed steps read quieter than the current one */
+.ob-stepbar li.on:not(.cur) { background: rgba(245, 158, 11, 0.04); border-color: rgba(245, 158, 11, 0.18); color: #c9a46a; }
+@media (max-width: 1100px) {
+  #pane-memory { padding-left: 20px; padding-right: 20px; }
+}

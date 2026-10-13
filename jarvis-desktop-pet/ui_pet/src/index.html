@@ -268,7 +268,7 @@
           <div class="mem-empty" id="memory-empty">
             <div class="mem-empty-orb orb" aria-hidden="true"><i class="core"></i></div>
             <div class="mem-empty-title">Nothing remembered yet</div>
-            <p class="mem-empty-sub">Tell Jarvis &ldquo;remember that &hellip;&rdquo; and the fact will appear here &mdash; searchable, editable, forgettable.</p>
+            <p class="mem-empty-sub">Tell Jarvis &ldquo;remember that &hellip;&rdquo; and the fact will appear here &mdash; searchable, and easy to forget.</p>
           </div>
         </div>
 
@@ -498,6 +498,16 @@
                 </div>
                 <p class="hint">Pick a provider and paste its API key &mdash; endpoints are preconfigured. Auto-routing selects the best model per task.</p>
               </div>
+              <div class="field switch-field">
+                <div class="field-text">
+                  <label for="prov-auto-routing">Auto-routing</label>
+                  <p class="hint">Pick the best model per task automatically &mdash; fast for chat, heavy for code &amp; planning, vision for the screen.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="prov-auto-routing" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
               <div class="field prov-field" id="prov-lm-field">
                 <label for="lm-url">Endpoint URL</label><input id="lm-url" />
               </div>
@@ -506,11 +516,17 @@
               </div>
               <div class="field prov-field" id="prov-openai-field" hidden>
                 <label for="prov-openai-key">OpenAI API key</label>
-                <input id="prov-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+                <div class="key-wrap">
+                  <input id="prov-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+                  <button type="button" class="key-reveal" data-target="prov-openai-key" aria-label="Show API key" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+                </div>
               </div>
               <div class="field prov-field" id="prov-anthropic-field" hidden>
                 <label for="prov-anthropic-key">Anthropic API key</label>
-                <input id="prov-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+                <div class="key-wrap">
+                  <input id="prov-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+                  <button type="button" class="key-reveal" data-target="prov-anthropic-key" aria-label="Show API key" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+                </div>
               </div>
               <div class="field test-field">
                 <button id="test" class="small"><svg class="ic"><use href="#i-globe"/></svg>Test connection</button>
@@ -710,11 +726,17 @@
         </div>
         <div class="field ob-prov-field" id="ob-openai-field" hidden>
           <label for="ob-openai-key">OpenAI API key</label>
-          <input id="ob-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+          <div class="key-wrap">
+            <input id="ob-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+            <button type="button" class="key-reveal" data-target="ob-openai-key" aria-label="Show API key" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+          </div>
         </div>
         <div class="field ob-prov-field" id="ob-anthropic-field" hidden>
           <label for="ob-anthropic-key">Anthropic API key</label>
-          <input id="ob-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+          <div class="key-wrap">
+            <input id="ob-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+            <button type="button" class="key-reveal" data-target="ob-anthropic-key" aria-label="Show API key" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+          </div>
         </div>
         <div class="ob-row">
           <button id="ob-lm-test" class="small" type="button"><svg class="ic"><use href="#i-globe"/></svg>Check connection</button>
