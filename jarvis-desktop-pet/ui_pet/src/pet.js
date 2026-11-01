@@ -86,9 +86,19 @@ function showApproval(data, cid) {
   pendingApproval = { payload: data.payload || data, cid: cid || data.correlation_id };
   const pp = pendingApproval.payload;
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  let html = esc(pp.message || "Approve?");
-  if (pp.action && pp.action.target) html += '<div class="ac-target">Target: ' + esc(pp.action.target) + "</div>";
-  html += ' <span class="risk">Risk level ' + (pp.risk == null ? "?" : pp.risk) + "/10</span>";
+  // friendly title + risk shown once (UI review item 1); the raw
+  // "Allow this action? (delete_file, risk 9/10)" string is not displayed
+  const AT = window.ApprovalText;
+  const fa = AT ? AT.friendlyAction(pp) : { title: "Run an action" };
+  const band = AT ? AT.riskBand(pp.risk) : { cls: "med", label: "Unknown risk" };
+  const extra = AT ? AT.extraMessage(pp) : esc(pp.message || "");
+  const act = (pp.action && typeof pp.action === "object" && pp.action) || {};
+  const tgt = act.target || act.path || act.url || act.cmd || "";
+  let html = '<div class="ap-title">' + esc(fa.title) + "</div>";
+  html += '<div class="ap-sub"><span class="risk ' + band.cls + '" title="' +
+    (pp.risk == null ? "Risk unknown" : "Risk " + esc(pp.risk) + "/10") + '">' + esc(band.label) + "</span></div>";
+  if (tgt) html += '<div class="ac-target">' + esc(tgt) + "</div>";
+  if (extra) html += '<div class="ap-extra">' + esc(extra) + "</div>";
   if (approvalMsg) approvalMsg.innerHTML = html;
   resetApprovalButtons();
   approval.querySelectorAll(".hook-extra").forEach((b) => b.remove());

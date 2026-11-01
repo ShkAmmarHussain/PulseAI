@@ -297,6 +297,9 @@ class WSBridge:
         elif et in ("memory.delete", "memory_delete"):
             reply = await self._memory_delete(str(payload.get("id") or ""), cid)
             await self._send(ws, {"type": "memory.delete", "payload": reply, "correlation_id": cid})
+        elif et in ("memory.update", "memory_update"):
+            reply = await self._memory_update(payload, cid)
+            await self._send(ws, {"type": "memory.update", "payload": reply, "correlation_id": cid})
         elif et in ("memory.clear", "memory_clear"):
             reply = await self._memory_clear(cid)
             await self._send(ws, {"type": "memory.clear", "payload": reply, "correlation_id": cid})
@@ -350,6 +353,23 @@ class WSBridge:
         state = await self._memory_state()
         await self.bus.publish(create_event("memory.updated", "memory.updated", state, correlation_id=cid))
         return {"ok": removed, "id": fact_id, **state}
+
+    async def _memory_update(self, payload: dict, cid) -> dict:
+        from skills import memory_skills
+
+        fact_id = str(payload.get("id") or "")
+        if not fact_id:
+            return {"ok": False, "error": "missing id"}
+        try:
+            fact = await asyncio.to_thread(
+                memory_skills.edit, fact_id, payload.get("content"), payload.get("category")
+            )
+        except ValueError as e:
+            return {"ok": False, "id": fact_id, "error": str(e)}
+        state = await self._memory_state()
+        if fact is not None:
+            await self.bus.publish(create_event("memory.updated", "memory.updated", state, correlation_id=cid))
+        return {"ok": fact is not None, "id": fact_id, "fact": fact, **state}
 
     async def _memory_clear(self, cid) -> dict:
         from skills import memory_skills

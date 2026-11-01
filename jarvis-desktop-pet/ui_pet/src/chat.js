@@ -447,36 +447,9 @@ Jarvis.on("tts_state", (d) => {
   else if (voiceText && voiceText.textContent === "Speaking\u2026") setVoiceStatus("");
 });
 
-// ---- approvals (section 12 + mockup approval prompt) ----
-const VERBS = {
-  launch_app: "Open", open_app: "Open", close_app: "Close",
-  delete_file: "Delete", move_file: "Move", create_file: "Create",
-  list_dir: "List files in", open_url: "Open in your browser",
-  web_search: "Search the web", run_shell: "Run a command",
-  vision_describe: "Describe your screen", type_text: "Type text",
-  vision_file: "Analyzed image file", summarize_file: "Summarized file",
-  respond: "Respond", noop: "Run",
-};
-
-function friendlyAction(p) {
-  const a = (p.action && (p.action.action || p.action.name)) || "";
-  const verb = VERBS[a] || a.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  let tgt = (p.action && (p.action.target || p.action.path || p.action.url || p.action.cmd)) || "";
-  if (tgt) {
-    const parts = String(tgt).split(/[\\/]/);
-    tgt = parts[parts.length - 1] || String(tgt);
-    if (tgt.length > 46) tgt = tgt.slice(0, 43) + "\u2026";
-  }
-  return { verb, tgt, title: (verb + (tgt ? " " + tgt : "")).trim() };
-}
-
-function riskBand(r) {
-  const n = Number(r);
-  if (!isFinite(n)) return { cls: "med", label: "Unknown" };
-  if (n <= 2) return { cls: "low", label: "Low" };
-  if (n <= 6) return { cls: "med", label: "Medium" };
-  return { cls: "high", label: "High" };
-}
+// ---- approvals (spec 34 section 3: status line, mono target chip, risk once) ----
+const friendlyAction = ApprovalText.friendlyAction;
+const riskBand = ApprovalText.riskBand;
 
 function removeApprovalCards(cid) {
   document.querySelectorAll(".approval-card").forEach((card) => {
@@ -491,17 +464,27 @@ Jarvis.on("ui.approval", (d) => {
   const p = d.payload || {};
   const fa = friendlyAction(p);
   const band = riskBand(p.risk);
-  const tgt = p.action && p.action.target;
+  const tgt = p.action && typeof p.action === "object" && (p.action.target || p.action.path || p.action.url || p.action.cmd);
+  const extra = ApprovalText.extraMessage(p);
 
   const wrap = document.createElement("div");
   wrap.className = "approval-card chat-approval-card";
   if (d.correlation_id) wrap.dataset.cid = d.correlation_id;
 
+  // status line: dot, bold title, dim subtitle (risk lives here, once)
   const head = document.createElement("div");
   head.className = "ac-head";
   head.innerHTML =
-    '<span class="ac-shield"><svg class="ic"><use href="#i-shield"/></svg></span>' +
-    '<span class="ac-title-label">Action requires approval</span>';
+    '<span class="ac-dot" aria-hidden="true"></span>' +
+    '<div class="ac-head-text"><div class="ac-action"></div><div class="ac-sub"></div></div>';
+  head.querySelector(".ac-action").textContent = fa.title;
+  const sub = head.querySelector(".ac-sub");
+  sub.textContent = "Jarvis wants to do this · ";
+  const badge = document.createElement("span");
+  badge.className = "risk " + band.cls;
+  badge.textContent = band.label;
+  badge.title = p.risk == null ? "Risk unknown" : "Risk " + p.risk + "/10";
+  sub.appendChild(badge);
   const closeBtn = document.createElement("button");
   closeBtn.className = "ac-close";
   closeBtn.type = "button";
@@ -512,66 +495,25 @@ Jarvis.on("ui.approval", (d) => {
 
   const body = document.createElement("div");
   body.className = "ac-body";
-  const app = document.createElement("div");
-  app.className = "ac-app";
-  app.innerHTML =
-    '<span class="ac-app-icon"><svg class="ic"><use href="#i-folder"/></svg></span>' +
-    '<div class="ac-app-main">' +
-    '<div class="ac-action"></div>' +
-    '<div class="ac-desc"></div>' +
-    (tgt ? '<div class="ac-target">Target: </div>' : "") +
-    "</div>";
-  app.querySelector(".ac-action").textContent = fa.title;
-  app.querySelector(".ac-desc").textContent =
-    p.message || "Jarvis wants to run this action on your computer.";
-  if (tgt) app.querySelector(".ac-target").textContent = "Target: " + tgt;
-  body.appendChild(app);
-
-  const meta = document.createElement("div");
-  meta.className = "ac-meta";
-  const riskCol = document.createElement("div");
-  riskCol.className = "ac-risk";
-  const lab = document.createElement("span");
-  lab.className = "ac-label";
-  lab.textContent = "Risk level";
-  const badge = document.createElement("span");
-  badge.className = "risk " + band.cls;
-  badge.textContent = band.label;
-  badge.title = p.risk == null ? "Risk unknown" : "Risk " + p.risk + "/10";
-  riskCol.appendChild(lab);
-  riskCol.appendChild(badge);
-  meta.appendChild(riskCol);
-
-  const why = document.createElement("div");
-  why.className = "ac-why";
-  const whyBtn = document.createElement("button");
-  whyBtn.className = "ac-why-btn";
-  whyBtn.type = "button";
-  whyBtn.setAttribute("aria-expanded", "false");
-  whyBtn.innerHTML = 'Why? <svg class="ic"><use href="#i-chevron"/></svg>';
-  const whyBody = document.createElement("div");
-  whyBody.className = "ac-why-body";
-  whyBody.hidden = true;
-  whyBody.textContent =
-    "Jarvis wants to run: " + fa.title + ". Nothing happens on your computer until you allow it.";
-  whyBtn.onclick = () => {
-    const open = whyBody.hidden;
-    whyBody.hidden = !open;
-    whyBtn.setAttribute("aria-expanded", String(open));
-  };
-  why.appendChild(whyBtn);
-  why.appendChild(whyBody);
-  meta.appendChild(why);
-  body.appendChild(meta);
+  if (tgt) {
+    const chip = document.createElement("div");
+    chip.className = "ac-target";
+    chip.textContent = String(tgt);
+    body.appendChild(chip);
+  }
+  const desc = document.createElement("div");
+  desc.className = "ac-desc";
+  desc.textContent = extra || "Nothing happens on your computer until you allow it.";
+  body.appendChild(desc);
 
   const btns = document.createElement("div");
   btns.className = "ac-btns";
   const allow = document.createElement("button");
   allow.className = "allow";
-  allow.textContent = "Allow once";
+  allow.innerHTML = 'Allow once <kbd>Y</kbd>';
   const deny = document.createElement("button");
   deny.className = "deny";
-  deny.textContent = "Deny";
+  deny.innerHTML = 'Deny <kbd>N</kbd>';
   const settle = (btn, label) => {
     wrap.dataset.pending = "1";
     [allow, deny].forEach((b) => { b.disabled = true; });
@@ -636,6 +578,24 @@ if (peekBtn) {
     }
   };
 }
+
+// Y / N answer the newest pending card unless the user is typing somewhere
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  const k = (e.key || "").toLowerCase();
+  if (k !== "y" && k !== "n") return;
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT" || ae.isContentEditable)) return;
+  const cards = Array.from(document.querySelectorAll(".approval-card")).filter(
+    (c) => c.dataset.pending !== "1" && c.style.display !== "none" && c.closest(".pane.active"));
+  const card = cards[cards.length - 1];
+  if (!card) return;
+  const btn = card.querySelector(k === "y" ? ".ac-btns .allow" : ".ac-btns .deny");
+  if (btn && !btn.disabled) {
+    e.preventDefault();
+    btn.click();
+  }
+});
 
 // backend expired the approval (treated as denied) - remove the pending card
 Jarvis.on("ui.approval_cancelled", (d) => {

@@ -52,6 +52,7 @@
       <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1 1 15 0"/><path d="M12 13.5l4-4.5"/></symbol>
       <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></symbol>
       <symbol id="i-brain" viewBox="0 0 24 24"><path d="M12 5a3 3 0 0 0-5.6-.8A2.7 2.7 0 0 0 4 8.5c0 .6.2 1.2.5 1.7A2.8 2.8 0 0 0 5.5 15 3 3 0 0 0 9 19.5h.5A2.5 2.5 0 0 0 12 21zM12 5a3 3 0 0 1 5.6-.8A2.7 2.7 0 0 1 20 8.5c0 .6-.2 1.2-.5 1.7A2.8 2.8 0 0 1 18.5 15 3 3 0 0 1 15 19.5h-.5A2.5 2.5 0 0 1 12 21zM12 5v16"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></symbol>
       <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M8 7l.8 12h6.4L16 7"/></symbol>
     </defs>
   </svg>
@@ -259,10 +260,10 @@
 
       <main id="pane-settings" class="pane">
         <nav id="settings-index" aria-label="Settings sections">
-          <button type="button" data-sec="sec-voice" class="active"><svg class="ic"><use href="#i-wave"/></svg><span>Voice</span></button>
-          <button type="button" data-sec="sec-assistant"><svg class="ic"><use href="#i-face"/></svg><span>Assistant &amp; Pet</span></button>
-          <button type="button" data-sec="sec-models"><svg class="ic"><use href="#i-globe"/></svg><span>Models &amp; Connection</span></button>
-          <button type="button" data-sec="sec-safety"><svg class="ic"><use href="#i-shield"/></svg><span>Safety &amp; Permissions</span></button>
+          <button type="button" data-sec="sec-models" class="active"><svg class="ic"><use href="#i-globe"/></svg><span>Model</span></button>
+          <button type="button" data-sec="sec-voice"><svg class="ic"><use href="#i-wave"/></svg><span>Voice</span></button>
+          <button type="button" data-sec="sec-assistant"><svg class="ic"><use href="#i-face"/></svg><span>Character &amp; Desktop</span></button>
+          <button type="button" data-sec="sec-safety"><svg class="ic"><use href="#i-shield"/></svg><span>Privacy &amp; Safety</span></button>
           <button type="button" data-sec="sec-performance"><svg class="ic"><use href="#i-gauge"/></svg><span>Performance</span></button>
           <button type="button" data-sec="sec-dictionary"><svg class="ic"><use href="#i-search"/></svg><span>Dictionary</span></button>
           <button type="button" data-sec="sec-history"><svg class="ic"><use href="#i-activity"/></svg><span>Dictation History</span></button>
@@ -275,6 +276,7 @@
 
             <div class="card">
               <div class="card-title">Wake Word</div>
+              <p class="card-desc">Start a request hands-free by saying the wake phrase.</p>
               <div class="field switch-field">
                 <div class="field-text">
                   <label for="v-wake">Enable wake word</label>
@@ -293,6 +295,7 @@
 
             <div class="card">
               <div class="card-title">Microphone</div>
+              <p class="card-desc">Which input Jarvis hears you through, and how sensitive it is.</p>
               <div class="field"><label for="v-device">Input device</label>
                 <select id="v-device">
                   <option value="">System default input</option>
@@ -327,6 +330,7 @@
 
             <div class="card">
               <div class="card-title">Spoken Responses</div>
+              <p class="card-desc">Whether Jarvis talks back, and in which voice.</p>
               <div class="field-grid">
                 <div class="field"><label for="v-engine">Engine</label>
                   <select id="v-engine">
@@ -395,11 +399,12 @@
           </div>
 
           <div class="section" id="sec-assistant">
-            <h3>Assistant &amp; Pet</h3>
+            <h3>Character &amp; Desktop</h3>
             <p class="sec-desc">Identity, desktop pet and startup behaviour.</p>
 
             <div class="card">
               <div class="card-title">Desktop Pet &amp; Startup</div>
+              <p class="card-desc">Show the companion on your desktop and launch with Windows.</p>
               <div class="field switch-field">
                 <div class="field-text">
                   <label for="v-autostart">Start with Windows (chat hidden)</label>
@@ -442,6 +447,7 @@
 
             <div class="card">
               <div class="card-title">Companion Appearance</div>
+              <p class="card-desc">How the character is drawn: flat 2D or 3D.</p>
               <div class="field">
                 <label>Pet Render Style</label>
                 <div class="seg" id="pet-render-seg" role="group" aria-label="Pet render style">
@@ -454,6 +460,7 @@
 
             <div class="card">
               <div class="card-title">Identity</div>
+              <p class="card-desc">The assistant's name, wake label and speaking style.</p>
               <div class="field-grid">
                 <div class="field"><label for="p-name">Assistant name</label><input id="p-name" /></div>
                 <div class="field"><label for="p-wake">Wake word label</label><input id="p-wake" /></div>
@@ -463,11 +470,12 @@
           </div>
 
           <div class="section" id="sec-models">
-            <h3>Models &amp; Connection</h3>
+            <h3>Model</h3>
             <p class="sec-desc">Where Jarvis runs its models and how it connects.</p>
 
             <div class="card">
               <div class="card-title">Model Provider</div>
+              <p class="card-desc">Where replies come from. Cloud keys stay on this PC.</p>
               <div class="field">
                 <label>Provider</label>
                 <div class="seg" id="provider-seg" role="group" aria-label="Model provider">
@@ -533,11 +541,12 @@
           </div>
 
           <div class="section" id="sec-safety">
-            <h3>Safety &amp; Permissions</h3>
+            <h3>Privacy &amp; Safety</h3>
             <p class="sec-desc">How careful Jarvis should be before it acts.</p>
 
             <div class="card">
               <div class="card-title">Approval Mode</div>
+              <p class="card-desc">How often Jarvis asks before it changes something.</p>
               <div class="field">
                 <label for="safety-mode">Mode</label>
                 <select id="safety-mode">
@@ -557,6 +566,7 @@
 
             <div class="card">
               <div class="card-title">Model Memory (live)</div>
+              <p class="card-desc">Which local models are loaded right now.</p>
               <div id="rm-status" class="rm-status" role="status" aria-live="polite">Asking backend&hellip;</div>
               <p class="hint" id="rm-hint">Models load when a task needs them and unload after they sit idle, so memory stays free.</p>
             </div>
@@ -582,6 +592,7 @@
 
             <div class="card">
               <div class="card-title">Mappings</div>
+              <p class="card-desc">Words dictation should always spell your way.</p>
               <div id="vocab-table" class="vocab-table" role="table">
                 <div class="vocab-head" role="row"><span>Heard as</span><span>Replace with</span><span></span></div>
               </div>
@@ -599,6 +610,7 @@
 
                 <div class="card">
                   <div class="card-title">Recent dictations</div>
+                  <p class="card-desc">What you dictated lately, newest first.</p>
                   <div id="dict-history" class="dict-history"><p class="hint">Loading&hellip;</p></div>
                   <div class="field test-field">
                     <button id="dict-history-refresh" class="small"><svg class="ic"><use href="#i-activity"/></svg>Refresh</button>
@@ -613,6 +625,7 @@
 
                 <div class="card">
                   <div class="card-title">Claude Code</div>
+                  <p class="card-desc">Let Claude Code ask you for approvals through Jarvis.</p>
                   <p class="hint" id="hook-claude-state">Checking&hellip;</p>
                   <div class="field test-field">
                     <button id="hook-claude-install" class="small"><svg class="ic"><use href="#i-plus"/></svg>Install hook</button>
@@ -623,6 +636,7 @@
 
                 <div class="card">
                   <div class="card-title">Antigravity (agy)</div>
+                  <p class="card-desc">Let Antigravity ask you for approvals through Jarvis.</p>
                   <p class="hint" id="hook-agy-state">Checking&hellip;</p>
                   <div class="field test-field">
                     <button id="hook-agy-install" class="small"><svg class="ic"><use href="#i-plus"/></svg>Install hook</button>
@@ -633,6 +647,7 @@
 
                 <div class="card">
                   <div class="card-title">Relay status</div>
+                  <p class="card-desc">Whether the approval relay is up and listening.</p>
                   <p class="hint" id="hook-relay-state">Asking backend&hellip;</p>
                   <p class="hint">Terminal approvals appear as Approval Cards in the chat and on the 3D pet &mdash; Allow once, Deny, or Always allow for session.</p>
                 </div>
@@ -663,11 +678,11 @@
       </div>
       <ol class="ob-stepbar" id="ob-stepbar">
         <li data-step="1" class="on"><b>1</b>Meet your companion</li>
-        <li data-step="2"><b>2</b>Microphone check</li>
-        <li data-step="3"><b>3</b>Model connection</li>
+        <li data-step="2"><b>2</b>Microphone</li>
+        <li data-step="3"><b>3</b>Model</li>
       </ol>
       <section class="ob-step" id="ob-step-1">
-        <h3>Step 1: Meet your companion</h3>
+        <h3>Meet your companion</h3>
         <p class="sec-desc">Pick how Mochi renders on your desktop &mdash; switchable any time in Settings.</p>
         <div class="ob-choices" id="ob-choices">
           <button type="button" class="ob-choice active" data-render="2d">
@@ -681,7 +696,7 @@
         </div>
       </section>
       <section class="ob-step" id="ob-step-2" hidden>
-        <h3>Step 2: Microphone &amp; audio check</h3>
+        <h3>Microphone</h3>
         <p class="sec-desc">Press Test and say &ldquo;Hey Jarvis&rdquo; &mdash; the meter should pulse with your voice.</p>
         <div class="ob-row">
           <button id="ob-mic-test" class="small" type="button"><svg class="ic"><use href="#i-mic"/></svg>Test microphone</button>
@@ -690,7 +705,7 @@
         <div class="mic-meter"><div id="ob-level"></div></div>
       </section>
       <section class="ob-step" id="ob-step-3" hidden>
-        <h3>Step 3: Model connection</h3>
+        <h3>Model</h3>
         <p class="sec-desc">Choose where replies come from &mdash; local LM Studio, OpenAI, or Anthropic Claude. Keys stay on this PC.</p>
         <div class="ob-row">
           <div class="seg" id="ob-provider-seg" role="group" aria-label="Model provider">
@@ -726,12 +741,13 @@
       <div class="ob-foot">
         <button id="ob-back" class="ghost-btn" type="button" hidden>Back</button>
         <button id="ob-next" class="primary" type="button">Next</button>
-        <button id="ob-finish" class="primary" type="button" hidden>Start exploring Jarvis &rarr;</button>
+        <button id="ob-finish" class="primary" type="button" hidden>Start using Jarvis</button>
       </div>
     </div>
   </div>
 
   <script src="ws.js"></script>
+  <script src="approval_text.js"></script>
   <script src="chat.js"></script>
   <script src="activity.js"></script>
   <script src="memory.js"></script>

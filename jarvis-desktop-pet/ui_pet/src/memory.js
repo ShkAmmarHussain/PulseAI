@@ -31,6 +31,8 @@
   let query = "";
   let lastDeleted = null;
   let toastTimer = null;
+  // inline edit (spec 34 section 4): survives re-renders from memory.updated
+  let editing = null; // { id, draft }
 
   function escapeHtml(s) {
     return String(s == null ? "" : s)
@@ -70,7 +72,7 @@
     d.innerHTML =
       '<div class="mem-empty-orb orb" aria-hidden="true"><i class="core"></i></div>' +
       '<div class="mem-empty-title">Nothing remembered yet</div>' +
-      '<p class="mem-empty-sub">Tell Jarvis &ldquo;remember that &hellip;&rdquo; and the fact will appear here &mdash; searchable, and easy to forget.</p>';
+      '<p class="mem-empty-sub">Tell Jarvis &ldquo;remember that &hellip;&rdquo; and the fact will appear here &mdash; searchable, editable, and easy to forget.</p>';
     return d;
   }
 
@@ -97,16 +99,82 @@
         '<div class="mem-card-top">' +
         '<span class="mem-badge ' + escapeHtml(f.category || "facts") + '">' +
         escapeHtml(LABELS[f.category] || f.category || "Facts") + "</span>" +
+        '<span class="mem-actions">' +
+        '<button class="mem-edit" type="button" title="Edit this fact" aria-label="Edit this fact">' +
+        '<svg class="ic"><use href="#i-edit"/></svg></button>' +
         '<button class="mem-forget" type="button" title="Forget this fact" aria-label="Forget this fact">' +
         '<svg class="ic"><use href="#i-trash"/></svg></button>' +
+        "</span>" +
         "</div>" +
         '<p class="mem-content"></p>' +
         '<div class="mem-meta"><span class="mem-time"></span></div>';
       card.querySelector(".mem-content").textContent = f.content || "";
-      card.querySelector(".mem-time").textContent = when(f.created_at);
+      card.querySelector(".mem-time").textContent =
+        when(f.created_at) + (f.updated_at ? " · edited" : "");
+      if (editing && editing.id === f.id) openEditor(card, editing.draft);
       wrap.appendChild(card);
     });
     list.appendChild(wrap);
+  }
+
+  function openEditor(card, draft) {
+    const p = card.querySelector(".mem-content");
+    if (!p || card.querySelector(".mem-editor")) return;
+    card.classList.add("editing");
+    const box = document.createElement("div");
+    box.className = "mem-editor";
+    const ta = document.createElement("textarea");
+    ta.className = "mem-edit-text";
+    ta.rows = 2;
+    ta.value = draft;
+    ta.setAttribute("aria-label", "Edit memory");
+    const row = document.createElement("div");
+    row.className = "mem-edit-actions";
+    const save = document.createElement("button");
+    save.type = "button";
+    save.className = "mem-edit-save";
+    save.textContent = "Save";
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "mem-edit-cancel";
+    cancel.textContent = "Cancel";
+    const hint = document.createElement("span");
+    hint.className = "mem-edit-hint";
+    hint.innerHTML = "<kbd>Enter</kbd> save &middot; <kbd>Esc</kbd> cancel";
+    row.appendChild(hint);
+    row.appendChild(cancel);
+    row.appendChild(save);
+    box.appendChild(ta);
+    box.appendChild(row);
+    p.replaceWith(box);
+    ta.addEventListener("input", () => { if (editing) editing.draft = ta.value; });
+    ta.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commitEdit(card.dataset.id, ta.value); }
+      else if (e.key === "Escape") { e.preventDefault(); cancelEdit(); }
+    });
+    save.onclick = () => commitEdit(card.dataset.id, ta.value);
+    cancel.onclick = cancelEdit;
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 0);
+  }
+
+  function startEdit(id) {
+    const fact = (state.facts || []).find((f) => f.id === id);
+    if (!fact) return;
+    editing = { id: id, draft: fact.content || "" };
+    render();
+  }
+  function cancelEdit() {
+    editing = null;
+    render();
+  }
+  function commitEdit(id, text) {
+    const content = String(text || "").trim();
+    const fact = (state.facts || []).find((f) => f.id === id);
+    editing = null;
+    if (!fact || !content || content === fact.content) { render(); return; }
+    fact.content = content; // optimistic; the full-state reply corrects it
+    render();
+    Jarvis.send({ type: "memory.update", payload: { id: id, content: content } });
   }
 
   function applyState(s) {
@@ -120,7 +188,7 @@
     Jarvis.send({ type: "memory.list" });
   }
 
-  ["memory.list", "memory.add", "memory.delete", "memory.clear", "memory.updated"].forEach((t) => {
+  ["memory.list", "memory.add", "memory.update", "memory.delete", "memory.clear", "memory.updated"].forEach((t) => {
     Jarvis.on(t, (d) => applyState(d.payload));
   });
 
@@ -179,6 +247,12 @@
   }
   if (list) {
     list.addEventListener("click", (e) => {
+      const ed = e.target.closest(".mem-edit");
+      if (ed) {
+        const c = ed.closest(".mem-card");
+        if (c && c.dataset.id) startEdit(c.dataset.id);
+        return;
+      }
       const btn = e.target.closest(".mem-forget");
       if (!btn) return;
       const card = btn.closest(".mem-card");

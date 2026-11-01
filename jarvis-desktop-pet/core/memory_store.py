@@ -128,6 +128,32 @@ def add_fact(content: str, category: str = None, confidence: float = 0.95) -> di
     return dict(fact)
 
 
+def update_fact(fact_id: str, content: str = None, category: str = None):
+    """Edit one fact in place (Memory Studio inline edit, spec 34 section 4).
+
+    Keeps the id and created_at; stamps updated_at. Returns the updated fact,
+    or None when the id is unknown. Raises ValueError on empty content.
+    """
+    with _lock:
+        data = _load_unlocked()
+        for fact in data["facts"]:
+            if fact.get("id") != fact_id:
+                continue
+            if content is not None:
+                text = str(content).strip()
+                if not text:
+                    raise ValueError("empty memory content")
+                fact["content"] = text
+            if category is not None:
+                cat = str(category).strip().lower()
+                if cat in CATEGORIES:
+                    fact["category"] = cat
+            fact["updated_at"] = _now()
+            _save_unlocked(data)
+            return dict(fact)
+    return None
+
+
 def delete_fact(fact_id: str) -> bool:
     with _lock:
         data = _load_unlocked()
