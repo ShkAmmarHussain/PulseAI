@@ -192,7 +192,14 @@ Jarvis.on("ui.chat", (d) => {
     clearTimeout(moodTimer);
   }
 });
-Jarvis.on("ui.approval", (d) => showApproval(d, d.correlation_id));
+// spec 34 section 3: while the island is the companion it owns approvals;
+// the pet card stays as the fallback when the island is off
+let companionMode = "pet";
+window.onCompanionChanged = (mode) => { companionMode = mode === "dock" ? "dock" : "pet"; };
+Jarvis.on("ui.approval", (d) => {
+  if (companionMode === "dock") return;
+  showApproval(d, d.correlation_id);
+});
 Jarvis.on("tool.result", (d) => {
   markActive();
   if (petEl.dataset.mood === "approval") return;
@@ -342,6 +349,7 @@ function syncPetSound(d) {
   const cfg = payload.config || {};
   const v = cfg.voice || {};
   petSoundMuted = v.ui_sounds === false;
+  if ((cfg.runtime || {}).companion) companionMode = cfg.runtime.companion === "dock" ? "dock" : "pet";
   // wardrobe/colorway (spec 29, section 5.5.7)
   const cw = (cfg.runtime || {}).pet_colorway || "porcelain";
   if (window.Pet3D && window.Pet3D.applyColorway) window.Pet3D.applyColorway(cw);
