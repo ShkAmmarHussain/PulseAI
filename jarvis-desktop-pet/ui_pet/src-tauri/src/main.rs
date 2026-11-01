@@ -32,6 +32,15 @@ fn open_main_tab(app: &tauri::AppHandle, tab: &str) {
     }
 }
 
+// Tauri v1 hides windows without telling the page (document.hidden stays
+// false), so the pet is told directly and pauses its renderer (spec 34 7.4)
+fn pet_visibility(w: &tauri::Window, visible: bool) {
+    let _ = w.eval(&format!(
+        "window.setPetVisible && window.setPetVisible({})",
+        visible
+    ));
+}
+
 fn position_pet(tauri_app: &tauri::App) {
     if let Some(w) = tauri_app.get_window("pet") {
         if let Ok(Some(mon)) = w.primary_monitor() {
@@ -111,6 +120,9 @@ fn main() {
                 if label == "main" || label == "pet" {
                     api.prevent_close();
                     let _ = event.window().hide();
+                    if label == "pet" {
+                        pet_visibility(event.window(), false);
+                    }
                 }
             }
         })
@@ -136,6 +148,7 @@ fn set_pet(app: tauri::AppHandle, visible: bool) {
         } else {
             let _ = w.hide();
         }
+        pet_visibility(&w, visible);
     }
 }
 
@@ -145,6 +158,7 @@ fn set_companion(app: tauri::AppHandle, mode: String) {
     if mode == "dock" {
         if let Some(w) = app.get_window("pet") {
             let _ = w.hide();
+            pet_visibility(&w, false);
         }
         match app.get_window("dock") {
             Some(dock) => {
@@ -159,6 +173,7 @@ fn set_companion(app: tauri::AppHandle, mode: String) {
         }
         if let Some(pet) = app.get_window("pet") {
             let _ = pet.show();
+            pet_visibility(&pet, true);
         }
     }
     // keep every window's companion state in sync: the main window's settings

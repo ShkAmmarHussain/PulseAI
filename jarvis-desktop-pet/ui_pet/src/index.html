@@ -110,6 +110,11 @@
   </header>
 
   <div id="app">
+    <div id="offline-banner" role="status" aria-live="polite" hidden>
+      <i class="ob-dot" aria-hidden="true"></i>
+      <span><b>Jarvis isn&rsquo;t running.</b> <span id="offline-count">Reconnecting&hellip;</span></span>
+      <button type="button" id="offline-retry">Retry now</button>
+    </div>
     <div id="main">
       <div id="cmd-palette" hidden>
         <div class="cp-backdrop"></div>
@@ -268,6 +273,7 @@
           <button type="button" data-sec="sec-dictionary"><svg class="ic"><use href="#i-search"/></svg><span>Dictionary</span></button>
           <button type="button" data-sec="sec-history"><svg class="ic"><use href="#i-activity"/></svg><span>Dictation History</span></button>
           <button type="button" data-sec="sec-integrations"><svg class="ic"><use href="#i-globe"/></svg><span>Integrations</span></button>
+          <button type="button" data-sec="sec-about"><svg class="ic"><use href="#i-user"/></svg><span>About</span></button>
         </nav>
         <div id="settings-content">
           <div class="section" id="sec-voice">
@@ -505,15 +511,17 @@
                 <label for="prov-openai-key">OpenAI API key</label>
                 <div class="key-wrap">
                   <input id="prov-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
-                  <button type="button" class="key-reveal" data-target="prov-openai-key" aria-label="Show API key" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+                  <button type="button" class="key-reveal" data-target="prov-openai-key" aria-label="Show API key"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
                 </div>
+                <p class="hint key-saved" id="prov-openai-saved" hidden>Saved in Windows Credential Manager. Type a new key to replace it. <button type="button" class="link-btn" data-forget-key="openai">Forget key</button></p>
               </div>
               <div class="field prov-field" id="prov-anthropic-field" hidden>
                 <label for="prov-anthropic-key">Anthropic API key</label>
                 <div class="key-wrap">
                   <input id="prov-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
-                  <button type="button" class="key-reveal" data-target="prov-anthropic-key" aria-label="Show API key" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+                  <button type="button" class="key-reveal" data-target="prov-anthropic-key" aria-label="Show API key"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
                 </div>
+                <p class="hint key-saved" id="prov-anthropic-saved" hidden>Saved in Windows Credential Manager. Type a new key to replace it. <button type="button" class="link-btn" data-forget-key="anthropic">Forget key</button></p>
               </div>
               <div class="field test-field">
                 <button id="test" class="small"><svg class="ic"><use href="#i-globe"/></svg>Test connection</button>
@@ -654,6 +662,34 @@
               </div>
 
 
+          <div class="section" id="sec-about">
+            <h3>About</h3>
+            <p class="sec-desc">Version, diagnostics and credits.</p>
+
+            <div class="card">
+              <div class="card-title">Jarvis</div>
+              <p class="card-desc">Your local desktop assistant.</p>
+              <dl class="about-facts">
+                <dt>Version</dt><dd id="about-version">&hellip;</dd>
+                <dt>Backend</dt><dd id="about-backend">Checking&hellip;</dd>
+              </dl>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Diagnostics</div>
+              <p class="card-desc">One zip with logs, settings (API keys removed) and model state, for a bug report.</p>
+              <div class="field test-field">
+                <button id="diag-export" class="small" type="button"><svg class="ic"><use href="#i-folder"/></svg>Export diagnostics</button>
+                <button id="diag-reveal" class="small" type="button" hidden>Show in folder</button>
+              </div>
+              <p class="hint" id="diag-status" role="status" aria-live="polite"></p>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Credits</div>
+              <p class="card-desc">The island and design tokens adapt ideas from coucou (MIT). See ATTRIBUTIONS.md.</p>
+            </div>
+          </div>
           <div id="settings-actions">
             <button id="save" class="primary" disabled>Save changes</button>
             <div id="settings-note" aria-live="polite">Loading...</div>
@@ -722,14 +758,14 @@
           <label for="ob-openai-key">OpenAI API key</label>
           <div class="key-wrap">
             <input id="ob-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
-            <button type="button" class="key-reveal" data-target="ob-openai-key" aria-label="Show API key" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+            <button type="button" class="key-reveal" data-target="ob-openai-key" aria-label="Show API key"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
           </div>
         </div>
         <div class="field ob-prov-field" id="ob-anthropic-field" hidden>
           <label for="ob-anthropic-key">Anthropic API key</label>
           <div class="key-wrap">
             <input id="ob-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
-            <button type="button" class="key-reveal" data-target="ob-anthropic-key" aria-label="Show API key" tabindex="-1"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+            <button type="button" class="key-reveal" data-target="ob-anthropic-key" aria-label="Show API key"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
           </div>
         </div>
         <div class="ob-row">

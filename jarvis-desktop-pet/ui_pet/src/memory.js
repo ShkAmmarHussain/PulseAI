@@ -30,6 +30,8 @@
   let activeCat = "all";
   let query = "";
   let lastDeleted = null;
+  let loaded = false; // first memory.* reply seen
+  let online = true;
   let toastTimer = null;
   // inline edit (spec 34 section 4): survives re-renders from memory.updated
   let editing = null; // { id, draft }
@@ -81,7 +83,13 @@
     list.innerHTML = "";
     if (!facts.length) {
       const e = emptyNode();
-      if ((state.facts || []).length && (query || activeCat !== "all")) {
+      if (!loaded) {
+        // loading / offline (spec 34 section 7.2): never claim "nothing remembered" before the store answers
+        e.querySelector(".mem-empty-title").textContent = online ? "Loading memories…" : "Memory is offline";
+        e.querySelector(".mem-empty-sub").textContent = online
+          ? "Asking the memory store."
+          : "Jarvis isn’t running. Your memories are safe and will show up when it reconnects.";
+      } else if ((state.facts || []).length && (query || activeCat !== "all")) {
         e.querySelector(".mem-empty-title").textContent = "No matching memories";
         e.querySelector(".mem-empty-sub").textContent =
           "Nothing matches this filter yet. Try another category or clear the search.";
@@ -179,6 +187,7 @@
 
   function applyState(s) {
     if (!s) return;
+    loaded = true;
     if (s.facts) state.facts = s.facts;
     if (s.profile) state.profile = s.profile;
     render();
@@ -193,6 +202,8 @@
   });
 
   document.addEventListener("jarvis:connected", load);
+  document.addEventListener("jarvis:connected", () => { online = true; if (!loaded) render(); });
+  document.addEventListener("jarvis:disconnected", () => { online = false; if (!loaded) render(); });
   load();
 
   // ---- filters + search ----

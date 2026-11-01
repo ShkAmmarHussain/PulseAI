@@ -174,7 +174,11 @@
     if (dot) dot.classList.add("on");
     if (island.dataset.state === "idle") headline.textContent = "Jarvis Standing By";
   });
-  document.addEventListener("jarvis:disconnected", () => {
+  document.addEventListener("jarvis:reconnecting", (e) => {
+    if (dot && dot.classList.contains("on")) return;
+    const s = (e.detail || {}).seconds || 0;
+    headline.textContent = s > 0 ? "Offline — retrying in " + s + "s" : "Reconnecting…";
+  });  document.addEventListener("jarvis:disconnected", () => {
     if (dot) dot.classList.remove("on");
     headline.textContent = "Reconnecting\u2026";
     wake();

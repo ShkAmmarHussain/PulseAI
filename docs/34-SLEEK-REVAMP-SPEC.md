@@ -161,3 +161,48 @@ Gates (non-mic, 2026-11-01):
 - agent_e2e: the first run's web search came back empty, and it was green on rerun.
 - wake_e2e: `WAKE E2E PASS`, then the known native-teardown crash (0xC0000374).
 - Not run (live mic): hotkey_e2e, dictation_flow_test.
+
+
+## 12. As-built: Phase 5 (production items, before Phase 4)
+
+Same branch. Code signing (§7.5) is not done: it needs your certificate. The brand item (§7.1) is partial: `jarvis-desktop-pet/ATTRIBUTIONS.md` credits coucou (MIT, with its full notice) for the adapted design tokens, the island state model and the keys-in-the-OS-store idea, and repeats that coucou's name, character and art are outside the MIT licence.
+
+**States (§7.2).**
+- `ws.js` now emits `jarvis:reconnecting {seconds}` during each backoff and exposes `Jarvis.reconnectNow()` and `Jarvis.isConnected()`.
+- Main window: an `#offline-banner` live status region floats under the header with a dot, "Jarvis isn't running. Reconnecting in Ns…" and a white **Retry now** pill. On a cold start it waits 2.5 s before appearing. The error earcon plays once per outage, not on every retry.
+- Island: the headline counts down, "Offline — retrying in Ns".
+- Pet: the bubble says "Lost the backend — reconnecting…", then counts down quietly during longer outages.
+- Memory: shows "Loading memories…" or "Memory is offline" until the store first answers, instead of claiming nothing is remembered.
+- No raw tool names: Activity step names go through `ApprovalText.friendlyAction`.
+
+**Accessibility (§7.3).**
+- A final block in `app.css` gives every button, tab, radio, summary, link and `[tabindex]` a 2px amber `:focus-visible` outline. Inputs and composers get an amber ring, because Phase 2 restyles had zeroed the old box-shadow ring.
+- The API-key reveal buttons are back in the tab order (they had `tabindex="-1"`).
+- `--dim-3` was lifted again to `#838891`: `#7d828b` was 4.27:1 on `--tab-on`.
+- New gate `tests/a11y_check.py` (static, 31/31): AA contrast for `--ink`, `--dim` and `--dim-3` on `--bg`, `--card`, `--card-flat` and `--tab-on`; the white pill; that the focus block exists; no `<button tabindex="-1">`; no raw tool names in visible markup; `aria-current` / `aria-selected`; the offline live region; reduced motion.
+
+**Performance (§7.4).**
+- Tauri v1 hides windows without changing `document.hidden`. `main.rs` now evals `window.setPetVisible(bool)` into the pet on every show/hide (`set_pet`, `set_companion`, close-to-hide).
+- `pet3d.js` renders nothing while hidden (it was 1 FPS) and restarts its clock on return.
+- `pet2d.js` runs its eye loop only while the eyes are moving, and never while hidden.
+- New gate `tests/perf_check.py`, against the real app on `:9335` (5/5): 3D idle at 10 FPS (fpsInterval 100, 10.0 renders/s), the 2D eye loop idle at 0 frames, and a hidden pet rendering 0 frames.
+- Not done: the 3D renderer still idles at 10 FPS behind the 2D pet. `phase5_visual_check` asserts that throttle in the mirror tab, so pausing 3D in 2D mode needs that test reworked first.
+
+**Packaging (§7.5).**
+- One version source: `tauri.conf.json` `package.version`, read with `__TAURI__.app.getVersion()`. The mirror tabs say "Development build".
+- New Settings section **About** (`#sec-about`): version, backend connection, **Export diagnostics** with **Show in folder**, and credits.
+- WS `diagnostics.export {app_version}` calls `backend/diagnostics.py` `export_bundle`. It writes `%APPDATA%\JarvisDesktopPet\diagnostics\pulseai-diagnostics-<stamp>.zip`, containing `about.json`, `rm_state.json`, every settings YAML with secret fields replaced by `<redacted>`, and `backend.log(.1)` with key-shaped strings masked.
+- `diagnostics.reveal` opens Explorer, and only on bundles inside that folder.
+
+**Settings safety (§7.6).**
+- New `core/credentials.py` talks to Windows Credential Manager through `advapi32` with ctypes, so there is no new dependency and it works in the frozen backend. `keyring` is not installed, and installing it would have meant a new download.
+- `llm.<openai|anthropic>.api_key` is moved to a generic credential `PulseAI/llm.<provider>`. The config keeps `api_key: ''` and `api_key_ref: wincred:PulseAI/llm.<provider>`.
+- Migration runs at backend startup (`ws_bridge.migrate_config_keys`) and on every `save_settings`.
+- `get_settings` adds a computed `api_key_saved` flag that is never persisted. `llm.get_api_key` resolves the inline key first, then the ref.
+- Settings shows "Saved in Windows Credential Manager", and a saved key is not echoed. An empty field keeps the stored key, and **Forget key** sends `api_key_clear`.
+- The LM Studio key (`lm_studio.api_key`, a local placeholder) is unchanged.
+- New gate `tests/credentials_test.py` (19/19): write/read/delete, unicode round trip, migration, resolve, empty-keeps, Forget, redaction, log scrub, and a real `diagnostics.export` zip with no key-shaped strings. Every credential it creates is deleted again.
+
+Captures added in `spec34/after/`: `main_about` (version v0.1.0 read from tauri.conf), `main_offline` (backend stopped, banner counting down). `inspect_states` 43/43.
+
+Gates (non-mic, 2026-11-01): smoke OK, ws_ping, a11y_check 31/31, credentials_test 19/19, perf_check 5/5, memory_update 14/14, model_router 30/30, fast_router 71/71, vocab 17/17, audio_cache, tts_wake, injector 17/17, hook_e2e 37/37, dictation_ui 27/27, phase5_e2e 14/14, phase5_dock_check 27/27, phase5_visual_check 28/28, chat_e2e, agent_e2e, voice_e2e ALL OK, pet_springs 9/9. wake_e2e: PASS, then the known teardown crash (0xC0000374). Not run (live mic): hotkey_e2e, dictation_flow_test.

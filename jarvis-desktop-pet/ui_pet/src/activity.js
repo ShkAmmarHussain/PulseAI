@@ -158,6 +158,8 @@
     return (steps || [])
       .slice(0, 3)
       .map((s) => {
+        // one wording source for every surface; no raw tool names (spec 34 section 7.2)
+        if (window.ApprovalText && s) return window.ApprovalText.friendlyAction({ action: s }).title;
         const a = (s && s.action) || "";
         let v = VERBS[a] || a.replace(/[_-]+/g, " ");
         let t = (s && (s.target || s.path || s.url)) || "";

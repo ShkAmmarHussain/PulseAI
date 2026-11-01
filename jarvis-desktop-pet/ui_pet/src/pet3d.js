@@ -517,7 +517,7 @@ if (container) {
   const baseDirL = new THREE.Vector3(-0.44, 0.14, 1).normalize();
   const baseDirR = new THREE.Vector3(0.44, 0.14, 1).normalize();
 
-  // adaptive 60 / 10 / 1 FPS render loop (spec 29, section 5.5.8)
+  // adaptive 60 / 10 FPS render loop, paused while hidden (spec 29 section 5.5.8, spec 34 section 7.4)
   let renderBudget = 1000 / 60;
   let renderCount = 0;
   let lastFrameAt = performance.now();
@@ -525,7 +525,10 @@ if (container) {
 
   function frame(now) {
     requestAnimationFrame(frame);
-    const interval = document.hidden ? 1000 : renderBudget;
+    // hidden window: render nothing (spec 34 section 7.4); restart the clock
+    // on return so springs don't integrate the whole gap at once
+    if (document.hidden || window.__petHidden) { lastFrameAt = now; return; }
+    const interval = renderBudget;
     if (now - lastFrameAt < interval) return;
     const rawDt = (now - lastFrameAt) / 1000;
     lastFrameAt = now;
