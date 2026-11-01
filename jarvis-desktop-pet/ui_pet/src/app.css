@@ -2897,3 +2897,268 @@ details.adv .adv-body .card { background: transparent; }
 .memory-add-form[hidden] { display: none; }
 /* title, risk, mono target chip and Allow/Deny must all fit without clipping the chip */
 #approval .approval-body { max-height: 128px; padding-bottom: 2px; }
+
+/* ================= spec 34 phase 3: island states (section 3) ================= */
+#dynamic-island {
+  background: var(--bg);
+  border: 1px solid var(--hairline);
+  border-top: none;
+  border-radius: 0 0 22px 22px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-ui);
+  transition: width 320ms cubic-bezier(0.34, 1.36, 0.64, 1), height 320ms cubic-bezier(0.34, 1.36, 0.64, 1),
+    box-shadow 180ms var(--ease-out);
+}
+/* expanded height follows the visible card; the window is sized to match */
+#dynamic-island.expanded { width: 460px; height: auto; min-height: 150px; border-radius: 0 0 22px 22px; }
+/* hidden wake strip: a quiet island tucks into 240x6 and peeks open on hover */
+#dynamic-island.island-hidden:not(.expanded) { height: 6px; border-radius: 0 0 6px 6px; box-shadow: none; }
+#dynamic-island.island-hidden:not(.expanded) .island-rail { opacity: 0; }
+.island-rail { transition: opacity 180ms var(--ease-out); }
+.island-avatar-pill { background: var(--tab-on); border: none; }
+.island-headline { color: var(--ink); font-weight: 600; }
+.island-diff-badge { font-family: var(--font-mono); }
+
+.island-drawer { gap: 10px; padding: 0 12px 12px; }
+.island-tabs { display: flex; align-items: center; gap: 4px; }
+.island-tab {
+  height: 26px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--dim);
+  font: 600 12px var(--font-ui);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+.island-tab:hover { color: var(--ink); }
+.island-tab.on { background: var(--tab-on); color: var(--ink); }
+.island-tab-plus { width: 26px; padding: 0; justify-content: center; }
+.island-tab-plus .ic { width: 14px; height: 14px; }
+.island-tabs-fill { flex: 1; align-self: stretch; }
+.island-kbd { color: var(--dim-3); font-size: 11px; }
+.island-tab:focus-visible, .ic-btn:focus-visible, .ic-option:focus-visible, .drawer-btn:focus-visible,
+.ichat-send:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* one card per state; the island shows the one named by data-card */
+.island-card {
+  display: none;
+  position: relative;
+  background: var(--card);
+  border-radius: 18px;
+  padding: 12px 14px;
+  overflow: hidden;
+}
+#dynamic-island[data-card="overview"] .island-card[data-card="overview"],
+#dynamic-island[data-card="approval"] .island-card[data-card="approval"],
+#dynamic-island[data-card="question"] .island-card[data-card="question"],
+#dynamic-island[data-card="result"] .island-card[data-card="result"],
+#dynamic-island[data-card="error"] .island-card[data-card="error"],
+#dynamic-island[data-card="chat"] .island-card[data-card="chat"] { display: flex; flex-direction: column; gap: 10px; }
+/* state glow: a soft radial light at the card's bottom edge */
+.island-card::after {
+  content: "";
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  bottom: -40px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--card-glow, transparent), transparent);
+  pointer-events: none;
+}
+.island-card[data-card="approval"] { --card-glow: var(--glow-approval); }
+.island-card[data-card="question"] { --card-glow: var(--glow-approval); }
+.island-card[data-card="result"] { --card-glow: var(--glow-done); }
+.island-card[data-card="error"] { --card-glow: var(--glow-error); }
+.island-card[data-card="chat"] { --card-glow: var(--glow-chat); }
+.island-card > * { position: relative; z-index: 1; }
+
+/* overview: character left, live steps right */
+#dynamic-island[data-card="overview"] .island-card[data-card="overview"] { flex-direction: row; align-items: stretch; gap: 14px; }
+.island-hero {
+  width: 64px;
+  flex: none;
+  border-radius: 16px;
+  background: var(--card-flat);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.island-hero .island-eye { width: 8px; height: 13px; border-radius: 4px; }
+.island-ov-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.drawer-task-title { color: var(--ink); font-size: 12.5px; }
+.island-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.island-step { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--dim-3); min-width: 0; }
+.island-step span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.island-step .ic { width: 13px; height: 13px; flex: none; }
+.island-step.cur { color: var(--ink); }
+.island-step.cur .ic { color: var(--accent); }
+.island-step.bad { color: var(--danger); }
+.drawer-progress-track { height: 3px; background: var(--card-flat); }
+.drawer-progress-fill { background: var(--accent); }
+.drawer-btn { height: 30px; border: none; border-radius: var(--radius-pill); background: var(--tab-on); color: var(--ink); }
+.drawer-btn:hover { background: #26292e; color: var(--ink); border: none; }
+
+/* status line: dot, bold title, dim subtitle */
+.ic-status { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 13px; color: var(--ink); }
+.ic-status b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.ic-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--accent); }
+.island-card[data-card="result"] .ic-dot { background: #22c55e; }
+.island-card[data-card="error"] .ic-dot { background: #f4505e; }
+.ic-risk { flex: none; padding: 1px 8px; font-size: 11px; }
+.ic-timer { margin-left: auto; flex: none; font: 11px var(--font-mono); color: var(--dim-3); }
+.ic-chip {
+  background: var(--card-flat);
+  border-radius: var(--radius-row);
+  padding: 7px 10px;
+  font: 12px var(--font-mono);
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ic-chip[hidden], .ic-sub[hidden], .ic-rows[hidden], .ic-btn[hidden], .island-kbd[hidden] { display: none; }
+.ic-sub { margin: 0; font-size: 12px; line-height: 1.45; color: var(--dim); }
+
+/* actions: one white pill, dark secondaries, key caps */
+.ic-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.ic-btn {
+  height: 32px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--tab-on);
+  color: var(--ink);
+  font: 600 12.5px var(--font-ui);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.ic-btn:hover { background: #26292e; }
+.ic-btn.primary { background: #fff; color: #000; }
+.ic-btn.primary:hover { background: #e6e7ea; }
+.ic-btn:disabled { opacity: 0.5; cursor: default; }
+.island-card kbd, .island-kbd kbd {
+  font: 600 10px var(--font-mono);
+  padding: 1px 5px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: inherit;
+  opacity: 0.75;
+}
+.ic-btn.primary kbd { border-color: rgba(0, 0, 0, 0.25); }
+
+/* question rows */
+.ic-options { display: flex; flex-direction: column; gap: 6px; }
+.ic-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 34px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--radius-row);
+  background: var(--card-flat);
+  color: var(--ink);
+  font: 500 12.5px var(--font-ui);
+  text-align: left;
+  cursor: pointer;
+}
+.ic-option span:nth-child(2) { flex: 1; }
+.ic-option:hover { background: var(--tab-on); }
+.ic-option.on { background: var(--tab-on); }
+.ic-radio { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--dim-3); flex: none; }
+.ic-option.on .ic-radio { border-color: var(--accent); background: radial-gradient(circle, var(--accent) 45%, transparent 50%); }
+
+/* result rows */
+.ic-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ic-rows li {
+  background: var(--card-flat);
+  border-radius: var(--radius-row);
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* inline chat */
+.ichat-log { display: flex; flex-direction: column; gap: 6px; max-height: 150px; overflow: hidden; }
+.ichat-empty { margin: 0; font-size: 12px; color: var(--dim); }
+.ichat-msg { font-size: 12.5px; line-height: 1.45; color: var(--ink); user-select: text; }
+.ichat-msg.user {
+  align-self: flex-end;
+  max-width: 80%;
+  background: var(--tab-on);
+  border-radius: 14px;
+  padding: 5px 11px;
+}
+.ichat-more { display: block; margin-top: 4px; padding: 0; border: none; background: none; color: var(--dim); font: 600 11.5px var(--font-ui); cursor: pointer; text-decoration: underline; }
+.ichat-composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-flat);
+  border-radius: var(--radius-pill);
+  padding: 4px 4px 4px 14px;
+}
+.ichat-composer input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font: 13px var(--font-ui);
+}
+.ichat-composer input::placeholder { color: var(--dim-3); }
+.ichat-send {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.ichat-send .ic { width: 15px; height: 15px; }
+
+/* file drop: the island swells and the character catches the file */
+#dynamic-island.dropping:not(.expanded) { width: 320px; height: 72px; border-radius: 0 0 26px 26px; }
+#dynamic-island.dropping { border-color: rgba(245, 165, 36, 0.5); box-shadow: 0 14px 32px -12px var(--glow-approval), 0 10px 30px rgba(0, 0, 0, 0.5); }
+.island-drop-overlay {
+  background: var(--bg);
+  border: none;
+  color: var(--ink);
+  gap: 12px;
+  font: 600 12.5px var(--font-ui);
+}
+.island-catch {
+  width: 44px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--tab-on);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  animation: island-catch 0.9s var(--ease-out) infinite alternate;
+}
+.island-catch .island-eye { width: 6px; height: 11px; animation: none; }
+@keyframes island-catch { from { transform: translateY(-2px) scale(1); } to { transform: translateY(2px) scale(1.08, 0.94); } }
+#dynamic-island.caught .island-avatar-pill { animation: island-gulp 0.6s var(--ease-out); }
+@keyframes island-gulp { 40% { transform: scale(1.25, 0.8); } 100% { transform: scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  #dynamic-island { transition: none; }
+  .island-catch, #dynamic-island.caught .island-avatar-pill { animation: none; }
+}

@@ -62,6 +62,15 @@ $StateMap = @{
     "pet_approval"     = @("Jarvis Pet", "pet_approval.png")
     "dock_collapsed"   = @("Jarvis Dynamic Island", "dock_collapsed.png")
     "dock_expanded"    = @("Jarvis Dynamic Island", "dock_expanded.png")
+    # spec 34 section 3: one capture per island state
+    "island_hidden"    = @("Jarvis Dynamic Island", "island_hidden.png")
+    "island_overview"  = @("Jarvis Dynamic Island", "island_overview.png")
+    "island_approval"  = @("Jarvis Dynamic Island", "island_approval.png")
+    "island_question"  = @("Jarvis Dynamic Island", "island_question.png")
+    "island_result"    = @("Jarvis Dynamic Island", "island_result.png")
+    "island_error"     = @("Jarvis Dynamic Island", "island_error.png")
+    "island_chat"      = @("Jarvis Dynamic Island", "island_chat.png")
+    "island_drop"      = @("Jarvis Dynamic Island", "island_drop.png")
     "main_app_expanded" = @("Jarvis", "main_app_expanded.png")
     # spec 34: the sidebar (and its collapsed state) is gone; the header "+"
     # menu and each pane get their own capture instead

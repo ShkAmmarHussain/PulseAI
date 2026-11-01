@@ -79,7 +79,7 @@ fn main() {
             SystemTrayEvent::LeftClick { .. } => open_main_tab(app, "chat"),
             _ => {}
         })
-        .invoke_handler(tauri::generate_handler![open_chat, open_settings, set_pet, set_companion])
+        .invoke_handler(tauri::generate_handler![open_chat, open_settings, open_tab, set_pet, set_companion])
         .setup(|app| {
             if let Ok(exe) = std::env::current_exe() {
                 if let Some(dir) = exe.parent() {
@@ -161,11 +161,24 @@ fn set_companion(app: tauri::AppHandle, mode: String) {
             let _ = pet.show();
         }
     }
-    // keep the main window's companion state in sync (settings seg, pet toggle)
-    if let Some(m) = app.get_window("main") {
-        let _ = m.eval(&format!(
-            "window.onCompanionChanged && window.onCompanionChanged(\"{}\")",
-            mode
-        ));
+    // keep every window's companion state in sync: the main window's settings
+    // seg and pet toggle, the pet, which hands approvals to the island, and the
+    // island, which wakes from its strip when shown
+    for label in ["main", "pet", "dock"] {
+        if let Some(w) = app.get_window(label) {
+            let _ = w.eval(&format!(
+                "window.onCompanionChanged && window.onCompanionChanged(\"{}\")",
+                mode
+            ));
+        }
     }
+}
+
+#[tauri::command]
+fn open_tab(app: tauri::AppHandle, tab: String) {
+    let tab = match tab.as_str() {
+        "activity" | "memory" | "settings" => tab,
+        _ => "chat".to_string(),
+    };
+    open_main_tab(&app, &tab);
 }

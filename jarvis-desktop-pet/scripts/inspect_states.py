@@ -110,7 +110,7 @@ def mouse_away():
     move_cursor(8, ctypes.windll.user32.GetSystemMetrics(1) - 8)
 
 
-def capture(state):
+def capture(state, min_bytes=2000):
     p = subprocess.run(
         ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", PS1,
          "-State", state, "-OutputDir", OUT],
@@ -118,7 +118,7 @@ def capture(state):
     line = (p.stdout or "").strip().splitlines()
     line = line[-1] if line else ""
     path = os.path.join(OUT, state + ".png")
-    good = line.startswith("RESULT") and os.path.exists(path) and os.path.getsize(path) > 2000
+    good = line.startswith("RESULT") and os.path.exists(path) and os.path.getsize(path) > min_bytes
     check("capture " + state, good, line or (p.stderr or "")[:200])
     return good
 
@@ -184,6 +184,80 @@ async def cdp_eval(ws, expr, timeout=15):
                 return {"exc": str(res["exceptionDetails"])[:200]}
             return res.get("result", {}).get("value")
     return None
+
+
+async def real_tab(s, suffix):
+    """Page target of the real app's WebView2 (:9335) whose url ends with suffix."""
+    try:
+        async with s.get(REAL_CDP, timeout=aiohttp.ClientTimeout(total=3)) as r:
+            ts = await r.json()
+    except Exception:
+        return None
+    return next((t for t in ts if t.get("type") == "page" and t.get("url", "").endswith(suffix)), None)
+
+
+async def island_states(s, bus, island):
+    """Spec 34 section 3: one capture per island state, staged in the real dock
+    window through its own CDP. The approval is a real one (delete probe); the
+    other cards are staged with window.islandDemo()."""
+    dock_t = await real_tab(s, "/dock.html")
+    if not dock_t:
+        print("SKIP island states (real app CDP :9335 not reachable)", flush=True)
+        return
+    pet_t = await real_tab(s, "/pet.html")
+    async with s.ws_connect(dock_t["webSocketDebuggerUrl"], timeout=30) as dws:
+        await dws.send_json({"id": 1, "method": "Runtime.enable"})
+        await recv(dws, 2)
+
+        async def stage(name, wait=0.9):
+            r = await cdp_eval(dws, "window.islandDemo && window.islandDemo(%s)" % json.dumps(name))
+            check("island staged " + name, r is True, r)
+            time.sleep(wait)
+            focus(island)
+            capture("island_" + name, 200 if name == "hidden" else 2000)
+
+        mouse_away()
+        await stage("hidden")
+        await stage("overview")
+
+        # real approval while the island is the companion: it lands here, and
+        # the pet card stays down
+        await bus.send({"type": "text_input",
+                        "payload": {"text": "delete the file zz_inspect_probe.txt in %s"
+                                    % os.path.dirname(PROBE_FILE)}})
+        ap = None
+        for d in bus.log[-20:]:
+            if (d.get("topic") or d.get("type")) == "ui.approval":
+                ap = d
+        if ap is None:
+            ap = await bus.wait_topic("ui.approval", 90)
+        check("island approval requested", ap is not None)
+        if ap:
+            time.sleep(1.0)
+            card = await cdp_eval(dws, "document.getElementById('dynamic-island').dataset.card")
+            check("island shows approval card", card == "approval", card)
+            if pet_t:
+                async with s.ws_connect(pet_t["webSocketDebuggerUrl"], timeout=30) as pws:
+                    await pws.send_json({"id": 1, "method": "Runtime.enable"})
+                    await recv(pws, 2)
+                    shown = await cdp_eval(pws, "getComputedStyle(document.getElementById('approval')).display")
+                    check("pet approval card stays down in island mode", shown == "none", shown)
+            focus(island)
+            capture("island_approval")
+            await bus.send({"type": "approval_response",
+                            "payload": {"allow": False, "action": "delete_file"},
+                            "correlation_id": ap.get("correlation_id")})
+            await bus.wait_topic("ui.chat", 15,
+                                 lambda d: "denied" in str(((d.get("payload") or {}).get("text") or "")).lower())
+            await bus.pump(1.5)
+            card = await cdp_eval(dws, "document.getElementById('dynamic-island').dataset.card")
+            check("approval card clears once answered", card != "approval", card)
+
+        for name in ("question", "result", "error", "chat"):
+            await stage(name)
+        await stage("drop", wait=1.2)
+        await cdp_eval(dws, "window.islandDemo('compact'); true")
+        mouse_away()
 
 
 async def main():
@@ -283,6 +357,7 @@ async def main():
                 focus(island)
                 capture("dock_expanded")
                 mouse_away()
+                await island_states(s, bus, island)
 
             # ---- main workspace states ----
             cfg3 = dict(cfg)

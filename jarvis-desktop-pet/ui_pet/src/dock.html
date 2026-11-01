@@ -15,9 +15,9 @@
   </style>
 </head>
 <body class="dock-window-body">
-  <div id="dynamic-island" class="island-collapsed" data-state="idle">
+  <div id="dynamic-island" class="island-collapsed" data-state="idle" data-card="overview">
 
-    <!-- Collapsed rail: always visible, flush to the top screen edge -->
+    <!-- Compact pill: always visible, flush to the top screen edge -->
     <div class="island-rail" data-tauri-drag-region>
       <div class="island-avatar-pill" aria-hidden="true">
         <span class="island-eye left"></span>
@@ -28,29 +28,119 @@
       <span class="island-diff-badge" id="island-diff" hidden>+0 -0</span>
     </div>
 
-    <!-- Expanded drawer: slides down smoothly on hover -->
+    <!-- Expanded surface (spec 34 section 3): tab header, then one card per state -->
     <div class="island-drawer">
-      <div class="drawer-task-info">
-        <span class="drawer-task-title" id="island-subtext">Ready for instructions</span>
-        <div class="drawer-progress-track">
-          <div class="drawer-progress-fill" id="island-progress"></div>
+      <div class="island-tabs" role="tablist" aria-label="Island">
+        <button type="button" class="island-tab on" data-view="home" role="tab" aria-selected="true">Home</button>
+        <button type="button" class="island-tab" data-view="chat" role="tab" aria-selected="false">Chat</button>
+        <button type="button" class="island-tab island-tab-plus" id="island-new" title="New chat" aria-label="New chat">
+          <svg class="ic"><use href="#i-plus"/></svg>
+        </button>
+        <span class="island-tabs-fill" data-tauri-drag-region></span>
+        <span class="island-kbd" id="island-kbd" hidden><kbd>Esc</kbd></span>
+      </div>
+
+      <!-- overview: character left, live step list right -->
+      <section class="island-card" data-card="overview" aria-label="Overview">
+        <div class="island-hero" aria-hidden="true">
+          <span class="island-eye left"></span>
+          <span class="island-eye right"></span>
         </div>
-      </div>
-      <div class="drawer-controls">
-        <button class="drawer-btn" id="island-mic-btn" title="Push-to-Talk" aria-label="Talk to Jarvis">
-          <svg class="ic"><use href="#i-mic"/></svg>
-        </button>
-        <button class="drawer-btn" id="island-chat-btn" title="Open Workspace" aria-label="Open workspace">
-          <svg class="ic"><use href="#i-chat"/></svg>
-        </button>
-        <button class="drawer-btn" id="island-pet-btn" title="Switch to Floating Pet Mode" aria-label="Switch to floating pet">
-          <svg class="ic"><use href="#i-face"/></svg>
-        </button>
-      </div>
+        <div class="island-ov-body">
+          <div class="drawer-task-info">
+            <span class="drawer-task-title" id="island-subtext">Ready for instructions</span>
+            <ol class="island-steps" id="island-steps" aria-live="polite"></ol>
+            <div class="drawer-progress-track">
+              <div class="drawer-progress-fill" id="island-progress"></div>
+            </div>
+          </div>
+          <div class="drawer-controls">
+            <button class="drawer-btn" id="island-mic-btn" title="Push-to-Talk" aria-label="Talk to Jarvis">
+              <svg class="ic"><use href="#i-mic"/></svg>
+            </button>
+            <button class="drawer-btn" id="island-chat-btn" title="Open Workspace" aria-label="Open workspace">
+              <svg class="ic"><use href="#i-chat"/></svg>
+            </button>
+            <button class="drawer-btn" id="island-pet-btn" title="Switch to Floating Pet Mode" aria-label="Switch to floating pet">
+              <svg class="ic"><use href="#i-face"/></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- approval: command in a mono chip, Deny / Always / Allow -->
+      <section class="island-card" data-card="approval" role="alertdialog" aria-labelledby="ia-title">
+        <div class="ic-status">
+          <i class="ic-dot" aria-hidden="true"></i>
+          <b id="ia-title">Jarvis wants to run an action</b>
+          <span class="ic-risk risk med" id="ia-risk">Medium risk</span>
+          <span class="ic-timer" id="ia-timer"></span>
+        </div>
+        <div class="ic-chip" id="ia-chip" hidden></div>
+        <p class="ic-sub" id="ia-extra" hidden></p>
+        <div class="ic-actions">
+          <button type="button" class="ic-btn" id="ia-deny">Deny <kbd>N</kbd></button>
+          <button type="button" class="ic-btn" id="ia-always" hidden>Always</button>
+          <button type="button" class="ic-btn primary" id="ia-allow">Allow <kbd>Y</kbd></button>
+        </div>
+      </section>
+
+      <!-- question / choose: option rows plus a confirm pill -->
+      <section class="island-card" data-card="question" aria-labelledby="iq-title">
+        <div class="ic-status">
+          <i class="ic-dot" aria-hidden="true"></i>
+          <b id="iq-title">Jarvis has a question</b>
+        </div>
+        <div class="ic-options" id="iq-options" role="radiogroup" aria-labelledby="iq-title"></div>
+        <div class="ic-actions">
+          <button type="button" class="ic-btn" id="iq-skip">Skip</button>
+          <button type="button" class="ic-btn primary" id="iq-confirm" disabled>Confirm</button>
+        </div>
+      </section>
+
+      <!-- result: title and up to 3 rows, Open / Close -->
+      <section class="island-card" data-card="result" aria-labelledby="ir-title">
+        <div class="ic-status">
+          <i class="ic-dot" aria-hidden="true"></i>
+          <b id="ir-title">Done</b>
+        </div>
+        <ul class="ic-rows" id="ir-rows"></ul>
+        <div class="ic-actions">
+          <button type="button" class="ic-btn" id="ir-close">Close</button>
+          <button type="button" class="ic-btn primary" id="ir-open">Open</button>
+        </div>
+      </section>
+
+      <!-- error: one line of cause, Retry / Details -->
+      <section class="island-card" data-card="error" aria-labelledby="ie-title">
+        <div class="ic-status">
+          <i class="ic-dot" aria-hidden="true"></i>
+          <b id="ie-title">That didn&rsquo;t work</b>
+        </div>
+        <p class="ic-sub" id="ie-cause">Something went wrong.</p>
+        <div class="ic-actions">
+          <button type="button" class="ic-btn" id="ie-details">Details</button>
+          <button type="button" class="ic-btn primary" id="ie-retry">Retry</button>
+        </div>
+      </section>
+
+      <!-- inline chat: last messages and a composer; long chats hand off to the window -->
+      <section class="island-card" data-card="chat" aria-label="Chat">
+        <div class="ichat-log" id="ichat-log" aria-live="polite">
+          <p class="ichat-empty">Ask anything. Long answers open in the window.</p>
+        </div>
+        <form class="ichat-composer" id="ichat-form" autocomplete="off">
+          <input id="ichat-input" type="text" placeholder="Message Jarvis&hellip;" aria-label="Message Jarvis" />
+          <button type="submit" class="ichat-send" id="ichat-send" aria-label="Send">
+            <svg class="ic"><use href="#i-send"/></svg>
+          </button>
+        </form>
+      </section>
     </div>
 
-    <!-- Drag-and-drop ingestion overlay -->
+    <!-- Drag-and-drop ingestion overlay: the island swells and catches the file -->
     <div class="island-drop-overlay" id="island-dropzone" hidden>
+      <span class="island-catch" aria-hidden="true"><span class="island-eye left"></span><span class="island-eye right"></span></span>
       <span>Drop file to inspect&hellip;</span>
     </div>
 
@@ -61,10 +151,19 @@
       <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
       <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12c0 4-4 7-9 7-1.2 0-2.3-.2-3.3-.5L4 20l1.2-3.3C4.4 15.4 4 13.7 4 12c0-4 4-7 9-7s8 3 8 7z"/></symbol>
       <symbol id="i-face" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="13" rx="5"/><circle cx="9.4" cy="12" r="1.5" fill="currentColor"/><circle cx="14.6" cy="12" r="1.5" fill="currentColor"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-send" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6z"/></symbol>
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 3L5 13.5h6L10 21l8-10.5h-6z"/></symbol>
+      <symbol id="i-dots" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7zM14 3v5h5"/></symbol>
     </defs>
   </svg>
 
   <script src="ws.js"></script>
+  <script src="approval_text.js"></script>
   <script src="dock_standalone.js"></script>
 </body>
 </html>

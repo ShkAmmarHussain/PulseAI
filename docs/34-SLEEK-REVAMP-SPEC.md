@@ -119,3 +119,45 @@ Same branch. The character art and `mochi` identifiers are still untouched (§1.
 After captures (real windows, 1100×760): `jarvis-desktop-pet/artifacts/ui_inspection/spec34/after/` (`main_activity`, `main_memory`, `main_settings`, `main_onboarding`, `main_app_expanded`, `main_app_menu`, pet and dock states including `pet_approval`).
 
 Gates (non-mic, 2026-11-01, source backend on :8765, LM Studio down): smoke OK, ws_ping, memory_update 14/14, model_router 30/30, fast_router 71/71, vocab 17/17, audio_cache, tts_wake, injector 17/17, hook_e2e 37/37, dictation_ui 27/27 (one flaky 26/27 run on "add mapping row", green on rerun), phase5_e2e 14/14, phase5_dock_check 27/27, phase5_visual_check 28/28, chat_e2e, agent_e2e, voice_e2e ALL OK, pet_springs 9/9, inspect_states 21/21. wake_e2e prints `WAKE E2E PASS`, then the interpreter crashes in native teardown (0xC0000005 this run). Not run (live mic): hotkey_e2e, dictation_flow_test. Tests rewrite `config/config.yaml` (drops comments) and `config/vocabulary.json`; restore both from git after a run.
+
+
+## 11. As-built: Phase 3 (island states)
+
+Same branch. §1.2 is still unanswered, so this phase assumes **A. Hybrid**, the recommended layout: the island owns approvals and quick results whenever it is the companion (`runtime.companion: dock`), and the main window keeps long chats, Memory, Activity and Settings. The pet and dock stay mutually exclusive companions, as before. The `mochi` identifiers and art are untouched. The island's face is still the existing two-eye pill.
+
+**Sizes (`dock_standalone.js`).** The island has four sizes:
+- Hidden wake strip, 240×6. The island tucks away after 12 s of quiet: idle state, not hovered, nothing pinned, no diff badge. Hover peeks it open, and any event wakes it.
+- Compact pill, 240×36.
+- Expanded, 460 wide. Its height is measured from the visible card, and re-measured on `transitionend` because the width animation rewraps text.
+- Drop swell, 320×72.
+
+`set_companion` now evals `onCompanionChanged` into the pet and dock windows too. The dock uses it to start from the compact pill, not a strip that tucked away while hidden. Width and height use a spring-like `cubic-bezier(0.34, 1.36, 0.64, 1)`, and reduced motion turns it off.
+
+**Expanded header.** Tabs **Home · Chat · +**. `+` starts a fresh inline chat. Home shows the most urgent card: approval, then question, then a fresh result or error, then overview.
+
+**Cards.** All cards are `--card` on black, with a radial state glow at the bottom edge, a status line (dot, bold title) and one white-pill action.
+- *Overview:* the character on the left, and on the right a live step list of up to 4 steps (icon per step, current one bright with an amber icon, past ones dim). It also has the progress bar and the original three `.drawer-btn` controls (talk, workspace, switch to pet).
+- *Approval:* the friendly title and risk pill from `approval_text.js`, the command in a mono chip and a countdown. **Deny `N`**, **Always** and **Allow `Y`**, with the white pill on Allow and an amber glow. Y and N work while the island has focus. **Always** appears only for coding-agent hook approvals, because that is the only path the backend grants for a session (`hook_bridge` `remember`). The card clears when the outcome `ui.chat` arrives on the same correlation id, or on `ui.approval_cancelled`. While the island is the companion, `pet.js` ignores `ui.approval`, and the pet card remains the fallback in pet mode.
+- *Question / Choose:* option rows (keys 1-9, Enter confirms), Skip, and a white-pill Confirm. Backend: `ui.question` is now forwarded to the UI, and a `question_response` reply is republished on the bus as `ui.question.response` (same correlation id). No backend agent raises `ui.question` yet, so this card is wired, but nothing produces it today.
+- *Result:* raised by a successful `tool.result`. The title is the summary's first line, with up to 3 rows (friendly step names, then the remaining summary lines), **Open** (white, opens the chat) and **Close**, and a green glow. It stays pinned for 6 s.
+- *Error:* raised by a failed `tool.result` or a voice error. It shows one line of cause, **Details** (opens Activity through the new Tauri command `open_tab`) and **Retry** (white; it resends the last request and is hidden when there is none), with a red glow. It stays pinned for 10 s.
+- *Chat:* the last 3 messages (user `--tab-on` pills, assistant plain text) and a composer with a round white send button and an indigo glow. Replies longer than 280 characters show **Continue in window**. A focused composer or an unsent draft keeps the island open. Esc collapses the island.
+- *File drop:* the island swells to 320×72, and the character pill bobs over "Drop file to inspect…". It gulps on drop and adds a step; ingestion is unchanged.
+
+All Phase 5 dock ids and markers are kept (`phase5_dock_check` 27/27).
+
+**Inspection.** `window.islandDemo(name)` stages a card for captures. `inspect_states.py` gains `island_states()`, which drives the real dock through `:9335`. The approval is a real one (the delete probe while in dock mode). The script asserts the island shows it, that the pet card stays at `display: none`, and that the card clears once denied. The other cards are staged. 40/40 steps.
+
+After captures: `jarvis-desktop-pet/artifacts/ui_inspection/spec34/after/`
+- `island_hidden`, `island_overview`, `island_approval`, `island_question`
+- `island_result`, `island_error`, `island_chat`, `island_drop`
+- refreshed `dock_collapsed` (compact) and `dock_expanded`
+
+Gates (non-mic, 2026-11-01):
+- smoke OK, ws_ping, memory_update 14/14, model_router 30/30, fast_router 71/71, vocab 17/17
+- audio_cache, tts_wake, injector 17/17, hook_e2e 37/37, dictation_ui 27/27
+- phase5_e2e 14/14, phase5_dock_check 27/27, phase5_visual_check 28/28
+- chat_e2e, voice_e2e ALL OK, pet_springs 9/9, inspect_states 40/40
+- agent_e2e: the first run's web search came back empty, and it was green on rerun.
+- wake_e2e: `WAKE E2E PASS`, then the known native-teardown crash (0xC0000374).
+- Not run (live mic): hotkey_e2e, dictation_flow_test.
