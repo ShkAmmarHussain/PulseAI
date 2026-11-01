@@ -3,10 +3,10 @@
 **Document:** `docs/33-CUSTOM-TITLEBAR-CLOUD-MODELS-AND-UI-POLISH.md`  
 **Target Agent:** `opencode` / `Claude Code`  
 **Purpose:** Implementation blueprint to:
-1. Replace the default OS window title bar with a **Bespoke Frameless Window Titlebar** (integrated draggable header, Mochi icon, sleek window controls).
+1. Replace the default OS window title bar with a **Bespoke Frameless Window Titlebar** (integrated draggable header, Pip icon, sleek window controls).
 2. Support **OpenAI and Anthropic (Claude) cloud API keys** alongside LM Studio (single API key entry, zero manual endpoint configuration).
 3. Implement an **Intelligent Auto-Model Selector** (dynamically selecting the best tier for orchestrator, planner, tool execution, and vision).
-4. Fix all visual defects from recent inspection captures (blinding white memory inputs, harsh orange rectangular buttons, debug dumps in onboarding, and replacing legacy orange Saturn orbs with the Mochi mascot).  
+4. Fix all visual defects from recent inspection captures (blinding white memory inputs, harsh orange rectangular buttons, debug dumps in onboarding, and replacing legacy orange Saturn orbs with the Pip mascot).  
 **Parent Documentation:** [08-MODELS.md](file:///d:/Personal_projects/2/Personal_AI/docs/08-MODELS.md), [15-CONFIG.md](file:///d:/Personal_projects/2/Personal_AI/docs/15-CONFIG.md), [27-UI-REVAMP.md](file:///d:/Personal_projects/2/Personal_AI/docs/27-UI-REVAMP.md), [31-2D-3D-PET-SWITCHER-AND-UI-POLISH.md](file:///d:/Personal_projects/2/Personal_AI/docs/31-2D-3D-PET-SWITCHER-AND-UI-POLISH.md), [32-TASKS-MEMORY-AND-PRODUCT-SURFACES.md](file:///d:/Personal_projects/2/Personal_AI/docs/32-TASKS-MEMORY-AND-PRODUCT-SURFACES.md)
 
 ---
@@ -24,7 +24,7 @@
 ├───────────────────────────────────────┼───────────────────────────────────────┼───────────────────────────────────────┤
 │ • Window has default Windows 11 title │ • Unthemed native <select> & <textarea>│ • Modal header & sidebar brand still  │
 │   bar (blue dot icon, white caption). │   render as blinding WHITE boxes with │   display legacy orange Saturn sphere │
-│ • Clashes with the custom dark UI.    │   unreadable light text!              │   instead of the Mochi mascot.        │
+│ • Clashes with the custom dark UI.    │   unreadable light text!              │   instead of the Pip mascot.        │
 │ • Needs frameless window with sleek   │ • Harsh orange rectangular buttons    │ • Step 3 dumps raw unformatted debug  │
 │   custom Minimize, Maximize, Close.   │   with zero padding and sharp corners.│   string of 5 comma-separated models. │
 └───────────────────────────────────────┴───────────────────────────────────────┴───────────────────────────────────────┘
@@ -58,7 +58,7 @@ Prepend a dedicated custom titlebar spanning the top of the application:
 <header id="window-titlebar" data-tauri-drag-region>
   <div class="titlebar-left" data-tauri-drag-region>
     <div class="titlebar-brand" data-tauri-drag-region>
-      <svg class="mochi-mini-logo" aria-hidden="true"><use href="#i-mochi"/></svg>
+      <svg class="pip-mini-logo" aria-hidden="true"><use href="#i-pip"/></svg>
       <span class="titlebar-app-name">Jarvis</span>
       <span class="titlebar-version-pill">v0.2</span>
     </div>
@@ -116,7 +116,7 @@ Wire native Tauri window API:
   gap: 8px;
   padding-left: 14px;
 }
-.titlebar-brand .mochi-mini-logo {
+.titlebar-brand .pip-mini-logo {
   width: 18px;
   height: 18px;
 }
@@ -276,10 +276,10 @@ Update `ui_pet/src/index.html` (Modal Step 3):
    </div>
    ```
 
-### 5.2 Replace Legacy Saturn Orbs with Mochi Avatar
-* In the sidebar brand header (`#sidebar .brand .logo`), replace `<div class="logo orb">` with the animated `<svg class="mochi-logo"><use href="#i-mochi"/></svg>`.
-* In the sidebar footer (`.pet-mini .pet-orb`), replace the orange sphere with `<svg class="mochi-mini"><use href="#i-mochi"/></svg>`.
-* In the Onboarding modal hero (`.onboard-hero-orb`), replace the orange sphere with the charming **2D Mochi illustration**.
+### 5.2 Replace Legacy Saturn Orbs with Pip Avatar
+* In the sidebar brand header (`#sidebar .brand .logo`), replace `<div class="logo orb">` with the animated `<svg class="pip-logo"><use href="#i-pip"/></svg>`.
+* In the sidebar footer (`.pet-mini .pet-orb`), replace the orange sphere with `<svg class="pip-mini"><use href="#i-pip"/></svg>`.
+* In the Onboarding modal hero (`.onboard-hero-orb`), replace the orange sphere with the charming **2D Pip illustration**.
 
 ---
 
@@ -341,11 +341,11 @@ button.primary:hover {
 
 | Order | Subsystem | Target Files | Key Actions |
 | :---: | :--- | :--- | :--- |
-| **1** | **Bespoke Titlebar** | `src-tauri/tauri.conf.json`<br>`ui_pet/src/index.html`<br>`ui_pet/src/app.css` | Set `decorations: false`, add `#window-titlebar` with Mochi logo & window controls (`win-min`, `win-max`, `win-close`). |
+| **1** | **Bespoke Titlebar** | `src-tauri/tauri.conf.json`<br>`ui_pet/src/index.html`<br>`ui_pet/src/app.css` | Set `decorations: false`, add `#window-titlebar` with Pip logo & window controls (`win-min`, `win-max`, `win-close`). |
 | **2** | **Multi-Provider LLM** | `core/llm.py`<br>`config/config.yaml`<br>`core/config.py` | Add OpenAI and Anthropic Claude clients; accept API keys directly without endpoint hurdles. |
 | **3** | **Auto-Model Router** | `core/model_router.py`<br>`agents/orchestrator.py` | Automatically map tasks to Fast tier (`mini`/`haiku`) vs Heavy tier (`gpt-4o`/`sonnet`) vs Vision tier. |
 | **4** | **Onboarding & Settings** | `ui_pet/src/index.html`<br>`ui_pet/src/onboarding.js`<br>`ui_pet/src/settings.js` | Add provider tabs (`LM Studio`, `OpenAI`, `Claude`) in Onboarding Step 3 & Settings; format connection badge. |
-| **5** | **Mochi Logo Everywhere** | `ui_pet/src/index.html`<br>`ui_pet/src/app.css` | Replace legacy orange Saturn sphere orbs with the `#i-mochi` mascot icon. |
+| **5** | **Pip Logo Everywhere** | `ui_pet/src/index.html`<br>`ui_pet/src/app.css` | Replace legacy orange Saturn sphere orbs with the `#i-pip` mascot icon. |
 | **6** | **Memory Form Dark Theme** | `ui_pet/src/app.css` | Style `.memory-add-form select` and `textarea` in dark mode (`#14151a`); pill-shaped buttons. |
 
 ---
@@ -356,7 +356,7 @@ button.primary:hover {
 2. **Provider Key Input:** Entering an OpenAI key (`sk-...`) or Claude key (`sk-ant-...`) validates connection immediately without entering endpoints.
 3. **Auto-Model Selection:** Complex prompts automatically use the Heavy tier (`gpt-4o` or `sonnet`), while memory recall and quick answers automatically use the Fast tier (`gpt-4o-mini` or `haiku`).
 4. **No White Input Boxes:** Memory Studio `<select>` and `<textarea>` render cleanly with dark backgrounds and warm amber focus rings.
-5. **Mochi Presence:** The Mochi mascot replaces the generic orange Saturn sphere in the sidebar and onboarding modal.
+5. **Pip Presence:** The Pip mascot replaces the generic orange Saturn sphere in the sidebar and onboarding modal.
 
 ---
 
@@ -364,7 +364,7 @@ button.primary:hover {
 
 ### 9.1 What shipped
 
-- **Titlebar:** `tauri.conf.json` main window `decorations: false`; `index.html` gained `#window-titlebar` (Mochi logo, "Jarvis" title, `v0.2` pill, `win-min`/`win-max`/`win-close`). `titlebar.js` binds the controls; draggable regions are marked with `data-tauri-drag-region` on the titlebar children (Tauri only honors the exact event target). `#app` got `margin-top: 36px` + `height: calc(100vh - 36px)` so content never slides under the fixed bar.
+- **Titlebar:** `tauri.conf.json` main window `decorations: false`; `index.html` gained `#window-titlebar` (Pip logo, "Jarvis" title, `v0.2` pill, `win-min`/`win-max`/`win-close`). `titlebar.js` binds the controls; draggable regions are marked with `data-tauri-drag-region` on the titlebar children (Tauri only honors the exact event target). `#app` got `margin-top: 36px` + `height: calc(100vh - 36px)` so content never slides under the fixed bar.
 - **LLM engine:** `core/llm.py` now serves three providers (`openai`, `anthropic`, `lm_studio`) from one config block; key-only entry for cloud providers (no custom endpoints required). Verified live: LM Studio returns 5 models; empty OpenAI key fails gracefully with *"Enter an OpenAI API key (sk-...) to test."*; a bogus Anthropic key surfaces the upstream `401 authentication_error`.
 - **Auto-router:** new `core/model_router.py` — `route(cfg, tier)` picks Fast/Heavy/Vision models per provider (`lm_models()` caches `/v1/models` for 45 s; local picks regex-classify vision/code/small models), and `route_query()` heuristics (word count, code blocks, heavy keywords) choose the tier.
 - **Config:** new top-level `llm:` block (`provider`, `auto_routing`, `openai.api_key`, `anthropic.api_key`). The legacy top-level `lm_studio:` block was **kept intact** (still read by `backend/app.py` and `core/llm.py`); Settings reads/writes `llm.*` only. `settings.js collect()` clones the current config so `runtime.first_run` and `llm` survive `save_settings`' full-yaml replace.

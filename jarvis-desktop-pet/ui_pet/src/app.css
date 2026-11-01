@@ -311,16 +311,16 @@ button:disabled { cursor: default; }
   background: radial-gradient(circle at 50% 58%, rgba(245, 165, 36, 0.2) 0%, rgba(245, 165, 36, 0.06) 48%, transparent 70%);
   filter: blur(8px);
 }
-.hero-mochi {
+.hero-pip {
   position: relative;
   width: 92px;
   height: 92px;
   display: block;
-  animation: mochi-float 6s ease-in-out 1.2s infinite;
+  animation: pip-float 6s ease-in-out 1.2s infinite;
 }
 .hero-orb .core { display: none; }
 .hero-orb .ring { display: none; }
-@keyframes mochi-float {
+@keyframes pip-float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
 }
@@ -410,7 +410,7 @@ button:disabled { cursor: default; }
 .msg-avatar.user { background: var(--tab-on); color: var(--dim); }
 /* small character avatar for assistant replies */
 .msg-avatar.assistant { padding: 0; background: none; overflow: visible; }
-.msg-avatar.assistant .mochi-ic { width: 100%; height: 100%; display: block; }
+.msg-avatar.assistant .pip-ic { width: 100%; height: 100%; display: block; }
 .msg-avatar.assistant .core { position: absolute; inset: 0; }
 .msg-name { font-size: var(--fs-helper); font-weight: 650; color: var(--ink); letter-spacing: 0.1px; }
 .msg-time { font-size: var(--fs-micro); color: var(--dim-3); font-variant-numeric: tabular-nums; }
@@ -1365,7 +1365,7 @@ body.approval-open #pet-stage {
 #pet:active { cursor: grabbing; }
 #pet canvas { width: 100%; height: 100%; display: block; }
 
-/* dual render layers: 2D vector Mochi + 3D WebGL Mochi (doc 31, section 2.2) */
+/* dual render layers: 2D vector Pip + 3D WebGL Pip (doc 31, section 2.2) */
 .pet-render-layer {
   position: absolute;
   inset: 0;
@@ -2119,7 +2119,7 @@ body.dock-window-body { background: transparent !important; }
   padding-left: 12px;
   height: 100%;
 }
-.titlebar-brand .mochi-mini-logo { width: 20px; height: 20px; display: block; }
+.titlebar-brand .pip-mini-logo { width: 20px; height: 20px; display: block; }
 .brand .logo.sounding { animation: logo-sound 0.5s var(--ease-out); }
 @keyframes logo-sound {
   0% { transform: scale(1); filter: brightness(1); }
@@ -2251,7 +2251,7 @@ body.dock-window-body { background: transparent !important; }
   padding: 1px 5px;
 }
 .pm-row { border-bottom: 1px solid var(--hairline); border-radius: 10px 10px 0 0; margin-bottom: 2px; padding-bottom: 2px; }
-.pet-mini .mochi-mini { width: 20px; height: 20px; display: block; flex-shrink: 0; }
+.pet-mini .pip-mini { width: 20px; height: 20px; display: block; flex-shrink: 0; }
 .pet-mini-label { flex: 1; white-space: nowrap; }
 .pet-mini .switch { width: 34px; height: 20px; }
 .pet-mini .switch .slider::before { width: 14px; height: 14px; }
@@ -2268,8 +2268,8 @@ body.dock-window-body { background: transparent !important; }
 .win-btn.close:hover { background: #e11d48; color: #ffffff; }
 
 
-/* ---------- Mochi mascot replaces legacy Saturn orbs (spec 33, section 5.2) ---------- */
-.ob-logo { display: block; animation: mochi-float 6s ease-in-out 0.6s infinite; filter: drop-shadow(0 6px 14px rgba(245, 158, 11, 0.25)); }
+/* ---------- Pip mascot replaces legacy Saturn orbs (spec 33, section 5.2) ---------- */
+.ob-logo { display: block; animation: pip-float 6s ease-in-out 0.6s infinite; filter: drop-shadow(0 6px 14px rgba(245, 158, 11, 0.25)); }
 
 /* ---------- Memory Studio form: dark inputs, amber focus (spec 33, section 6.1) ---------- */
 .memory-add-form select,
@@ -3214,3 +3214,21 @@ summary:focus-visible, [tabindex]:focus-visible, .switch input:focus-visible + .
 .key-saved { color: var(--dim); }
 .link-btn { padding: 0; border: none; background: none; color: var(--ink); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 #diag-reveal[hidden] { display: none; }
+
+/* ================= spec 34 phase 4: Pip (section 1.1) ================= */
+/* the sprout sways from its root on the crown; the amber core breathes */
+.p2d-sprout, .hp-sprout { transform-box: view-box; transform-origin: 64px 37px; animation: pip-sway 3.4s ease-in-out infinite; }
+.p2d-core, .hp-core { animation: pip-core 4.2s ease-in-out infinite; }
+@keyframes pip-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(5deg); } }
+@keyframes pip-core { 0%, 100% { opacity: 0.45; } 50% { opacity: 0.7; } }
+#pet-2d.sleeping .p2d-sprout { animation-duration: 7s; }
+#pet-2d.sleeping .p2d-core { opacity: 0.25; animation: none; }
+/* island face: a tiny Pip in the compact pill, a larger one on the overview card */
+.island-avatar-pill { width: 28px; height: 24px; background: none; }
+.island-avatar-pill .island-pip { width: 24px; height: 24px; display: block; }
+.island-hero .island-pip { width: 52px; height: 52px; display: block; }
+.island-catch { width: 40px; height: 34px; background: none; }
+.island-catch .island-pip { width: 34px; height: 34px; display: block; }
+@media (prefers-reduced-motion: reduce) {
+  .p2d-sprout, .hp-sprout, .p2d-core, .hp-core { animation: none; }
+}

@@ -60,6 +60,10 @@ $StateMap = @{
     "pet_hover"        = @("Jarvis Pet", "pet_hover.png")
     "pet_speech"       = @("Jarvis Pet", "pet_speech.png")
     "pet_approval"     = @("Jarvis Pet", "pet_approval.png")
+    "pet3d_idle"       = @("Jarvis Pet", "pet3d_idle.png")
+    "pet3d_hover"      = @("Jarvis Pet", "pet3d_hover.png")
+    "pet3d_speech"     = @("Jarvis Pet", "pet3d_speech.png")
+    "main_hero"        = @("Jarvis", "main_hero.png")
     "dock_collapsed"   = @("Jarvis Dynamic Island", "dock_collapsed.png")
     "dock_expanded"    = @("Jarvis Dynamic Island", "dock_expanded.png")
     # spec 34 section 3: one capture per island state

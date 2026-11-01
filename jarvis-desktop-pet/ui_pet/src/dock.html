@@ -20,8 +20,7 @@
     <!-- Compact pill: always visible, flush to the top screen edge -->
     <div class="island-rail" data-tauri-drag-region>
       <div class="island-avatar-pill" aria-hidden="true">
-        <span class="island-eye left"></span>
-        <span class="island-eye right"></span>
+        <svg class="island-pip"><use href="#i-pip"/></svg>
       </div>
       <span class="island-status-dot" id="island-dot"></span>
       <span class="island-headline" id="island-headline">Jarvis Standing By</span>
@@ -43,8 +42,7 @@
       <!-- overview: character left, live step list right -->
       <section class="island-card" data-card="overview" aria-label="Overview">
         <div class="island-hero" aria-hidden="true">
-          <span class="island-eye left"></span>
-          <span class="island-eye right"></span>
+          <svg class="island-pip"><use href="#i-pip"/></svg>
         </div>
         <div class="island-ov-body">
           <div class="drawer-task-info">
@@ -140,7 +138,7 @@
 
     <!-- Drag-and-drop ingestion overlay: the island swells and catches the file -->
     <div class="island-drop-overlay" id="island-dropzone" hidden>
-      <span class="island-catch" aria-hidden="true"><span class="island-eye left"></span><span class="island-eye right"></span></span>
+      <span class="island-catch" aria-hidden="true"><svg class="island-pip"><use href="#i-pip"/></svg></span>
       <span>Drop file to inspect&hellip;</span>
     </div>
 
@@ -148,6 +146,39 @@
 
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
+      <!-- Pip, the Jarvis companion (spec 34 section 1.1) -->
+      <symbol id="i-pip" viewBox="0 0 128 128">
+        <defs>
+          <linearGradient id="pip-b" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#fffdf8"/>
+            <stop offset="1" stop-color="#f3e3cc"/>
+          </linearGradient>
+          <radialGradient id="pip-c" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#ffd27a" stop-opacity="0.95"/>
+            <stop offset="0.55" stop-color="#f5a524" stop-opacity="0.42"/>
+            <stop offset="1" stop-color="#f5a524" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <!-- single antenna-sprout: stem, leaf and the amber bud light -->
+        <g>
+          <path d="M64 37 C63 28 65 20 73 14" stroke="#f3e3cc" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+          <ellipse cx="57.5" cy="24" rx="7.5" ry="3.6" fill="#fb923c" transform="rotate(-32 57.5 24)"/>
+          <circle cx="74" cy="13" r="10" fill="url(#pip-c)"/>
+          <circle cx="74" cy="13" r="4.6" fill="#f5a524"/>
+        </g>
+        <!-- egg body with a warm amber core light inside -->
+        <path d="M64 34 C89 34 107 62 107 87 C107 106 89 118 64 118 C39 118 21 106 21 87 C21 62 39 34 64 34 Z" fill="url(#pip-b)"/>
+        <ellipse cx="64" cy="98" rx="28" ry="16" fill="url(#pip-c)" opacity="0.55"/>
+        <ellipse cx="34" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
+        <ellipse cx="94" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
+        <ellipse cx="47" cy="70" rx="7" ry="9" fill="#35292a"/>
+        <ellipse cx="81" cy="70" rx="7" ry="9" fill="#35292a"/>
+        <circle cx="49.5" cy="66.5" r="2.6" fill="#fff"/>
+        <circle cx="83.5" cy="66.5" r="2.6" fill="#fff"/>
+        <circle cx="44.5" cy="74" r="1.4" fill="#fff" opacity="0.85"/>
+        <circle cx="78.5" cy="74" r="1.4" fill="#fff" opacity="0.85"/>
+        <path d="M57 92 Q64 99.5 71 92" stroke="#35292a" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+      </symbol>
       <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></symbol>
       <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12c0 4-4 7-9 7-1.2 0-2.3-.2-3.3-.5L4 20l1.2-3.3C4.4 15.4 4 13.7 4 12c0-4 4-7 9-7s8 3 8 7z"/></symbol>
       <symbol id="i-face" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="13" rx="5"/><circle cx="9.4" cy="12" r="1.5" fill="currentColor"/><circle cx="14.6" cy="12" r="1.5" fill="currentColor"/></symbol>

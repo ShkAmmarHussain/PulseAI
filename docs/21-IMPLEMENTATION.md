@@ -32,7 +32,7 @@ Everything is constructed in `backend/app.py::App.start()` in this order: config
 
 - Plain JS, no framework; one shared client (`window.Jarvis`); panes are plain DOM sections toggled by `showTab`.
 - Settings sections: strict single-tab via `window.showSettingsTab(tab)` — active section `display: ""`, others `"none"` (no stacked scroll bleed).
-- Chat stream: `#msgs > *` centered `min(820px, 100%)`; user = indigo pill (right), assistant = warm card `rgba(26,28,34,.85)` (left) with mochi avatar (`#i-mochi` sprite); approval = `.approval-card chat-approval-card` in-stream.
+- Chat stream: `#msgs > *` centered `min(820px, 100%)`; user = indigo pill (right), assistant = warm card `rgba(26,28,34,.85)` (left) with pip avatar (`#i-pip` sprite); approval = `.approval-card chat-approval-card` in-stream.
 - Pet: dual layers — `#pet-2d` (SVG default, `window.Pet2D`) and `#pet-3d` (WebGL, `window.Pet3D`); switch with `window.setRenderMode(mode, persist)`; persist via `runtime.pet_render_mode` in config. `Pet3D` self-heals size via `ResizeObserver` (it may boot `display:none`).
 - **Forbidden markers (tests assert absence):** `#8e8cff`, `id="global-search"`, `dock-island`.
 
