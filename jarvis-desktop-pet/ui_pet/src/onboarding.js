@@ -31,6 +31,8 @@
 
   function setStep(n) {
     step = Math.max(1, Math.min(3, n));
+    // the character reacts per step (spec 34 section 6): wave / listen / celebrate
+    root.dataset.step = String(step);
     steps.forEach((s) => {
       if (s) s.hidden = Number(s.id.split("-").pop()) !== step;
     });
@@ -53,6 +55,9 @@
     root.hidden = false;
     setStep(1);
   }
+
+  // inspection hook: scripts/inspect_states.py opens the sheet for a capture
+  window.openOnboarding = open;
 
   function close() {
     opened = false;

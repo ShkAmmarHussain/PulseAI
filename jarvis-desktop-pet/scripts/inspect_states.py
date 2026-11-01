@@ -6,13 +6,13 @@ Tauri OS windows via scripts/inspect_ui.ps1:
     pet_idle, pet_hover, pet_speech, pet_approval      -> Jarvis Pet window
     dock_collapsed, dock_expanded                      -> Jarvis Dynamic Island
     main_app_expanded, main_app_menu,                  -> Jarvis main window
-    main_activity, main_memory, main_settings
+    main_activity, main_memory, main_settings, main_onboarding (needs :9335)
       (menu + panes reached by real coordinate clicks on the spec 34 header,
        positions probed from the mirrored CDP index tab)
 
 Run with app + backend up, Edge CDP on 9334 (index/pet/dock tabs), LM Studio up:
     .venv/Scripts/python scripts/inspect_states.py
-exit 0 = all 11 captures written to artifacts/ui_inspection/
+exit 0 = all 12 captures written to artifacts/ui_inspection/
 """
 
 import asyncio
@@ -33,6 +33,8 @@ SRC = os.path.join(ROOT, "ui_pet", "src")
 OUT = os.path.join(ROOT, "artifacts", "ui_inspection")
 PS1 = os.path.join(ROOT, "scripts", "inspect_ui.ps1")
 CDP = "http://127.0.0.1:9334/json"
+# the real app's WebView2, when launched with --remote-debugging-port=9335
+REAL_CDP = "http://127.0.0.1:9335/json"
 WS = "ws://127.0.0.1:8765/ws"
 PROBE_FILE = os.path.join(os.environ["TEMP"], "opencode", "zz_inspect_probe.txt")
 
@@ -354,6 +356,32 @@ async def main():
                 time.sleep(0.3)
                 mouse_away()
 
+            # onboarding sheet (spec 34 section 6): opened in the REAL app via
+            # its own CDP; skipped when the app runs without debug args
+            rts = []
+            try:
+                async with s.get(REAL_CDP, timeout=aiohttp.ClientTimeout(total=3)) as r:
+                    rts = await r.json()
+            except Exception:
+                rts = []
+
+            def is_index(t):
+                u = t.get("url", "")
+                return t.get("type") == "page" and (u.endswith("/index.html") or u.rstrip("/").endswith("tauri.localhost"))
+
+            ridx = next((t for t in rts if is_index(t)), None)
+            if main_w and ridx:
+                async with s.ws_connect(ridx["webSocketDebuggerUrl"], timeout=30) as rws:
+                    await rws.send_json({"id": 1, "method": "Runtime.enable"})
+                    await recv(rws, 2)
+                    opened = await cdp_eval(rws, "(window.openOnboarding && (window.openOnboarding(), true)) || false")
+                    check("onboarding opened in real app", opened is True, opened)
+                    time.sleep(0.8)
+                    focus(main_w, raise_top=True)
+                    capture("main_onboarding")
+                    await cdp_eval(rws, "document.getElementById('onboarding').hidden = true; 1")
+            else:
+                print("SKIP main_onboarding (real app CDP :9335 not reachable)", flush=True)
             # ---- restore ----
             await bus.send({"type": "set_pet", "payload": {"enabled": True}})
             await bus.pump(1.5)
