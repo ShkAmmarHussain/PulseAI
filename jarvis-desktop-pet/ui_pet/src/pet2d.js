@@ -1,4 +1,4 @@
-// 2D vector Mochi animation engine (doc 31, section 2.4).
+// 2D vector Pip animation engine (doc 31 section 2.4, spec 34 section 1.1).
 // Natural blinking, saccadic eye tracking, click squish spring, reactive moods.
 window.Pet2D = (function () {
   const root = document.getElementById("pet-2d");

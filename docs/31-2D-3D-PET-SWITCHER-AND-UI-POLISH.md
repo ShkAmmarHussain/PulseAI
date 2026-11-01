@@ -21,7 +21,7 @@
 │ 1. Cheeks look like curved banana     │ 1. Giant empty dark void in center;   │ 1. "Voice" advanced card renders on   │
 │    slices / parentheses (/ \).        │    chat bubbles don't fill naturally. │    top of "Assistant & Pet" section!  │
 │ 2. Waxy/grayish tint with harsh white │ 2. Jarvis avatar is a flat orange dot │ 2. Sections bleed together instead of │
-│    specular glare on forehead.        │    instead of the cute mochi mascot.  │    displaying clean single active tab.│
+│    specular glare on forehead.        │    instead of the cute pip mascot.  │    displaying clean single active tab.│
 │ 3. Inner ears look like flat stickers.│ 3. Approval is plain text ("I need    │ 3. "Save changes" button disabled and │
 │ 4. User LOVES the 2D hero illustration│    approval") without action buttons! │    awkwardly stuck at bottom of card. │
 │    and wants a 2D/3D switcher!        │ 4. Composer is an oversized box.      │ 4. Inconsistent card paddings/gaps.   │
@@ -32,13 +32,13 @@
 
 ## 2. Core Feature: 2D vs. 3D Pet Switcher
 
-The 2D Hero Mascot in `index.html` is an immediate visual hit—charming, cozy, crisp, and expressive. Users must have the choice between the **2D Animated Vector Mochi** and the **3D Dimensional WebGL Mochi**.
+The 2D Hero Mascot in `index.html` is an immediate visual hit—charming, cozy, crisp, and expressive. Users must have the choice between the **2D Animated Vector Pip** and the **3D Dimensional WebGL Pip**.
 
 ### 2.1 Configuration Schema
 In `jarvis-desktop-pet/config/config.yaml`:
 ```yaml
 runtime:
-  pet_render_mode: "2d" # Options: "2d" (Classic Vector Mochi) | "3d" (Dimensional Mochi)
+  pet_render_mode: "2d" # Options: "2d" (Classic Vector Pip) | "3d" (Dimensional Pip)
 ```
 
 ### 2.2 Dual-Stage Architecture in `pet.html`
@@ -47,7 +47,7 @@ Update `ui_pet/src/pet.html` so `#pet-stage` houses both the 2D SVG canvas and t
 ```html
 <div id="pet-stage">
   
-  <!-- 1. 2D Animated Vector Mochi (Default / Toggleable) -->
+  <!-- 1. 2D Animated Vector Pip (Default / Toggleable) -->
   <div id="pet-2d" class="pet-render-layer" role="img" aria-label="Jarvis 2D Pet">
     <svg class="pet-svg-character" viewBox="0 0 128 128">
       <defs>
@@ -196,7 +196,7 @@ blushR.scale.set(1.45, 0.82, 1.0);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   }
 
-  /* Replace flat orange circle with cute Mochi icon */
+  /* Replace flat orange circle with cute Pip icon */
   .msg-row.assistant .msg-avatar {
     width: 32px;
     height: 32px;
@@ -252,7 +252,7 @@ Add the companion appearance segmented control in `index.html`:
   <div class="field">
     <label>Pet Render Style</label>
     <div class="segmented-control" id="pet-render-seg">
-      <button type="button" data-render="2d" class="on">2D Vector (Classic Mochi)</button>
+      <button type="button" data-render="2d" class="on">2D Vector (Classic Pip)</button>
       <button type="button" data-render="3d">3D WebGL (Dimensional)</button>
     </div>
     <p class="hint">2D Vector: ultra-crisp, battery-efficient, expressive SVG companion. 3D WebGL: tactile dimensional mesh.</p>
@@ -267,7 +267,7 @@ Add the companion appearance segmented control in `index.html`:
 | Step | Target File | Exact Action Required |
 | :--- | :--- | :--- |
 | **1** | `ui_pet/src/pet.html` | Add dual `#pet-2d` and `#pet-3d` containers inside `#pet-stage`. Add `#dock-btn-rendermode` toggle to micro-dock. |
-| **2** | `ui_pet/src/pet2d.js` | Create the 2D Mochi animation loop (blinking, pupil tracking, squish on click, reactive moods). |
+| **2** | `ui_pet/src/pet2d.js` | Create the 2D Pip animation loop (blinking, pupil tracking, squish on click, reactive moods). |
 | **3** | `ui_pet/src/pet.js` | Add `setRenderMode("2d" | "3d")` logic, listen for `ui.pet_render_mode` events, wire dock toggle button. |
 | **4** | `ui_pet/src/pet3d.js` | Fix 3D cheeks: position at `faceSurf(±0.52, -0.22, 1)`, horizontal pill scale, remove waxy specular shine. |
 | **5** | `ui_pet/src/app.css` | 1. Style `.msg-row` with centered `max-width: 820px`.<br>2. Style `.chat-approval-card` with buttons.<br>3. Fix `#settings-content` to hide non-active sections cleanly.<br>4. Style `#pet-2d` and `#pet-3d` layers. |
@@ -282,6 +282,6 @@ Add the companion appearance segmented control in `index.html`:
 1. **2D/3D Toggle Works Instantly:** Clicking the `2D/3D` button in the pet micro-dock or changing the setting in `Assistant & Pet` immediately switches the pet render without restarting or crashing.
 2. **2D Pet is Adorable & Reactive:** The 2D vector pet blinks, tracks the mouse cursor, squishes elastically on click, and displays joyful blush and smile.
 3. **3D Pet Cheeks Fixed:** In 3D mode, blush cheeks are horizontal fluffy pink ovals, not vertical banana curves.
-4. **Chat Stream is Centered & Polished:** Messages flow down a readable, centered 820px thread with cute mochi assistant avatars.
+4. **Chat Stream is Centered & Polished:** Messages flow down a readable, centered 820px thread with cute pip assistant avatars.
 5. **Interactive In-Stream Approval Cards:** When a dangerous action is proposed, a formatted card with "Allow once" / "Deny" buttons appears directly in the chat view.
 6. **Settings Sections Cleanly Isolated:** Clicking `Assistant & Pet`, `Voice`, or `Models` shows *only* that section with zero overlapping or bleeding headers.

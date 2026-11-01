@@ -172,7 +172,7 @@ function metaRow(who) {
   const av = document.createElement("div");
   if (who === "assistant") {
     av.className = "msg-avatar assistant";
-    av.innerHTML = '<svg class="mochi-ic" aria-hidden="true"><use href="#i-mochi"/></svg>';
+    av.innerHTML = '<svg class="pip-ic" aria-hidden="true"><use href="#i-pip"/></svg>';
   } else {
     av.className = "msg-avatar user";
     av.innerHTML = '<svg class="ic"><use href="#i-user"/></svg>';

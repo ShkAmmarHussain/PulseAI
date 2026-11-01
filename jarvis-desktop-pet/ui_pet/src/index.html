@@ -25,18 +25,29 @@
       <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
-    <symbol id="i-mochi" viewBox="0 0 128 128">
+    <!-- Pip, the Jarvis companion (spec 34 section 1.1) -->
+    <symbol id="i-pip" viewBox="0 0 128 128">
       <defs>
-        <linearGradient id="mochi-b" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#fffdf8"/>
-          <stop offset="100%" stop-color="#f6e7d2"/>
+        <linearGradient id="pip-b" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fffdf8"/>
+          <stop offset="1" stop-color="#f3e3cc"/>
         </linearGradient>
+        <radialGradient id="pip-c" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stop-color="#ffd27a" stop-opacity="0.95"/>
+          <stop offset="0.55" stop-color="#f5a524" stop-opacity="0.42"/>
+          <stop offset="1" stop-color="#f5a524" stop-opacity="0"/>
+        </radialGradient>
       </defs>
-      <ellipse cx="42" cy="30" rx="14" ry="17" fill="url(#mochi-b)" transform="rotate(-14 42 30)"/>
-      <ellipse cx="86" cy="30" rx="14" ry="17" fill="url(#mochi-b)" transform="rotate(14 86 30)"/>
-      <ellipse cx="43" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.85" transform="rotate(-14 43 31)"/>
-      <ellipse cx="85" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.85" transform="rotate(14 85 31)"/>
-      <rect x="17" y="34" width="94" height="82" rx="36" fill="url(#mochi-b)"/>
+      <!-- single antenna-sprout: stem, leaf and the amber bud light -->
+      <g>
+        <path d="M64 37 C63 28 65 20 73 14" stroke="#f3e3cc" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+        <ellipse cx="57.5" cy="24" rx="7.5" ry="3.6" fill="#fb923c" transform="rotate(-32 57.5 24)"/>
+        <circle cx="74" cy="13" r="10" fill="url(#pip-c)"/>
+        <circle cx="74" cy="13" r="4.6" fill="#f5a524"/>
+      </g>
+      <!-- egg body with a warm amber core light inside -->
+      <path d="M64 34 C89 34 107 62 107 87 C107 106 89 118 64 118 C39 118 21 106 21 87 C21 62 39 34 64 34 Z" fill="url(#pip-b)"/>
+      <ellipse cx="64" cy="98" rx="28" ry="16" fill="url(#pip-c)" opacity="0.55"/>
       <ellipse cx="34" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
       <ellipse cx="94" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
       <ellipse cx="47" cy="70" rx="7" ry="9" fill="#35292a"/>
@@ -61,7 +72,7 @@
   <header id="window-titlebar" data-tauri-drag-region>
     <div class="titlebar-left" data-tauri-drag-region>
       <div class="brand titlebar-brand" data-tauri-drag-region>
-        <svg class="logo mochi-mini-logo" aria-hidden="true" data-tauri-drag-region><use href="#i-mochi"/></svg>
+        <svg class="logo pip-mini-logo" aria-hidden="true" data-tauri-drag-region><use href="#i-pip"/></svg>
         <span class="status conn-status" role="status" aria-live="polite" title="Local service">
           <i class="dot" id="conn-dot"></i><span id="conn">Connecting&hellip;</span>
         </span>
@@ -82,7 +93,7 @@
         <button class="tb-btn" id="quick-actions-btn" type="button" title="More" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" aria-controls="plus-menu"><svg class="ic"><use href="#i-plus"/></svg></button>
         <div id="plus-menu" role="menu" aria-label="More actions" hidden>
           <div class="pm-row pet-mini">
-            <svg class="mochi-mini" aria-hidden="true"><use href="#i-mochi"/></svg>
+            <svg class="pip-mini" aria-hidden="true"><use href="#i-pip"/></svg>
             <span class="pet-mini-label">Show pet</span>
             <label class="switch" title="Show / hide floating pet">
               <input type="checkbox" id="pet-side-toggle" data-pet-toggle checked aria-label="Show floating pet" />
@@ -131,18 +142,28 @@
         <div id="msgs">
           <div id="empty-state">
             <div class="hero-orb" aria-hidden="true">
-              <svg class="hero-mochi" viewBox="0 0 128 128" role="img" aria-label="Jarvis mascot">
+              <svg class="hero-pip" viewBox="0 0 128 128" role="img" aria-label="Pip, the Jarvis companion">
                 <defs>
-                  <linearGradient id="hm-body" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="hp-b" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0" stop-color="#fffdf8"/>
-                    <stop offset="1" stop-color="#f6e7d2"/>
+                    <stop offset="1" stop-color="#f3e3cc"/>
                   </linearGradient>
+                  <radialGradient id="hp-c" cx="0.5" cy="0.5" r="0.5">
+                    <stop offset="0" stop-color="#ffd27a" stop-opacity="0.95"/>
+                    <stop offset="0.55" stop-color="#f5a524" stop-opacity="0.42"/>
+                    <stop offset="1" stop-color="#f5a524" stop-opacity="0"/>
+                  </radialGradient>
                 </defs>
-                <ellipse cx="42" cy="30" rx="14" ry="17" fill="url(#hm-body)" transform="rotate(-14 42 30)"/>
-                <ellipse cx="86" cy="30" rx="14" ry="17" fill="url(#hm-body)" transform="rotate(14 86 30)"/>
-                <ellipse cx="43" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.8" transform="rotate(-14 43 31)"/>
-                <ellipse cx="85" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.8" transform="rotate(14 85 31)"/>
-                <rect x="17" y="34" width="94" height="82" rx="36" fill="url(#hm-body)"/>
+                <!-- single antenna-sprout: stem, leaf and the amber bud light -->
+                <g class="hp-sprout">
+                  <path d="M64 37 C63 28 65 20 73 14" stroke="#f3e3cc" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+                  <ellipse cx="57.5" cy="24" rx="7.5" ry="3.6" fill="#fb923c" transform="rotate(-32 57.5 24)"/>
+                  <circle cx="74" cy="13" r="10" fill="url(#hp-c)"/>
+                  <circle cx="74" cy="13" r="4.6" fill="#f5a524"/>
+                </g>
+                <!-- egg body with a warm amber core light inside -->
+                <path d="M64 34 C89 34 107 62 107 87 C107 106 89 118 64 118 C39 118 21 106 21 87 C21 62 39 34 64 34 Z" fill="url(#hp-b)"/>
+                <ellipse class="hp-core" cx="64" cy="98" rx="28" ry="16" fill="url(#hp-c)" opacity="0.55"/>
                 <ellipse cx="34" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
                 <ellipse cx="94" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
                 <ellipse cx="47" cy="70" rx="7" ry="9" fill="#35292a"/>
@@ -165,7 +186,7 @@
             <p class="es-hint">Say <kbd>Hey Jarvis</kbd> anytime, or press <kbd>Ctrl+Alt+J</kbd> to talk from anywhere.</p>
           </div>
           <div id="typing" class="msg-row" hidden>
-            <div class="msg-avatar assistant"><svg class="mochi-ic" aria-hidden="true"><use href="#i-mochi"/></svg></div>
+            <div class="msg-avatar assistant"><svg class="pip-ic" aria-hidden="true"><use href="#i-pip"/></svg></div>
             <div class="msg assistant typing-bubble"><i></i><i></i><i></i><span class="tb-text">Thinking&hellip;</span></div>
           </div>
         </div>
@@ -442,7 +463,7 @@
               <div class="field">
                 <label for="pet-colorway">Pet colorway</label>
                 <select id="pet-colorway">
-                  <option value="porcelain" selected>Porcelain Mochi (cozy default)</option>
+                  <option value="porcelain" selected>Porcelain Pip (cozy default)</option>
                   <option value="obsidian">Jarvis Obsidian</option>
                   <option value="cyberpunk">Cyberpunk 2077</option>
                   <option value="titanium">Titanium Frosted Glass</option>
@@ -457,7 +478,7 @@
               <div class="field">
                 <label>Pet Render Style</label>
                 <div class="seg" id="pet-render-seg" role="group" aria-label="Pet render style">
-                  <button type="button" data-render="2d" class="on">2D Vector (Classic Mochi)</button>
+                  <button type="button" data-render="2d" class="on">2D Vector (Classic Pip)</button>
                   <button type="button" data-render="3d">3D WebGL (Dimensional)</button>
                 </div>
                 <p class="hint">2D Vector: ultra-crisp, battery-efficient, expressive SVG companion. 3D WebGL: tactile dimensional mesh. Applies immediately; press Save to keep.</p>
@@ -708,21 +729,21 @@
     <div class="ob-backdrop"></div>
     <div class="ob-panel">
       <div class="ob-head">
-        <svg class="ob-logo" aria-hidden="true"><use href="#i-mochi"/></svg>
+        <svg class="ob-logo" aria-hidden="true"><use href="#i-pip"/></svg>
         <h2>Welcome to Jarvis</h2>
         <p class="sec-desc">Three quick checks and your companion is ready.</p>
       </div>
       <ol class="ob-stepbar" id="ob-stepbar">
-        <li data-step="1" class="on"><b>1</b>Meet your companion</li>
+        <li data-step="1" class="on"><b>1</b>Meet Pip</li>
         <li data-step="2"><b>2</b>Microphone</li>
         <li data-step="3"><b>3</b>Model</li>
       </ol>
       <section class="ob-step" id="ob-step-1">
-        <h3>Meet your companion</h3>
-        <p class="sec-desc">Pick how Mochi renders on your desktop &mdash; switchable any time in Settings.</p>
+        <h3>Meet Pip</h3>
+        <p class="sec-desc">Pick how Pip appears on your desktop &mdash; switchable any time in Settings.</p>
         <div class="ob-choices" id="ob-choices">
           <button type="button" class="ob-choice active" data-render="2d">
-            <span class="ob-choice-title">2D Vector Mochi</span>
+            <span class="ob-choice-title">2D Vector Pip</span>
             <span class="ob-choice-sub">Crisp, light, expressive</span>
           </button>
           <button type="button" class="ob-choice" data-render="3d">

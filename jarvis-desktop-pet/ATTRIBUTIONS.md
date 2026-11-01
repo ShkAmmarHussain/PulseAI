@@ -36,4 +36,4 @@ SOFTWARE.
 
 ### Not covered: name, character and artwork
 
-coucou's `LICENSE-ASSETS.md` keeps the names "Coucou" and "Mochi", the Mochi character design, its icons, sounds and media outside the MIT licence. Jarvis uses none of coucou's assets. Its companion character, its name and its art are being redrawn as Jarvis's own (spec 34 section 1.1). Until that lands, the `mochi` identifiers and the current character art in this repository are for personal use only and must not ship publicly.
+coucou's `LICENSE-ASSETS.md` keeps the names "Coucou" and "Mochi", the Mochi character design, its icons, sounds and media outside the MIT licence. Jarvis uses none of coucou's assets. Its companion is **Pip** (spec 34 section 1.1): Jarvis's own name and design, a cream egg-shaped body with a single antenna-sprout and a warm amber core light, drawn for Jarvis in SVG (`pet.html`, `index.html`, `dock.html`) and Three.js (`pet3d.js`). The earlier bunny-eared "Mochi" look and name were retired in this change.

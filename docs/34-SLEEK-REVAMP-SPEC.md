@@ -8,6 +8,7 @@ Status: **draft, waiting on two decisions (§1)**. Inspiration: `coucou/` (MIT c
 `coucou/LICENSE-ASSETS.md` keeps the **name "Mochi"** and the **Mochi character design** (a soft squircle with big eyes, its expressions and animations) out of the MIT licence. PulseAI currently uses the name "Mochi" in code, CSS, docs and UI, and its pet is very close to that design. That's fine for personal use, but it **cannot ship publicly** without written permission.
 - **Plan:** rename the character (working name **"Pip"**, easy to change) and redraw it so it is clearly its own. Keep the same rig (springs, eyes, moods) so no engine work is lost, but change the silhouette: a rounded **teardrop/egg body with a single antenna-sprout** and **no bunny ears**, set apart by one **signature colour** (warm amber core light) instead of coucou's white or blue. We can borrow coucou's *code ideas* freely, with an MIT notice, but none of its art.
 - Rename `mochi` identifiers to `pip` (`#i-mochi`, `.mochi-*`, `hero-mochi`, docs).
+- **Decided (2026-11-01): the character is Pip.** Done in Phase 4 (§13).
 
 ### 1.2 Where the product lives
 - **A. Hybrid (recommended):** the **island** at the top edge becomes the main surface (status, approvals, results, quick chat, as in coucou). The **main window** stays for long chats, Memory, Activity and Settings, restyled in the same language.
@@ -206,3 +207,48 @@ Same branch. Code signing (§7.5) is not done: it needs your certificate. The br
 Captures added in `spec34/after/`: `main_about` (version v0.1.0 read from tauri.conf), `main_offline` (backend stopped, banner counting down). `inspect_states` 43/43.
 
 Gates (non-mic, 2026-11-01): smoke OK, ws_ping, a11y_check 31/31, credentials_test 19/19, perf_check 5/5, memory_update 14/14, model_router 30/30, fast_router 71/71, vocab 17/17, audio_cache, tts_wake, injector 17/17, hook_e2e 37/37, dictation_ui 27/27, phase5_e2e 14/14, phase5_dock_check 27/27, phase5_visual_check 28/28, chat_e2e, agent_e2e, voice_e2e ALL OK, pet_springs 9/9. wake_e2e: PASS, then the known teardown crash (0xC0000374). Not run (live mic): hotkey_e2e, dictation_flow_test.
+
+
+## 13. As-built: Phase 4 (Pip: rename and redraw)
+
+Same branch. The character is **Pip** (§1.1). This decision was relayed to this session by the project coordinator on 2026-11-01.
+
+**Design.** Pip is Jarvis's own character, with no coucou art:
+- a cream **egg body**, narrower at the crown and slightly fuller at the base, with no ears;
+- a single **antenna-sprout**: a curved stem from the crown, one accent-coloured leaf, and a glowing **amber bud** (`#f5a524`);
+- a warm **amber core light** inside the lower body.
+
+The face keeps the same eye, cheek and mouth coordinates, so the 2D mood paths and the blink, saccade and squish rig in `pet2d.js` are unchanged.
+
+**2D (SVG).** One drawing, used in four places:
+- the logo symbol `#i-pip` (header mark, assistant avatar, `+` menu, onboarding);
+- the chat hero `.hero-pip`;
+- the 2D pet in `pet.html`: `.p2d-sprout` sways from its root and `.p2d-core` breathes, slower or off while asleep, and off under reduced motion;
+- the island: a copy of `#i-pip` in `dock.html` for the compact pill, the overview card and the drop "catch".
+
+**3D (`pet3d.js`).**
+- `superellipsoid()` gained a `taper` argument. The shell is now `superellipsoid(1.14, 1.24, 1.02, SUPER_N, …, 0.4)`, still `SUPER_N = 2.5`, so the `phase5_visual_check` markers hold.
+- The face-projection axes match the new body.
+- The bunny ears and inner-ear meshes are gone. A `sprout` group takes their place: a `TubeGeometry` stem on a `CatmullRomCurve3`, a flattened-sphere leaf (`leafMat`, which takes the colorway accent), and a bud (`budMat`) that follows the state core colour. It sways with the mood presets' existing `ant` energy.
+- The inner core is amber (it was cyan) at opacity 0.2.
+- Springs, gaze, moods, colorways and FPS budgets are untouched.
+
+**Rename.**
+- Code identifiers: `#i-mochi` → `#i-pip`, `.hero-mochi` → `.hero-pip`, `.mochi-ic` → `.pip-ic`, `.mochi-mini(-logo)` → `.pip-mini(-logo)`, `mochi-float` → `pip-float`.
+- UI copy: "Porcelain Pip", "2D Vector (Classic Pip)", "2D Vector Pip", and "Pick how Pip appears on your desktop". Onboarding step 1 is **Meet Pip**.
+- Docs 21, 22, 26, 29–33 are updated, except lines that are about coucou's own Mochi. Doc 28, the coucou comparison, keeps the name on purpose. The glossary entry now describes Pip.
+- `ATTRIBUTIONS.md` records that the earlier "Mochi" look and name are retired.
+- No test referenced the old identifiers. `git grep -i mochi` in `jarvis-desktop-pet/` now only hits the attribution text.
+
+**Captures** (`spec34/after/`): `main_hero` (fresh start, empty chat), `pet_idle`, `pet_hover`, `pet_speech`, `pet_approval` (2D), the new `pet3d_idle`, `pet3d_hover` and `pet3d_speech` (`inspect_states` flips `runtime.pet_render_mode` to `3d` and back), all `island_*` with Pip's face, and every main-window pane. `inspect_states` 46/46.
+
+**Gates (non-mic, 2026-11-01).** All green:
+- smoke OK, ws_ping, a11y_check 31/31, credentials_test 19/19, memory_update 14/14, model_router 30/30, fast_router 71/71, vocab 17/17
+- audio_cache, tts_wake, injector 17/17, hook_e2e 37/37, dictation_ui 27/27
+- phase5_e2e 14/14, phase5_dock_check 27/27, phase5_visual_check 28/28 (re-run after the final 3D tweak)
+- chat_e2e, agent_e2e, voice_e2e ALL OK, pet_springs 9/9
+
+Exceptions:
+- perf_check was 4/5 once, run straight after the capture pass with the pet still settling, and 5/5 on two reruns.
+- wake_e2e prints `WAKE E2E PASS`, then hits the known teardown crash (0xC0000374).
+- Not run (live mic): hotkey_e2e, dictation_flow_test.
