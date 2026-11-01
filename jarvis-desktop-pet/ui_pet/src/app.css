@@ -13,7 +13,7 @@
   --hairline: rgba(255, 255, 255, 0.035);
   --ink: #f5f6f8;
   --dim: #9398a1;
-  --dim-3: #7d828b; /* spec says #6b7079; lifted to clear WCAG AA (4.5:1) on --card */
+  --dim-3: #838891; /* spec says #6b7079; lifted to clear WCAG AA (4.5:1) on --card and --tab-on */
   --glow-approval: rgba(245, 165, 36, 0.22);
   --glow-done: rgba(34, 197, 94, 0.2);
   --glow-error: rgba(244, 80, 94, 0.22);
@@ -3162,3 +3162,55 @@ details.adv .adv-body .card { background: transparent; }
   #dynamic-island { transition: none; }
   .island-catch, #dynamic-island.caught .island-avatar-pill { animation: none; }
 }
+
+/* ================= spec 34 phase 5: production states + accessibility ================= */
+/* one visible focus ring for every keyboard-reachable control (section 7.3);
+   later restyles that zeroed box-shadow no longer hide focus */
+button:focus-visible, [role="tab"]:focus-visible, [role="radio"]:focus-visible, a:focus-visible,
+summary:focus-visible, [tabindex]:focus-visible, .switch input:focus-visible + .slider {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible,
+.mem-edit-text:focus-visible, .vocab-row input:focus-visible {
+  box-shadow: 0 0 0 2px rgba(245, 165, 36, 0.55);
+}
+.composer-main:focus-within, .memory-search:focus-within, .ichat-composer:focus-within {
+  box-shadow: 0 0 0 2px rgba(245, 165, 36, 0.45);
+}
+.key-reveal:focus-visible { border-radius: 8px; }
+
+/* offline banner: backend down, live countdown, Retry now (section 7.2) */
+#offline-banner {
+  /* #app is a flex row, so the banner floats over it under the header */
+  position: fixed;
+  top: 46px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px));
+  box-sizing: border-box;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px 9px 14px;
+  background: var(--card);
+  border-radius: var(--radius-pill);
+  color: var(--dim);
+  font-size: 13px;
+  box-shadow: 0 12px 26px -16px var(--glow-error);
+}
+#offline-banner[hidden] { display: none; }
+#offline-banner b { color: var(--ink); font-weight: 650; }
+#offline-banner > span { flex: 1; min-width: 0; }
+#offline-banner .ob-dot { width: 7px; height: 7px; border-radius: 50%; background: #f4505e; flex: none; }
+#offline-retry { height: 30px; padding: 0 14px; border-radius: var(--radius-pill); background: #fff; color: #000; font-weight: 600; font-size: 12.5px; }
+#offline-retry:hover { background: #e6e7ea; }
+
+/* About + saved-key hint */
+.about-facts { display: grid; grid-template-columns: 110px 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+.about-facts dt { color: var(--dim); }
+.about-facts dd { margin: 0; color: var(--ink); font-family: var(--font-mono); font-size: 12.5px; }
+.key-saved { color: var(--dim); }
+.link-btn { padding: 0; border: none; background: none; color: var(--ink); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+#diag-reveal[hidden] { display: none; }

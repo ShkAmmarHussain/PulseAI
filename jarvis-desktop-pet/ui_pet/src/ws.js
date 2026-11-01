@@ -29,9 +29,32 @@ window.Jarvis = (function () {
     ws.onclose = () => {
       document.dispatchEvent(new CustomEvent("jarvis:disconnected"));
       retry++;
-      setTimeout(connect, Math.min(1000 * retry, 5000));
+      schedule(Math.min(1000 * retry, 5000));
     };
     ws.onerror = () => ws.close();
+  }
+
+  // offline state (spec 34 section 7.2): every surface can show a live
+  // "reconnecting in Ns" countdown and offer a Retry now
+  let retryTimer = null;
+  let tick = null;
+  function emitCountdown(seconds) {
+    document.dispatchEvent(new CustomEvent("jarvis:reconnecting", { detail: { seconds: seconds } }));
+  }
+  function schedule(ms) {
+    clearTimeout(retryTimer);
+    clearInterval(tick);
+    let left = Math.ceil(ms / 1000);
+    emitCountdown(left);
+    tick = setInterval(() => { left -= 1; if (left > 0) emitCountdown(left); }, 1000);
+    retryTimer = setTimeout(() => { clearInterval(tick); emitCountdown(0); connect(); }, ms);
+  }
+  function reconnectNow() {
+    if (ws && (ws.readyState === 0 || ws.readyState === 1)) return;
+    clearTimeout(retryTimer);
+    clearInterval(tick);
+    emitCountdown(0);
+    connect();
   }
 
   function send(obj) {
@@ -93,6 +116,8 @@ window.Jarvis = (function () {
     el.hidden = false;
   }
   return {
+    reconnectNow: () => reconnectNow(),
+    isConnected: () => !!(ws && ws.readyState === 1),
     on: (topic, fn) => {
       (handlers[topic] = handlers[topic] || []).push(fn);
     },
@@ -125,5 +150,7 @@ window.Jarvis = (function () {
     hookUninstall: (target) => send({ type: "hook_uninstall", payload: { target } }),
     hookTerminal: (pid) => send({ type: "hook_terminal", payload: { pid } }),
     fileIngest: (paths) => send({ type: "file_ingest", payload: { paths } }),
+    diagnosticsExport: (app_version) => send({ type: "diagnostics.export", payload: { app_version } }),
+    diagnosticsReveal: (path) => send({ type: "diagnostics.reveal", payload: { path } }),
   };
 })();

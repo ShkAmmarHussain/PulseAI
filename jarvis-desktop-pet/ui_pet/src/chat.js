@@ -602,12 +602,38 @@ Jarvis.on("ui.approval_cancelled", (d) => {
   if (d.correlation_id) removeApprovalCards(String(d.correlation_id));
 });
 
+// offline state (spec 34 section 7.2): a banner with a live countdown and
+// Retry now; the error earcon plays once per outage, not on every attempt
+const offlineBanner = document.getElementById("offline-banner");
+const offlineCount = document.getElementById("offline-count");
+const offlineRetry = document.getElementById("offline-retry");
+let online = false;
+let everOnline = false;
+let offlineShowTimer = null;
 document.addEventListener("jarvis:connected", () => {
+  online = true;
+  everOnline = true;
+  clearTimeout(offlineShowTimer);
+  offlineShowTimer = null;
   conn.textContent = "Connected";
   conn.classList.add("on");
+  if (offlineBanner) offlineBanner.hidden = true;
 });
 document.addEventListener("jarvis:disconnected", () => {
-  conn.textContent = "Reconnecting\u2026";
+  conn.textContent = "Reconnecting…";
   conn.classList.remove("on");
-  Earcons.play("snd_error");
+  if (online) Earcons.play("snd_error");
+  online = false;
+  // a cold start gets a moment to connect before the banner appears
+  if (offlineBanner && offlineBanner.hidden && !offlineShowTimer) {
+    offlineShowTimer = setTimeout(() => {
+      offlineShowTimer = null;
+      if (!online) offlineBanner.hidden = false;
+    }, everOnline ? 0 : 2500);
+  }
 });
+document.addEventListener("jarvis:reconnecting", (e) => {
+  const s = (e.detail || {}).seconds || 0;
+  if (offlineCount) offlineCount.textContent = s > 0 ? "Reconnecting in " + s + "s…" : "Reconnecting…";
+});
+if (offlineRetry) offlineRetry.addEventListener("click", () => Jarvis.reconnectNow());

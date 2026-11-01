@@ -8,6 +8,7 @@ import yaml
 from aiohttp import web
 
 from core.bus import create_event
+from core import credentials
 from core.config import CONFIG_DIR
 
 logger = logging.getLogger("ws_bridge")
@@ -30,7 +31,8 @@ def _write_yaml(name: str, data: dict) -> None:
 
 def get_settings() -> dict:
     return {
-        "config": _read_yaml("config.yaml"),
+        # keys stay in Credential Manager; the UI only learns whether one is saved
+        "config": credentials.annotate_saved(_read_yaml("config.yaml")),
         "agents": _read_yaml("agents.yaml"),
         "permissions": _read_yaml("permissions.yaml"),
         "personality": _read_yaml("personality.yaml"),
@@ -38,10 +40,22 @@ def get_settings() -> dict:
     }
 
 
+def migrate_config_keys() -> bool:
+    """Move any plaintext cloud keys in config.yaml into Credential Manager (once, at startup)."""
+    cfg = _read_yaml("config.yaml")
+    if not credentials.store_config_keys(cfg):
+        return False
+    _write_yaml("config.yaml", cfg)
+    logger.info("migrated cloud API keys from config.yaml to Credential Manager")
+    return True
+
+
 def save_settings(payload: dict) -> dict:
     allowed = {"config", "agents", "permissions", "personality", "skills"}
     for key, value in payload.items():
         if key in allowed and isinstance(value, dict):
+            if key == "config":
+                credentials.store_config_keys(value)
             _write_yaml(f"{key}.yaml", value)
     if "config" in payload and isinstance(payload.get("config"), dict):
         try:
@@ -227,6 +241,14 @@ class WSBridge:
             from core.autostart import get_autostart
 
             await self._send(ws, {"type": "autostart_state", "payload": get_autostart(), "correlation_id": cid})
+        elif et == "diagnostics.export":
+            reply = await self._diagnostics_export(payload)
+            await self._send(ws, {"type": "diagnostics.export", "payload": reply, "correlation_id": cid})
+        elif et == "diagnostics.reveal":
+            from backend import diagnostics
+
+            ok = await asyncio.to_thread(diagnostics.reveal, str(payload.get("path") or ""))
+            await self._send(ws, {"type": "diagnostics.reveal", "payload": {"ok": ok}, "correlation_id": cid})
         elif et == "rm_state":
             from core.model_lifecycle import get_lifecycle
 
@@ -359,6 +381,35 @@ class WSBridge:
         state = await self._memory_state()
         await self.bus.publish(create_event("memory.updated", "memory.updated", state, correlation_id=cid))
         return {"ok": removed, "id": fact_id, **state}
+
+    async def _rm_snapshot(self) -> dict:
+        from core.model_lifecycle import get_lifecycle
+
+        lc = get_lifecycle()
+        snap = await asyncio.to_thread(lc.snapshot) if lc else {"auto_manage": False, "loaded": [], "not_loaded": []}
+        extra = getattr(self, "stats_extra", None)
+        if extra:
+            try:
+                snap["fast_path"] = extra()
+            except Exception:
+                pass
+        return snap
+
+    async def _diagnostics_export(self, payload: dict) -> dict:
+        from backend import diagnostics
+
+        try:
+            rm = await self._rm_snapshot()
+        except Exception as e:
+            rm = {"error": str(e)}
+        try:
+            path = await asyncio.to_thread(
+                diagnostics.export_bundle, str(payload.get("app_version") or "unknown"), rm
+            )
+        except Exception as e:
+            logger.exception("diagnostics export failed")
+            return {"ok": False, "error": str(e)}
+        return {"ok": True, "path": path}
 
     async def _memory_update(self, payload: dict, cid) -> dict:
         from skills import memory_skills

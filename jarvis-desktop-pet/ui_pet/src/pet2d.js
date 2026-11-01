@@ -48,13 +48,29 @@ window.Pet2D = (function () {
     const ny = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (r.height / 2)));
     tx = nx * 3.2;
     ty = ny * 3.2 + (mood === "thinking" ? -2.6 : 0);
+    wakeEyes();
   }, { passive: true });
-  (function saccade() {
+  // the eye loop only runs while the eyes are still travelling, and never in
+  // a hidden window (spec 34 section 7.4): an idle pet costs no frames here
+  let eyeLoop = false;
+  let eyeFrames = 0;
+  function saccade() {
+    if (document.hidden || window.__petHidden) { eyeLoop = false; return; }
+    eyeFrames++;
     cx += (tx - cx) * 0.14;
     cy += (ty - cy) * 0.14;
     if (eyes) eyes.setAttribute("transform", "translate(" + cx.toFixed(2) + " " + cy.toFixed(2) + ")");
+    if (Math.abs(tx - cx) < 0.01 && Math.abs(ty - cy) < 0.01) { eyeLoop = false; return; }
     requestAnimationFrame(saccade);
-  })();
+  }
+  function wakeEyes() {
+    if (eyeLoop) return;
+    eyeLoop = true;
+    requestAnimationFrame(saccade);
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) wakeEyes(); });
+  document.addEventListener("pet:visibility", (e) => { if (e.detail && e.detail.visible) wakeEyes(); });
+  wakeEyes();
 
   // ---- click squish & jiggle (squash-and-stretch spring) ----
   function squish() {
@@ -77,6 +93,7 @@ window.Pet2D = (function () {
     if (cheeks) cheeks.classList.toggle("bright", bright);
     if (mouth) mouth.setAttribute("d", bright ? MOUTH_HAPPY : MOUTH_SMILE);
     if (mood === "sleep") tx = ty = 0;
+    wakeEyes();
   }
   setMood(mood);
 
@@ -84,5 +101,6 @@ window.Pet2D = (function () {
     setMood,
     squish,
     getMood: () => mood,
+    debug: () => ({ eyeLoop: eyeLoop, eyeFrames: eyeFrames }),
   };
 })();

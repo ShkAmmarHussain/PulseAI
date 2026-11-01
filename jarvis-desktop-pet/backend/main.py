@@ -24,6 +24,12 @@ def setup_logging() -> None:
 async def main():
     setup_logging()
     logging.getLogger("backend").info("starting jarvis backend")
+    try:
+        from backend.ws_bridge import migrate_config_keys
+
+        migrate_config_keys()
+    except Exception:  # never block startup on the key store
+        logging.getLogger("backend").exception("API key migration failed")
     app = App()
     await app.start()
     logging.getLogger("backend").info("all systems running")

@@ -194,7 +194,13 @@ Jarvis.on("ui.chat", (d) => {
 });
 // spec 34 section 3: while the island is the companion it owns approvals;
 // the pet card stays as the fallback when the island is off
-let companionMode = "pet";
+// Rust tells the pet when its window is shown or hidden (Tauri v1 leaves
+// document.hidden false); the 2D and 3D renderers pause while hidden
+window.__petHidden = false;
+window.setPetVisible = (v) => {
+  window.__petHidden = !v;
+  document.dispatchEvent(new CustomEvent("pet:visibility", { detail: { visible: !!v } }));
+};let companionMode = "pet";
 window.onCompanionChanged = (mode) => { companionMode = mode === "dock" ? "dock" : "pet"; };
 Jarvis.on("ui.approval", (d) => {
   if (companionMode === "dock") return;
@@ -266,8 +272,16 @@ Jarvis.on("ui.voice_state", (d) => {
 document.addEventListener("jarvis:connected", () => {
   showBubble('Say "Hey Jarvis" or type a message.', 5000);
 });
+let petOnline = false;
+document.addEventListener("jarvis:connected", () => { petOnline = true; });
 document.addEventListener("jarvis:disconnected", () => {
-  showBubble("Reconnecting...", 3000);
+  if (petOnline) showBubble("Lost the backend — reconnecting…", 3000);
+  petOnline = false;
+});
+// a longer outage keeps a quiet countdown in the bubble (spec 34 section 7.2)
+document.addEventListener("jarvis:reconnecting", (e) => {
+  const s = (e.detail || {}).seconds || 0;
+  if (!petOnline && s >= 3) showBubble("Offline — retrying in " + s + "s", 1100);
 });
 
 function tcmd(name) {

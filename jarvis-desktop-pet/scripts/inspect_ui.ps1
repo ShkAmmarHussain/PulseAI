@@ -79,6 +79,8 @@ $StateMap = @{
     "main_memory"       = @("Jarvis", "main_memory.png")
     "main_settings"     = @("Jarvis", "main_settings.png")
     "main_onboarding"   = @("Jarvis", "main_onboarding.png")
+    "main_about"        = @("Jarvis", "main_about.png")
+    "main_offline"      = @("Jarvis", "main_offline.png")
 }
 
 if (-not $StateMap.ContainsKey($State)) {

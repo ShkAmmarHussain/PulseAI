@@ -455,6 +455,19 @@ async def main():
                     focus(main_w, raise_top=True)
                     capture("main_onboarding")
                     await cdp_eval(rws, "document.getElementById('onboarding').hidden = true; 1")
+                    # About + diagnostics (spec 34 section 7.5)
+                    shown = await cdp_eval(rws, "window.showTab('settings'); window.showSettingsTab('sec-about'); !!document.getElementById('about-version')")
+                    check("about section opened in real app", shown is True, shown)
+                    ver = None
+                    for _ in range(10):
+                        ver = await cdp_eval(rws, "document.getElementById('about-version').textContent")
+                        if ver and ver.startswith("v"):
+                            break
+                        time.sleep(0.3)
+                    check("about shows the tauri.conf version", bool(ver) and ver.startswith("v"), ver)
+                    focus(main_w, raise_top=True)
+                    capture("main_about")
+                    await cdp_eval(rws, "window.showSettingsTab('sec-models'); window.showTab('chat'); 1")
             else:
                 print("SKIP main_onboarding (real app CDP :9335 not reachable)", flush=True)
             # ---- restore ----
