@@ -227,6 +227,9 @@ function fill(s) {
   setCompanionSeg(((cfg.runtime || {}).companion) === "dock" ? "dock" : "pet");
   setRenderSeg(((cfg.runtime || {}).pet_render_mode) === "3d" ? "3d" : "2d");
   setv("pet-colorway", (cfg.runtime || {}).pet_colorway || "porcelain");
+  const ctt = document.getElementById("close-to-tray");
+  if (ctt) ctt.checked = (cfg.runtime || {}).close_to_tray !== false;
+  applyCloseToTray((cfg.runtime || {}).close_to_tray !== false);
   note.textContent = "Loaded. Edit and press Save.";
   note.classList.remove("ok");
   setDirty(false);
@@ -260,6 +263,8 @@ function collect() {
   s.config.runtime.companion = selectedCompanion();
   s.config.runtime.pet_render_mode = selectedRender();
   s.config.runtime.pet_colorway = val("pet-colorway") || "porcelain";
+  const cttBox = document.getElementById("close-to-tray");
+  if (cttBox) s.config.runtime.close_to_tray = !!cttBox.checked;
 
   s.agents = s.agents || {};
   const ar = s.agents.agent_roles = s.agents.agent_roles || {};
@@ -799,3 +804,17 @@ Jarvis.on("diagnostics.export", (d) => {
   if (diagStatus) diagStatus.textContent = p.ok ? "Saved to " + p.path : "Couldn\u2019t export: " + (p.error || "unknown error");
 });
 if (diagReveal) diagReveal.addEventListener("click", () => { if (diagPath) Jarvis.diagnosticsReveal(diagPath); });
+
+// ---- close behaviour + Quit (docs/35 L5/L6) ----
+// Rust keeps the flag; the window's close button asks Rust to hide or quit.
+function applyCloseToTray(on) {
+  const ta = window.__TAURI__;
+  if (ta && ta.tauri && ta.tauri.invoke) ta.tauri.invoke("set_close_to_tray", { enabled: !!on });
+}
+const cttToggle = document.getElementById("close-to-tray");
+if (cttToggle) cttToggle.addEventListener("change", () => applyCloseToTray(cttToggle.checked));
+const quitBtn = document.getElementById("quit-app");
+if (quitBtn) quitBtn.addEventListener("click", () => {
+  const ta = window.__TAURI__;
+  if (ta && ta.tauri && ta.tauri.invoke) ta.tauri.invoke("quit");
+});

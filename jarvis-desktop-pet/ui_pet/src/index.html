@@ -441,6 +441,15 @@
                   <input type="checkbox" id="v-autostart" />
                   <span class="slider"></span>
                 </label>
+              </div>              <div class="field switch-field">
+                <div class="field-text">
+                  <label for="close-to-tray">Keep running in the tray when closed</label>
+                  <p class="hint">On: closing the window hides it and the pet keeps working. Off: closing quits Jarvis completely. Quit is always in the tray menu.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="close-to-tray" checked />
+                  <span class="slider"></span>
+                </label>
               </div>
               <div class="field switch-field">
                 <div class="field-text">
@@ -694,6 +703,10 @@
                 <dt>Version</dt><dd id="about-version">&hellip;</dd>
                 <dt>Backend</dt><dd id="about-backend">Checking&hellip;</dd>
               </dl>
+              <div class="field test-field">
+                <button id="quit-app" class="small" type="button">Quit Jarvis</button>
+              </div>
+              <p class="hint">Ends the window, the companion and the background service.</p>
             </div>
 
             <div class="card">
