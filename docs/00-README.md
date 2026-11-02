@@ -52,6 +52,8 @@ This project is designed to run 100% locally using your 3060 12GB GPU with LM St
 - [31. 2D/3D Pet Switcher & Luxury UI Polish](./31-2D-3D-PET-SWITCHER-AND-UI-POLISH.md) - 2D Vector vs 3D WebGL dual-engine companion, cheek & lighting defect fixes, chat layout centering, settings tab isolation
 - [32. Tasks, Memory & Expanded Product Surfaces](./32-TASKS-MEMORY-AND-PRODUCT-SURFACES.md) - Persistent memory & Memory Studio UI, tasks & scheduled automations, PC input automation, first-run onboarding
 - [33. Bespoke Titlebar, Cloud Models & Luxury UI Polish](./33-CUSTOM-TITLEBAR-CLOUD-MODELS-AND-UI-POLISH.md) - Frameless custom titlebar, OpenAI & Anthropic Claude key support, intelligent auto-model routing, Memory Studio dark theme fix
+- [34. Sleek Revamp (coucou-inspired, production-ready)](./34-SLEEK-REVAMP-SPEC.md) - Design tokens, header-tab shell, Activity/Memory/Settings/Onboarding restyle, top-edge island states, Pip character (rename + redraw), offline states, accessibility, performance, About + diagnostics, API keys in Windows Credential Manager
+- [35. Full QA Test Plan & Results](./35-FULL-QA-TEST-PLAN.md) - End-to-end plan for the installed build (lifecycle, single instance, close vs quit, every surface, visual checklist) and the executed pass/fail results
 
 ---
 
@@ -61,4 +63,4 @@ This project is designed to run 100% locally using your 3060 12GB GPU with LM St
 
 **Implementer (build phase-by-phase):** 20 → 21 (follow phase order) + reference docs as needed.
 
-**Nothing is skipped.** Every design decision, trade-off, schema, command, and rationale is documented.
+**Nothing is skipped.** Every design decision, trade-off, schema, command, and rationale is documented.

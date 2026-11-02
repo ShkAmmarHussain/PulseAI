@@ -14,10 +14,14 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 - **Speech-to-text** — faster-whisper runs locally and transcribes what you say.
 - **Local LLM** — answers come from a model you host in LM Studio (`http://localhost:1234`).
 - **Neural text-to-speech** — Kokoro TTS (natural voices like `af_heart`), with Windows SAPI as a fast fallback.
-- **Floating 3D pet** — a small robot that follows its mood: idle, listening, thinking, speaking, happy, concerned. Drag it anywhere, right-click for quick actions.
+- **Pip, your desktop companion** — a cream egg-shaped character with an antenna-sprout and a warm amber core light, in 2D (SVG) or 3D (WebGL). Pip follows its mood (idle, listening, thinking, speaking, happy, concerned, approval), can be dragged anywhere, catches dropped files, and has a hover dock (talk, chat, island mode, 2D/3D, settings).
+- **Top-edge island** — an alternative to the floating pet: a thin strip at the top of the screen that opens into a compact pill, then into cards for the current task, approvals (Deny `N` / Allow `Y`), questions, results, errors and a quick inline chat.
+- **Main window** — Chat, Activity (task cards and live timers), Memory (search, add, inline edit, forget/undo, export) and Settings, plus a first-run onboarding (Meet Pip → Microphone → Model).
+- **Local or cloud models** — LM Studio by default; OpenAI or Anthropic Claude with your own key, with auto-routing of each task to a fast, heavy or vision model. Cloud keys are stored in **Windows Credential Manager**, never in the config files.
 - **Multi-agent core** — planner / tool-control / perception / memory / safety agents route work through an in-process event bus.
-- **PC control + vision** — skills for files, shell, browser and screen understanding, gated by a permission/approval system.
-- **Everything local** — models and config live under `%APPDATA%\JarvisDesktopPet\`.
+- **PC control + vision** — skills for files, shell, browser, keyboard/mouse and screen understanding, gated by a permission/approval system with friendly action names and one risk level.
+- **Tray app, single instance** — closing the window hides Jarvis to the tray (Pip keeps working); **Quit** in the tray menu or Settings → About ends the window and the background service together. Launching Jarvis again just brings the existing window back.
+- **Everything local** — models, config, memory and logs live under `%APPDATA%\JarvisDesktopPet\`.
 
 ---
 
@@ -25,8 +29,9 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 
 ```
 ┌────────────────────────── Tauri (Rust) ──────────────────────────┐
-│  index.html  ── main window (chat, settings)                     │
-│  pet.html    ── always-on-top transparent 3D pet (three.js)      │
+│  index.html  ── main window (chat, activity, memory, settings)   │
+│  pet.html    ── always-on-top transparent pet, Pip (SVG/three.js)│
+│  dock.html   ── top-edge island (alternative companion)          │
 │        │  WebSocket  ws://127.0.0.1:8765/ws                      │
 └────────┼─────────────────────────────────────────────────────────┘
          ▼
@@ -166,10 +171,16 @@ All config lives in `%APPDATA%\JarvisDesktopPet\`:
 | `config\agents.yaml` | per-agent model ids + quantization |
 | `config\permissions.yaml` | safety policy, approval timeouts |
 | `config\personality.yaml` | name, wake word, voice style |
+| `data\` | memory facts, tasks/timers, onboarding marker |
 | `models\` | downloaded model weights |
 | `backend.log` | runtime log (wake scores, mic device, TTS, errors) |
+| `diagnostics\` | bundles from Settings → About → **Export diagnostics** (logs, settings with secrets redacted, model state) |
 
 Settings can also be edited live in the app (**Settings** tab) — changes are written back to these files.
+
+OpenAI / Anthropic API keys are **not** stored in `config.yaml`: they live in Windows Credential Manager as `PulseAI/llm.openai` and `PulseAI/llm.anthropic`, and the config only keeps a reference (`api_key_ref`). Keys that were typed into older versions are moved there automatically at startup. Use **Forget key** in Settings → Model to remove one.
+
+Closing behaviour is set in Settings → Character & Desktop → **Keep running in the tray when closed** (on by default; off makes the ✕ button quit Jarvis completely).
 
 ---
 
@@ -197,8 +208,13 @@ Run from `jarvis-desktop-pet\` with the virtualenv active.
 | Wake state machine | `python tests\wake_e2e.py` | **port 8765 free** (self-hosts) |
 | Hotkey + autostart | `python tests\hotkey_e2e.py` | backend running (injects real keystrokes) |
 | Smoke / WS ping | `python tests\smoke_test.py`, `python tests\ws_ping.py` | backend running |
+| Accessibility (contrast, focus, wording) | `python tests\a11y_check.py` | – |
+| Credential Manager + diagnostics | `python tests\credentials_test.py` | backend running for the export part |
+| Pet performance (idle FPS, paused when hidden) | `python tests\perf_check.py` | real app with `--remote-debugging-port=9335` |
+| Memory inline edit | `python tests\memory_update_test.py` | backend running |
+| Full QA on the installed build | `python scripts\qa35_lifecycle.py`, `python scripts\qa35_surfaces.py` | `test_install\` built; see [docs/35](docs/35-FULL-QA-TEST-PLAN.md) |
 
-`voice_e2e` and `wake_e2e` bind port `8765` themselves — stop any running backend first, and never run them in parallel.
+`voice_e2e` and `wake_e2e` bind port `8765` themselves — stop any running backend first, and never run them in parallel. The full test inventory and gate practice are in [docs/23](docs/23-TESTING.md) and [docs/35](docs/35-FULL-QA-TEST-PLAN.md).
 
 ---
 
@@ -211,13 +227,15 @@ Run from `jarvis-desktop-pet\` with the virtualenv active.
 | No answers | LM Studio running on `localhost:1234` with a model loaded |
 | No speech out | Settings → *Preview Voice*; first Kokoro run downloads ~300 MB |
 | Build fails on MSI/`light.exe` | free up C: space / `build.bat` TEMP redirect; check `build_log.txt` |
-| Backend port busy | `netstat -ano \| findstr :8765` then kill the stale PID |
+| Backend port busy | `netstat -ano \| findstr :8765` then kill the stale PID. Current builds stop the backend when Jarvis quits or crashes, so this should only happen with older builds |
+| Jarvis still running after closing the window | Expected: ✕ hides it to the tray. Use **Quit** (tray menu, or Settings → About), or turn off *Keep running in the tray when closed* |
+| A bug report needs details | Settings → About → **Export diagnostics**, then attach the zip (API keys are removed) |
 
 ---
 
 ## Docs
 
-Detailed design documentation lives in [`docs/`](docs/) — architecture, agents, orchestration, models, safety guardrails, memory, vision, and the IPC message bus.
+Detailed design documentation lives in [`docs/`](docs/) — architecture, agents, orchestration, models, safety guardrails, memory, vision, and the IPC message bus. The latest product work: [34 — sleek revamp](docs/34-SLEEK-REVAMP-SPEC.md) (design tokens, island, Pip, production items) and [35 — full QA test plan and results](docs/35-FULL-QA-TEST-PLAN.md). Credits for adapted ideas are in [`jarvis-desktop-pet/ATTRIBUTIONS.md`](jarvis-desktop-pet/ATTRIBUTIONS.md).
 
 ## License
 
