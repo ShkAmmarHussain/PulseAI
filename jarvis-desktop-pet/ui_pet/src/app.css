@@ -3232,3 +3232,16 @@ summary:focus-visible, [tabindex]:focus-visible, .switch input:focus-visible + .
 @media (prefers-reduced-motion: reduce) {
   .p2d-sprout, .hp-sprout, .p2d-core, .hp-core { animation: none; }
 }
+
+/* narrow window: the settings section strip scrolls sideways - fade the edge
+   that has more tabs so it reads as scrollable (docs/35 visual pass) */
+@media (max-width: 1024px) {
+  #settings-index.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 56px), transparent); }
+  #settings-index.more-left { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 56px), transparent); }
+  #settings-index.more-left.more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 56px, #000 calc(100% - 56px), transparent); mask-image: linear-gradient(to right, transparent, #000 56px, #000 calc(100% - 56px), transparent); }
+}
+/* wide window: the section list stays put while long sections scroll
+   (docs/35 visual pass: it slid under the header) */
+@media (min-width: 1025px) {
+  #settings-index { position: sticky; top: 0; align-self: flex-start; }
+}

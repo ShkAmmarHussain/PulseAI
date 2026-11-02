@@ -818,3 +818,28 @@ if (quitBtn) quitBtn.addEventListener("click", () => {
   const ta = window.__TAURI__;
   if (ta && ta.tauri && ta.tauri.invoke) ta.tauri.invoke("quit");
 });
+// ---- narrow window: the section strip scrolls sideways (docs/35 visual pass) ----
+// fade whichever edge hides more tabs, let the mouse wheel scroll it, and
+// keep the active section in view when picked
+(function sectionStripScroll() {
+  const strip = document.getElementById("settings-index");
+  if (!strip) return;
+  const update = () => {
+    const scrollable = strip.scrollWidth > strip.clientWidth + 2;
+    strip.classList.toggle("more-left", scrollable && strip.scrollLeft > 2);
+    strip.classList.toggle("more-right", scrollable && strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2);
+  };
+  strip.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update);
+  strip.addEventListener("wheel", (e) => {
+    if (strip.scrollWidth <= strip.clientWidth || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+    strip.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
+  strip.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-sec]");
+    if (b && strip.scrollWidth > strip.clientWidth) b.scrollIntoView({ block: "nearest", inline: "nearest" });
+    setTimeout(update, 250);
+  });
+  update();
+})();
