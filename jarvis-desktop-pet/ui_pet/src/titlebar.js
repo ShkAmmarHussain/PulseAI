@@ -20,7 +20,12 @@
       }
     });
   }
-  if (close) close.addEventListener("click", () => win.close());
+  // never win.close(): that destroys the main window, after which nothing can
+  // reopen it (docs/35 B2). Rust hides it to the tray or quits, per Settings.
+  if (close) close.addEventListener("click", () => {
+    if (ta.tauri && ta.tauri.invoke) ta.tauri.invoke("close_main_window");
+    else win.hide();
+  });
 
   // double-click on the drag area toggles maximize (native titlebar parity)
   document.querySelectorAll("#window-titlebar .titlebar-left, #window-titlebar .titlebar-center").forEach((el) => {

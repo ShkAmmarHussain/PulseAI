@@ -21,8 +21,39 @@ def setup_logging() -> None:
     root.addHandler(handler)
 
 
+def watch_parent() -> None:
+    """Exit when the UI that spawned us is gone, even if it crashed (docs/35 L8).
+
+    The Tauri shell passes its pid in JARVIS_PARENT_PID; a backend started by
+    hand has no parent to watch.
+    """
+    pid = os.environ.get("JARVIS_PARENT_PID", "").strip()
+    if not pid.isdigit() or os.name != "nt":
+        return
+    import ctypes
+    import threading
+
+    SYNCHRONIZE = 0x00100000
+    INFINITE = 0xFFFFFFFF
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.OpenProcess.restype = ctypes.c_void_p
+    handle = k32.OpenProcess(SYNCHRONIZE, False, int(pid))
+    log = logging.getLogger("backend")
+    if not handle:
+        log.warning("parent pid %s not found; exiting", pid)
+        os._exit(0)
+
+    def wait():
+        k32.WaitForSingleObject(ctypes.c_void_p(handle), INFINITE)
+        log.info("parent %s exited; shutting down", pid)
+        os._exit(0)
+
+    threading.Thread(target=wait, name="parent-watch", daemon=True).start()
+
+
 async def main():
     setup_logging()
+    watch_parent()
     logging.getLogger("backend").info("starting jarvis backend")
     try:
         from backend.ws_bridge import migrate_config_keys
