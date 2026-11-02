@@ -644,6 +644,9 @@
     return true;
   };
 
+  // one-off notices from Rust (e.g. "closed to the tray")
+  window.islandHint = (text) => { setTask(String(text || ""), "warn"); render(); };
+
   // shown again as the companion (Rust evals this after set_companion):
   // start from the compact pill, not a strip that tucked away while hidden
   window.onCompanionChanged = (mode) => {
