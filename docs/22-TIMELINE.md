@@ -14,10 +14,11 @@ Historical record of how the product was actually built, mapped to the specs and
 | **Spec 29 §3 — Fast Router** | Zero-LLM deterministic intents | `core/fast_router.py` (volume/media/power/timer/app), compound splitter, `rm_state` metrics | `fast_router_test.py` |
 | **Spec 29 §4 — Hook Relay** | Coding-agent bridge | `bin/jarvis-hook.exe`, `backend/hook_bridge.py`, Claude/Antigravity installers, diff ticker | `hook_e2e.py` |
 | **Spec 29 §5 — Presence** | Physics, states, dock, ingestion | `pet_springs.js` (RK4), 10-state mood machine, superellipse renderer, Dynamic Island (`dock.html`), file drop | `phase5_e2e.py`, `phase5_dock_check.py`, `phase5_visual_check.py` |
-| **Spec 30 — UI revamp** | Cozy aesthetic, declared dock window, workspace polish | Hero mochi, sidebar fix, diff cards, `inspect_ui.ps1`, dock window declared in `tauri.conf.json` (fixed 0×0 host) | 15/15 gate + 16/16 captures |
+| **Spec 30 — UI revamp** | Cozy aesthetic, declared dock window, workspace polish | Hero pip, sidebar fix, diff cards, `inspect_ui.ps1`, dock window declared in `tauri.conf.json` (fixed 0×0 host) | 15/15 gate + 16/16 captures |
 | **Spec 30 §9 — 3D parity** | 3D matches 2D hero 1:1 | `SUPER_N 4.2→2.5`, bunny ears + glints, eyelid removal | `phase5_visual_check.py` (n=2.5 markers) |
 | **Spec 31 — Switcher & polish** | 2D/3D engine, defect fixes, chat/settings UX | `pet2d.js`, `setRenderMode` + `runtime.pet_render_mode`, dock toggle, blush/lighting fixes, `ResizeObserver` resize, 820 px stream, strict single-tab settings | doc31 probe 20/20, 15/15 gate, 2D+3D captures |
-| **Spec 32 (next)** | Memory Studio, tasks/reminders, input automation, onboarding | see [32-TASKS-MEMORY-AND-PRODUCT-SURFACES](./32-TASKS-MEMORY-AND-PRODUCT-SURFACES.md) | pending |
+| **Spec 32 — Tasks & memory** | Memory Studio, tasks/reminders, input automation, onboarding | `core/memory_store.py`, `skills/task_manager.py`, `skills/input_control.py`, `#pane-memory`, 3-step onboarding | spec32 32/32, 15/15 gate |
+| **Spec 33 — Titlebar & cloud models** | Frameless titlebar, OpenAI/Claude/LM Studio, auto-router | `titlebar.js`, `core/llm.py`, `core/model_router.py`, Model Provider card, auto-routing switch, key reveal | router probes, `model_router_test.py` 30/30, 15/15 gate |
 
 ## 22.2 Cadence Notes
 

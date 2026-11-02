@@ -1,4 +1,4 @@
-﻿# 23. TESTING (Suites, Gates, Visual Inspection)
+# 23. TESTING (Suites, Gates, Visual Inspection)
 
 ## 23.1 Conventions
 
@@ -10,7 +10,7 @@
 - Browser-driven tests use **Edge CDP on :9334** (a "mirror" instance opened at `file:///…/ui_pet/src/*.html`); the real Tauri app is debuggable on `:9335` when launched with `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9335 --allow-file-access-from-files`.
 - Static "revamp marker" checks grep shipped files for required strings (`sheen`, `SUPER_N = 2.5`, `Allow once`, `showSettingsTab`, …) and forbidden ones (`#8e8cff`, `id="global-search"`, `dock-island`).
 
-## 23.2 Suite Inventory (18 files)
+## 23.2 Suite Inventory (19 files)
 
 | Test | Verifies |
 |---|---|
@@ -32,6 +32,7 @@
 | `phase5_e2e.py` | Pet file drag-drop → ingestion → composer prefill |
 | `phase5_dock_check.py` | Dynamic Island wiring + CDP geometry/hover/drop |
 | `phase5_visual_check.py` | Renderer: superellipse n=2.5, eye z-depth, RK4 poke/taffy, particles, FPS budget |
+| `model_router_test.py` | Spec 33 auto-router, offline (httpx patched): tiers, local picks, complexity heuristic, cache + `invalidate()` |
 | `pet_springs_test.mjs` | Node unit checks for `pet_springs.js` (run with `node`) |
 
 *(Phases 1–31 additionally used mirrored static checks — `revamp2_check.py`, `revamp2_interact.py`, `approval_flow_test.py` — kept beside the runner logs; `revamp2_interact` walks 56 DOM checks over CDP.)*
@@ -39,18 +40,18 @@
 ## 23.3 Visual Inspection (doc 30 §3 / §7)
 
 ```powershell
-# 8 states across the three real windows → artifacts/ui_inspection/*.png
-& .venv\Scripts\python.exe scripts\inspect_states.py      # expect: 16/16 inspection steps PASS
+# 11 states across the three real windows → artifacts/ui_inspection/*.png
+& .venv\Scripts\python.exe scripts\inspect_states.py      # expect: 19/19 inspection steps PASS
 # single state
 powershell -ExecutionPolicy Bypass -File scripts\inspect_ui.ps1 -State pet_idle
 ```
-States: `pet_idle | pet_hover | pet_speech | pet_approval | dock_collapsed | dock_expanded | main_app_expanded | main_app_collapsed`. The driver parks the real cursor at the screen corner for clean idles, then captures with `CopyFromScreen`. **Always read the PNGs** — pixel-level review questions are in doc 30 §3.
+States: `pet_idle | pet_hover | pet_speech | pet_approval | dock_collapsed | dock_expanded | main_app_expanded | main_app_menu | main_activity | main_memory | main_settings` (spec 34 removed the sidebar, so `main_app_collapsed` became the header `+` menu plus one capture per pane). The driver parks the real cursor at the screen corner for clean idles, raises the main window with a TOPMOST/NOTOPMOST round trip (SetForegroundWindow is refused when the shell is not foreground, which let other windows occlude the capture), then captures with `CopyFromScreen`. **Always read the PNGs** — pixel-level review questions are in doc 30 §3.
 
 Render-mode captures: flip `runtime.pet_render_mode` (full-settings save!), run `inspect_ui.ps1 -State pet_idle -OutputDir artifacts\ui_inspection\pet3d`, restore `2d`.
 
 ## 23.4 Gate Practice
 
-- Run the whole suite after any change to `backend/`, `agents/`, or UI markers; target is **all 18 exit 0**.
+- Run the whole suite after any change to `backend/`, `agents/`, or UI markers; target is **all 19 exit 0**.
 - Known-flaky classes: CDP screenshot of inactive tabs (`Page.captureScreenshot` breaks — verify on real windows instead), single-shot reads against 10 FPS idle rendering (use peak sampling), approval cids (capture the cid from the bus, don't hardcode).
 - Frontend syntax gate: `node --check` each edited `.js` (modules: copy to a `.mjs` temp file first).
 

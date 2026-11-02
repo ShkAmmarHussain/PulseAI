@@ -14,9 +14,9 @@
 ## 1. Executive Summary & Missing Surfaces Analysis
 
 With the **Revamp Line (Docs 27–31)** complete, Jarvis possesses an Apple-grade presentation:
-* A responsive **2D Vector Mochi** and **3D WebGL** dual companion with live switching.
+* A responsive **2D Vector Pip** and **3D WebGL** dual companion with live switching.
 * A retractable **Dynamic Island** top-edge dock.
-* A centered, comfortable **820px Chat Stream** with rich approval dialogs and Mochi avatars.
+* A centered, comfortable **820px Chat Stream** with rich approval dialogs and Pip avatars.
 * A strictly isolated **Settings Pane**.
 
 ### The Remaining Gap
@@ -148,10 +148,10 @@ When `runtime.first_run: true` (or on initial start), display a polished 3-step 
 ┌─────────────────────────────────────────────────────────────────┐
 │                      WELCOME TO JARVIS                          │
 │                                                                 │
-│   [ 2D / 3D Animated Mochi Mascot Preview ]                     │
+│   [ 2D / 3D Animated Pip Mascot Preview ]                     │
 │                                                                 │
 │   Step 1: Meet Your Companion                                   │
-│   Choose your pet style: [ 2D Vector Mochi ]  [ 3D WebGL ]      │
+│   Choose your pet style: [ 2D Vector Pip ]  [ 3D WebGL ]      │
 │                                                                 │
 │   Step 2: Microphone & Audio Check                              │
 │   Speak "Hey Jarvis" -> Live visualizer pulse check             │

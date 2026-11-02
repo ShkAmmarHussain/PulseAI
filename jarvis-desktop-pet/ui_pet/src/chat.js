@@ -9,7 +9,6 @@ const voiceText = document.getElementById("vs-text");
 const peekBtn = document.getElementById("approval-peek");
 let typingTimer = null;
 let stickBottom = true;
-const USER_NAME = "Ammar";
 
 // ---- procedural UI earcons (spec 29, section 5.4) ----
 // 8 subtle state cues synthesized live via Web Audio (no audio assets).
@@ -103,13 +102,19 @@ const Earcons = (function () {
 })();
 window.Earcons = Earcons;
 
-// time-based greeting (spec 7.3 - subtle, second line does the work)
-(function setGreeting() {
+// time-based greeting (spec 7.3 - subtle, second line does the work).
+// spec 34 section 4: the name comes from personality.yaml (user.name), not a
+// hardcoded string; without one the greeting stays nameless.
+function setGreeting(personality) {
   const h = new Date().getHours();
   const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  const user = (personality && personality.user) || {};
+  const name = typeof user.name === "string" ? user.name.trim() : "";
   const el = document.getElementById("greeting");
-  if (el) el.textContent = part + ", " + USER_NAME;
-})();
+  if (el) el.textContent = name ? part + ", " + name : part;
+}
+window.setGreeting = setGreeting;
+setGreeting(null);
 
 function hideEmpty() {
   if (emptyEl && emptyEl.parentElement) emptyEl.remove();
@@ -167,7 +172,7 @@ function metaRow(who) {
   const av = document.createElement("div");
   if (who === "assistant") {
     av.className = "msg-avatar assistant";
-    av.innerHTML = '<svg class="mochi-ic" aria-hidden="true"><use href="#i-mochi"/></svg>';
+    av.innerHTML = '<svg class="pip-ic" aria-hidden="true"><use href="#i-pip"/></svg>';
   } else {
     av.className = "msg-avatar user";
     av.innerHTML = '<svg class="ic"><use href="#i-user"/></svg>';
@@ -442,36 +447,9 @@ Jarvis.on("tts_state", (d) => {
   else if (voiceText && voiceText.textContent === "Speaking\u2026") setVoiceStatus("");
 });
 
-// ---- approvals (section 12 + mockup approval prompt) ----
-const VERBS = {
-  launch_app: "Open", open_app: "Open", close_app: "Close",
-  delete_file: "Delete", move_file: "Move", create_file: "Create",
-  list_dir: "List files in", open_url: "Open in your browser",
-  web_search: "Search the web", run_shell: "Run a command",
-  vision_describe: "Describe your screen", type_text: "Type text",
-  vision_file: "Analyzed image file", summarize_file: "Summarized file",
-  respond: "Respond", noop: "Run",
-};
-
-function friendlyAction(p) {
-  const a = (p.action && (p.action.action || p.action.name)) || "";
-  const verb = VERBS[a] || a.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  let tgt = (p.action && (p.action.target || p.action.path || p.action.url || p.action.cmd)) || "";
-  if (tgt) {
-    const parts = String(tgt).split(/[\\/]/);
-    tgt = parts[parts.length - 1] || String(tgt);
-    if (tgt.length > 46) tgt = tgt.slice(0, 43) + "\u2026";
-  }
-  return { verb, tgt, title: (verb + (tgt ? " " + tgt : "")).trim() };
-}
-
-function riskBand(r) {
-  const n = Number(r);
-  if (!isFinite(n)) return { cls: "med", label: "Unknown" };
-  if (n <= 2) return { cls: "low", label: "Low" };
-  if (n <= 6) return { cls: "med", label: "Medium" };
-  return { cls: "high", label: "High" };
-}
+// ---- approvals (spec 34 section 3: status line, mono target chip, risk once) ----
+const friendlyAction = ApprovalText.friendlyAction;
+const riskBand = ApprovalText.riskBand;
 
 function removeApprovalCards(cid) {
   document.querySelectorAll(".approval-card").forEach((card) => {
@@ -486,17 +464,27 @@ Jarvis.on("ui.approval", (d) => {
   const p = d.payload || {};
   const fa = friendlyAction(p);
   const band = riskBand(p.risk);
-  const tgt = p.action && p.action.target;
+  const tgt = p.action && typeof p.action === "object" && (p.action.target || p.action.path || p.action.url || p.action.cmd);
+  const extra = ApprovalText.extraMessage(p);
 
   const wrap = document.createElement("div");
   wrap.className = "approval-card chat-approval-card";
   if (d.correlation_id) wrap.dataset.cid = d.correlation_id;
 
+  // status line: dot, bold title, dim subtitle (risk lives here, once)
   const head = document.createElement("div");
   head.className = "ac-head";
   head.innerHTML =
-    '<span class="ac-shield"><svg class="ic"><use href="#i-shield"/></svg></span>' +
-    '<span class="ac-title-label">Action requires approval</span>';
+    '<span class="ac-dot" aria-hidden="true"></span>' +
+    '<div class="ac-head-text"><div class="ac-action"></div><div class="ac-sub"></div></div>';
+  head.querySelector(".ac-action").textContent = fa.title;
+  const sub = head.querySelector(".ac-sub");
+  sub.textContent = "Jarvis wants to do this · ";
+  const badge = document.createElement("span");
+  badge.className = "risk " + band.cls;
+  badge.textContent = band.label;
+  badge.title = p.risk == null ? "Risk unknown" : "Risk " + p.risk + "/10";
+  sub.appendChild(badge);
   const closeBtn = document.createElement("button");
   closeBtn.className = "ac-close";
   closeBtn.type = "button";
@@ -507,66 +495,25 @@ Jarvis.on("ui.approval", (d) => {
 
   const body = document.createElement("div");
   body.className = "ac-body";
-  const app = document.createElement("div");
-  app.className = "ac-app";
-  app.innerHTML =
-    '<span class="ac-app-icon"><svg class="ic"><use href="#i-folder"/></svg></span>' +
-    '<div class="ac-app-main">' +
-    '<div class="ac-action"></div>' +
-    '<div class="ac-desc"></div>' +
-    (tgt ? '<div class="ac-target">Target: </div>' : "") +
-    "</div>";
-  app.querySelector(".ac-action").textContent = fa.title;
-  app.querySelector(".ac-desc").textContent =
-    p.message || "Jarvis wants to run this action on your computer.";
-  if (tgt) app.querySelector(".ac-target").textContent = "Target: " + tgt;
-  body.appendChild(app);
-
-  const meta = document.createElement("div");
-  meta.className = "ac-meta";
-  const riskCol = document.createElement("div");
-  riskCol.className = "ac-risk";
-  const lab = document.createElement("span");
-  lab.className = "ac-label";
-  lab.textContent = "Risk level";
-  const badge = document.createElement("span");
-  badge.className = "risk " + band.cls;
-  badge.textContent = band.label;
-  badge.title = p.risk == null ? "Risk unknown" : "Risk " + p.risk + "/10";
-  riskCol.appendChild(lab);
-  riskCol.appendChild(badge);
-  meta.appendChild(riskCol);
-
-  const why = document.createElement("div");
-  why.className = "ac-why";
-  const whyBtn = document.createElement("button");
-  whyBtn.className = "ac-why-btn";
-  whyBtn.type = "button";
-  whyBtn.setAttribute("aria-expanded", "false");
-  whyBtn.innerHTML = 'Why? <svg class="ic"><use href="#i-chevron"/></svg>';
-  const whyBody = document.createElement("div");
-  whyBody.className = "ac-why-body";
-  whyBody.hidden = true;
-  whyBody.textContent =
-    "Jarvis wants to run: " + fa.title + ". Nothing happens on your computer until you allow it.";
-  whyBtn.onclick = () => {
-    const open = whyBody.hidden;
-    whyBody.hidden = !open;
-    whyBtn.setAttribute("aria-expanded", String(open));
-  };
-  why.appendChild(whyBtn);
-  why.appendChild(whyBody);
-  meta.appendChild(why);
-  body.appendChild(meta);
+  if (tgt) {
+    const chip = document.createElement("div");
+    chip.className = "ac-target";
+    chip.textContent = String(tgt);
+    body.appendChild(chip);
+  }
+  const desc = document.createElement("div");
+  desc.className = "ac-desc";
+  desc.textContent = extra || "Nothing happens on your computer until you allow it.";
+  body.appendChild(desc);
 
   const btns = document.createElement("div");
   btns.className = "ac-btns";
   const allow = document.createElement("button");
   allow.className = "allow";
-  allow.textContent = "Allow once";
+  allow.innerHTML = 'Allow once <kbd>Y</kbd>';
   const deny = document.createElement("button");
   deny.className = "deny";
-  deny.textContent = "Deny";
+  deny.innerHTML = 'Deny <kbd>N</kbd>';
   const settle = (btn, label) => {
     wrap.dataset.pending = "1";
     [allow, deny].forEach((b) => { b.disabled = true; });
@@ -632,17 +579,61 @@ if (peekBtn) {
   };
 }
 
+// Y / N answer the newest pending card unless the user is typing somewhere
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+  const k = (e.key || "").toLowerCase();
+  if (k !== "y" && k !== "n") return;
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.tagName === "SELECT" || ae.isContentEditable)) return;
+  const cards = Array.from(document.querySelectorAll(".approval-card")).filter(
+    (c) => c.dataset.pending !== "1" && c.style.display !== "none" && c.closest(".pane.active"));
+  const card = cards[cards.length - 1];
+  if (!card) return;
+  const btn = card.querySelector(k === "y" ? ".ac-btns .allow" : ".ac-btns .deny");
+  if (btn && !btn.disabled) {
+    e.preventDefault();
+    btn.click();
+  }
+});
+
 // backend expired the approval (treated as denied) - remove the pending card
 Jarvis.on("ui.approval_cancelled", (d) => {
   if (d.correlation_id) removeApprovalCards(String(d.correlation_id));
 });
 
+// offline state (spec 34 section 7.2): a banner with a live countdown and
+// Retry now; the error earcon plays once per outage, not on every attempt
+const offlineBanner = document.getElementById("offline-banner");
+const offlineCount = document.getElementById("offline-count");
+const offlineRetry = document.getElementById("offline-retry");
+let online = false;
+let everOnline = false;
+let offlineShowTimer = null;
 document.addEventListener("jarvis:connected", () => {
+  online = true;
+  everOnline = true;
+  clearTimeout(offlineShowTimer);
+  offlineShowTimer = null;
   conn.textContent = "Connected";
   conn.classList.add("on");
+  if (offlineBanner) offlineBanner.hidden = true;
 });
 document.addEventListener("jarvis:disconnected", () => {
-  conn.textContent = "Reconnecting\u2026";
+  conn.textContent = "Reconnecting…";
   conn.classList.remove("on");
-  Earcons.play("snd_error");
+  if (online) Earcons.play("snd_error");
+  online = false;
+  // a cold start gets a moment to connect before the banner appears
+  if (offlineBanner && offlineBanner.hidden && !offlineShowTimer) {
+    offlineShowTimer = setTimeout(() => {
+      offlineShowTimer = null;
+      if (!online) offlineBanner.hidden = false;
+    }, everOnline ? 0 : 2500);
+  }
 });
+document.addEventListener("jarvis:reconnecting", (e) => {
+  const s = (e.detail || {}).seconds || 0;
+  if (offlineCount) offlineCount.textContent = s > 0 ? "Reconnecting in " + s + "s…" : "Reconnecting…";
+});
+if (offlineRetry) offlineRetry.addEventListener("click", () => Jarvis.reconnectNow());

@@ -1,17 +1,18 @@
 """Doc 30 visual inspection driver (section 3 + 7).
 
-Drives the real app into each of the 8 mandated states, then captures the REAL
+Drives the real app into each of the mandated states, then captures the REAL
 Tauri OS windows via scripts/inspect_ui.ps1:
 
     pet_idle, pet_hover, pet_speech, pet_approval      -> Jarvis Pet window
     dock_collapsed, dock_expanded                      -> Jarvis Dynamic Island
-    main_app_expanded, main_app_collapsed              -> Jarvis main window
-      (collapsed state reached by a real coordinate click on #sb-toggle,
-       position probed from the mirrored CDP index tab)
+    main_app_expanded, main_app_menu,                  -> Jarvis main window
+    main_activity, main_memory, main_settings, main_onboarding (needs :9335)
+      (menu + panes reached by real coordinate clicks on the spec 34 header,
+       positions probed from the mirrored CDP index tab)
 
 Run with app + backend up, Edge CDP on 9334 (index/pet/dock tabs), LM Studio up:
     .venv/Scripts/python scripts/inspect_states.py
-exit 0 = all 8 captures written to artifacts/ui_inspection/
+exit 0 = all 12 captures written to artifacts/ui_inspection/
 """
 
 import asyncio
@@ -32,6 +33,8 @@ SRC = os.path.join(ROOT, "ui_pet", "src")
 OUT = os.path.join(ROOT, "artifacts", "ui_inspection")
 PS1 = os.path.join(ROOT, "scripts", "inspect_ui.ps1")
 CDP = "http://127.0.0.1:9334/json"
+# the real app's WebView2, when launched with --remote-debugging-port=9335
+REAL_CDP = "http://127.0.0.1:9335/json"
 WS = "ws://127.0.0.1:8765/ws"
 PROBE_FILE = os.path.join(os.environ["TEMP"], "opencode", "zz_inspect_probe.txt")
 
@@ -39,6 +42,8 @@ user32 = ctypes.windll.user32
 user32.SetProcessDPIAware()
 
 SW_RESTORE = 9
+user32.SetWindowPos.argtypes = [wt.HWND, wt.HWND, ctypes.c_int, ctypes.c_int,
+                                ctypes.c_int, ctypes.c_int, wt.UINT]
 
 ok = []
 
@@ -76,9 +81,15 @@ def client_origin(hwnd):
     return (p.x, p.y)
 
 
-def focus(hwnd):
+def focus(hwnd, raise_top=False):
     user32.ShowWindow(hwnd, SW_RESTORE)
     user32.SetForegroundWindow(hwnd)
+    if raise_top:
+        # SetForegroundWindow is refused when we aren't foreground; a
+        # TOPMOST/NOTOPMOST round trip still lifts the window above other
+        # normal windows so captures and coordinate clicks land on it.
+        user32.SetWindowPos(hwnd, -1, 0, 0, 0, 0, 0x43)
+        user32.SetWindowPos(hwnd, -2, 0, 0, 0, 0, 0x43)
     time.sleep(0.35)
 
 
@@ -99,7 +110,7 @@ def mouse_away():
     move_cursor(8, ctypes.windll.user32.GetSystemMetrics(1) - 8)
 
 
-def capture(state):
+def capture(state, min_bytes=2000):
     p = subprocess.run(
         ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", PS1,
          "-State", state, "-OutputDir", OUT],
@@ -107,7 +118,7 @@ def capture(state):
     line = (p.stdout or "").strip().splitlines()
     line = line[-1] if line else ""
     path = os.path.join(OUT, state + ".png")
-    good = line.startswith("RESULT") and os.path.exists(path) and os.path.getsize(path) > 2000
+    good = line.startswith("RESULT") and os.path.exists(path) and os.path.getsize(path) > min_bytes
     check("capture " + state, good, line or (p.stderr or "")[:200])
     return good
 
@@ -173,6 +184,80 @@ async def cdp_eval(ws, expr, timeout=15):
                 return {"exc": str(res["exceptionDetails"])[:200]}
             return res.get("result", {}).get("value")
     return None
+
+
+async def real_tab(s, suffix):
+    """Page target of the real app's WebView2 (:9335) whose url ends with suffix."""
+    try:
+        async with s.get(REAL_CDP, timeout=aiohttp.ClientTimeout(total=3)) as r:
+            ts = await r.json()
+    except Exception:
+        return None
+    return next((t for t in ts if t.get("type") == "page" and t.get("url", "").endswith(suffix)), None)
+
+
+async def island_states(s, bus, island):
+    """Spec 34 section 3: one capture per island state, staged in the real dock
+    window through its own CDP. The approval is a real one (delete probe); the
+    other cards are staged with window.islandDemo()."""
+    dock_t = await real_tab(s, "/dock.html")
+    if not dock_t:
+        print("SKIP island states (real app CDP :9335 not reachable)", flush=True)
+        return
+    pet_t = await real_tab(s, "/pet.html")
+    async with s.ws_connect(dock_t["webSocketDebuggerUrl"], timeout=30) as dws:
+        await dws.send_json({"id": 1, "method": "Runtime.enable"})
+        await recv(dws, 2)
+
+        async def stage(name, wait=0.9):
+            r = await cdp_eval(dws, "window.islandDemo && window.islandDemo(%s)" % json.dumps(name))
+            check("island staged " + name, r is True, r)
+            time.sleep(wait)
+            focus(island)
+            capture("island_" + name, 200 if name == "hidden" else 2000)
+
+        mouse_away()
+        await stage("hidden")
+        await stage("overview")
+
+        # real approval while the island is the companion: it lands here, and
+        # the pet card stays down
+        await bus.send({"type": "text_input",
+                        "payload": {"text": "delete the file zz_inspect_probe.txt in %s"
+                                    % os.path.dirname(PROBE_FILE)}})
+        ap = None
+        for d in bus.log[-20:]:
+            if (d.get("topic") or d.get("type")) == "ui.approval":
+                ap = d
+        if ap is None:
+            ap = await bus.wait_topic("ui.approval", 90)
+        check("island approval requested", ap is not None)
+        if ap:
+            time.sleep(1.0)
+            card = await cdp_eval(dws, "document.getElementById('dynamic-island').dataset.card")
+            check("island shows approval card", card == "approval", card)
+            if pet_t:
+                async with s.ws_connect(pet_t["webSocketDebuggerUrl"], timeout=30) as pws:
+                    await pws.send_json({"id": 1, "method": "Runtime.enable"})
+                    await recv(pws, 2)
+                    shown = await cdp_eval(pws, "getComputedStyle(document.getElementById('approval')).display")
+                    check("pet approval card stays down in island mode", shown == "none", shown)
+            focus(island)
+            capture("island_approval")
+            await bus.send({"type": "approval_response",
+                            "payload": {"allow": False, "action": "delete_file"},
+                            "correlation_id": ap.get("correlation_id")})
+            await bus.wait_topic("ui.chat", 15,
+                                 lambda d: "denied" in str(((d.get("payload") or {}).get("text") or "")).lower())
+            await bus.pump(1.5)
+            card = await cdp_eval(dws, "document.getElementById('dynamic-island').dataset.card")
+            check("approval card clears once answered", card != "approval", card)
+
+        for name in ("question", "result", "error", "chat"):
+            await stage(name)
+        await stage("drop", wait=1.2)
+        await cdp_eval(dws, "window.islandDemo('compact'); true")
+        mouse_away()
 
 
 async def main():
@@ -254,6 +339,32 @@ async def main():
                                          lambda d: "denied" in str(((d.get("payload") or {}).get("text") or "")).lower())
                     await bus.pump(4.0)
 
+            # ---- Pip in 3D (spec 34 section 5): same states, render mode flipped ----
+            if pet:
+                cfg3d = dict(cfg)
+                cfg3d["runtime"] = dict(cfg["runtime"], pet_render_mode="3d")
+                await bus.send({"type": "save_settings", "payload": {"config": cfg3d}})
+                await bus.pump(3.0)
+                mouse_away()
+                focus(pet)
+                time.sleep(4.0)
+                capture("pet3d_idle")
+                l, t_, r, b = rect_of(pet)
+                move_cursor((l + r) // 2, (t_ + b) // 2)
+                time.sleep(0.8)
+                capture("pet3d_hover")
+                mouse_away()
+                await bus.send({"type": "voice_listen", "payload": {"on": True}})
+                await bus.wait_topic("ui.voice_state", 4, lambda d: ((d.get("payload") or {}).get("state")) == "listening")
+                time.sleep(0.8)
+                focus(pet)
+                capture("pet3d_speech")
+                await bus.send({"type": "voice_listen", "payload": {"on": False}})
+                await bus.pump(1.5)
+                cfg2d = dict(cfg)
+                cfg2d["runtime"] = dict(cfg["runtime"], pet_render_mode="2d")
+                await bus.send({"type": "save_settings", "payload": {"config": cfg2d}})
+                await bus.pump(2.0)
             # ---- dock states ----
             cfg2 = dict(cfg)
             cfg2["runtime"] = dict(cfg["runtime"], companion="dock")
@@ -272,6 +383,7 @@ async def main():
                 focus(island)
                 capture("dock_expanded")
                 mouse_away()
+                await island_states(s, bus, island)
 
             # ---- main workspace states ----
             cfg3 = dict(cfg)
@@ -284,47 +396,106 @@ async def main():
             main_w = find_window("Jarvis")
             check("main window present", main_w is not None)
 
-            # probe #sb-toggle geometry from the mirrored CDP index tab
+            # probe header geometry (spec 34: tabs + "+" menu replace the
+            # sidebar) from the mirrored CDP index tab. The mirror viewport is
+            # wider than the real window, so right-anchored controls are
+            # mapped by their distance from the right edge ("fr").
             async with s.get(CDP) as r:
                 ts = await r.json()
             idx = next((t for t in ts if t.get("type") == "page" and "index.html" in t.get("url", "")), None)
             check("index cdp tab present", idx is not None)
-            tog_exp = tog_col = None
+            geo = None
             if idx:
                 async with s.ws_connect(idx["webSocketDebuggerUrl"], timeout=30) as cws:
                     await cws.send_json({"id": 1, "method": "Runtime.enable"})
                     await recv(cws, 2)
-                    tog_exp = await cdp_eval(cws, """(() => {
-                        const el = document.getElementById('app');
-                        el.classList.remove('sb-collapsed');
-                        const r = document.getElementById('sb-toggle').getBoundingClientRect();
-                        return {x: r.x + r.width/2, y: r.y + r.height/2, vis: r.width > 0};
+                    geo = await cdp_eval(cws, """(() => {
+                        const q = (s) => {
+                            const el = document.querySelector(s);
+                            if (!el) return null;
+                            const r = el.getBoundingClientRect();
+                            const x = r.x + r.width / 2;
+                            return {x: x, y: r.y + r.height / 2, fr: innerWidth - x, vis: r.width > 0};
+                        };
+                        return {
+                            plus: q('#quick-actions-btn'),
+                            chat: q('.nav-item[data-tab="chat"]'),
+                            activity: q('.nav-item[data-tab="activity"]'),
+                            memory: q('.nav-item[data-tab="memory"]'),
+                            settings: q('.nav-item[data-tab="settings"]'),
+                        };
                     })()""")
-                    await cdp_eval(cws, "document.getElementById('sb-toggle').click(); 1")
-                    time.sleep(0.4)
-                    tog_col = await cdp_eval(cws, """(() => {
-                        const r = document.getElementById('sb-toggle').getBoundingClientRect();
-                        return {x: r.x + r.width/2, y: r.y + r.height/2, vis: r.width > 0};
-                    })()""")
-                    await cdp_eval(cws, "document.getElementById('sb-toggle').click(); 1")
-                    time.sleep(0.3)
-            check("sb-toggle probed (expanded+collapsed)",
-                  tog_exp and tog_col and tog_exp.get("vis") and tog_col.get("vis"),
-                  (tog_exp, tog_col))
+            names = ("plus", "chat", "activity", "memory", "settings")
+            check("header controls probed (+ menu and 4 tabs)",
+                  isinstance(geo, dict) and all((geo.get(k) or {}).get("vis") for k in names), geo)
 
-            if main_w and tog_exp:
-                focus(main_w)
+            if main_w and isinstance(geo, dict) and all(geo.get(k) for k in names):
+                focus(main_w, raise_top=True)
                 time.sleep(0.4)
                 capture("main_app_expanded")
                 ox, oy = client_origin(main_w)
-                click(ox + int(tog_exp["x"]), oy + int(tog_exp["y"]))
-                time.sleep(0.6)
-                capture("main_app_collapsed")
-                if tog_col:
-                    click(ox + int(tog_col["x"]), oy + int(tog_col["y"]))
-                    time.sleep(0.4)
+                cr = wt.RECT()
+                user32.GetClientRect(main_w, ctypes.byref(cr))
+                cw = cr.right - cr.left
+
+                def at_left(k):
+                    return ox + int(geo[k]["x"]), oy + int(geo[k]["y"])
+
+                def at_right(k):
+                    return ox + cw - int(geo[k]["fr"]), oy + int(geo[k]["y"])
+
+                click(*at_right("plus"))
+                time.sleep(0.5)
+                capture("main_app_menu")
+                click(*at_right("plus"))  # toggles the menu closed
+                time.sleep(0.3)
+                for tab in ("activity", "memory", "settings"):
+                    click(*at_left(tab))
+                    time.sleep(0.6)
+                    capture("main_" + tab)
+                click(*at_left("chat"))
+                time.sleep(0.3)
                 mouse_away()
 
+            # onboarding sheet (spec 34 section 6): opened in the REAL app via
+            # its own CDP; skipped when the app runs without debug args
+            rts = []
+            try:
+                async with s.get(REAL_CDP, timeout=aiohttp.ClientTimeout(total=3)) as r:
+                    rts = await r.json()
+            except Exception:
+                rts = []
+
+            def is_index(t):
+                u = t.get("url", "")
+                return t.get("type") == "page" and (u.endswith("/index.html") or u.rstrip("/").endswith("tauri.localhost"))
+
+            ridx = next((t for t in rts if is_index(t)), None)
+            if main_w and ridx:
+                async with s.ws_connect(ridx["webSocketDebuggerUrl"], timeout=30) as rws:
+                    await rws.send_json({"id": 1, "method": "Runtime.enable"})
+                    await recv(rws, 2)
+                    opened = await cdp_eval(rws, "(window.openOnboarding && (window.openOnboarding(), true)) || false")
+                    check("onboarding opened in real app", opened is True, opened)
+                    time.sleep(0.8)
+                    focus(main_w, raise_top=True)
+                    capture("main_onboarding")
+                    await cdp_eval(rws, "document.getElementById('onboarding').hidden = true; 1")
+                    # About + diagnostics (spec 34 section 7.5)
+                    shown = await cdp_eval(rws, "window.showTab('settings'); window.showSettingsTab('sec-about'); !!document.getElementById('about-version')")
+                    check("about section opened in real app", shown is True, shown)
+                    ver = None
+                    for _ in range(10):
+                        ver = await cdp_eval(rws, "document.getElementById('about-version').textContent")
+                        if ver and ver.startswith("v"):
+                            break
+                        time.sleep(0.3)
+                    check("about shows the tauri.conf version", bool(ver) and ver.startswith("v"), ver)
+                    focus(main_w, raise_top=True)
+                    capture("main_about")
+                    await cdp_eval(rws, "window.showSettingsTab('sec-models'); window.showTab('chat'); 1")
+            else:
+                print("SKIP main_onboarding (real app CDP :9335 not reachable)", flush=True)
             # ---- restore ----
             await bus.send({"type": "set_pet", "payload": {"enabled": True}})
             await bus.pump(1.5)

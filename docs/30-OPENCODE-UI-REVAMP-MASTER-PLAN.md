@@ -25,7 +25,7 @@
 │ bars that look like a gaming terminal.       │  │ speech bubbles covering the pet's face, and  │
 │                                              │  │ sidebar collapse button that deletes itself! │
 │ TARGET: Warm, delightful, cozy designer pet  │  │                                              │
-│ (like Mochi, Animal Crossing, Ghibli tech)   │  │ TARGET: Frameless living pet, auto-hiding    │
+│ (like Pip, Animal Crossing, Ghibli tech)   │  │ TARGET: Frameless living pet, auto-hiding    │
 │ with soft squishy textures, warm lighting,   │  │ micro-dock on hover, floating bubbles ABOVE  │
 │ gentle peach blush, and cozy desktop warmth! │  │ head, working dynamic island, and fixed UI.  │
 └──────────────────────────────────────────────┘  └──────────────────────────────────────────────┘
@@ -203,7 +203,7 @@ Completely eliminate the permanent header `#pet-head` and the bottom `#mini-btns
 ```
 
 ### 4.3 Cozy Pet 3D Shaders & Materials (`pet3d.js`)
-Transform the 3D model from a cold metallic robot into a warm, cuddly, ceramic/mochi designer toy:
+Transform the 3D model from a cold metallic robot into a warm, cuddly, ceramic/pip designer toy:
 
 ```javascript
 // Warm Diffuse Desk-Lamp Lighting
@@ -537,7 +537,7 @@ Write-Host "Screenshots saved to $OutputDir. Agent must now review them."
 ## 8. Quality Gate & Acceptance Criteria
 
 1. **Mandatory Visual Inspection Completed:** The agent must run the visual inspection script and confirm zero clipping, zero awkward cropping, and zero overlapping elements.
-2. **Warm, Cozy Vibe Validated:** The pet must feel like a soft, delightful, cuddly desktop companion (matte warm porcelain/mochi with gentle peach blush and warm lighting) rather than a harsh sci-fi terminal.
+2. **Warm, Cozy Vibe Validated:** The pet must feel like a soft, delightful, cuddly desktop companion (matte warm porcelain/pip with gentle peach blush and warm lighting) rather than a harsh sci-fi terminal.
 3. **Zero Pet Cropping:** Pet forehead, antenna, ears, and feet must have at least 20% clear space inside the window boundaries.
 4. **Zero Persistent Chrome on Pet:** The pet window has NO permanent title bar and NO permanent button row. Control dock appears only on hover.
 5. **Elevated Speech Bubbles:** All dialog bubbles and safety approval cards render strictly *above* the pet's head.
@@ -547,10 +547,10 @@ Write-Host "Screenshots saved to $OutputDir. Agent must now review them."
 
 ---
 
-## 9. Addendum: The Definitive 3D Mochi Pet Specification (Matching the 2D Hero SVG 1:1)
+## 9. Addendum: The Definitive 3D Pip Pet Specification (Matching the 2D Hero SVG 1:1)
 
 ### 9.1 The Problem in the Latest 3D Capture (`pet_idle.png`)
-In commit `4bb6103`, the 2D hero illustration in `index.html` (`.hero-mochi`) was an immediate hit with the user—an adorable, chubby creamy marshmallow dumpling with friendly bunny ears, glossy anime eyes, soft blush cheeks, and a warm amber halo.
+In commit `4bb6103`, the 2D hero illustration in `index.html` (`.hero-pip`) was an immediate hit with the user—an adorable, chubby creamy marshmallow dumpling with friendly bunny ears, glossy anime eyes, soft blush cheeks, and a warm amber halo.
 
 However, the 3D version in `pet3d.js` diverged significantly:
 1. **The Body is a Boxy Cube:** `SUPER_N = 4.2` made the superellipsoid look like a rounded dice/cube rather than a soft, organic dumpling.
@@ -566,7 +566,7 @@ To make the 3D pet match the 2D hero mascot identically:
 - **Ratio:** Slightly wider than tall (ratio ~1.15 : 1.0).
 - **Three.js Translation:**
   ```javascript
-  // Change exponent from 4.2 to 2.4-2.6 for an organic, chubby mochi feel
+  // Change exponent from 4.2 to 2.4-2.6 for an organic, chubby pip feel
   const SUPER_N = 2.5;
   const shell = new THREE.Mesh(
     superellipsoid(1.22, 1.08, 1.05, SUPER_N, 48, 64),

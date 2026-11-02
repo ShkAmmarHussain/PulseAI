@@ -14,6 +14,11 @@ def forget(fact_id: str) -> bool:
     return store.delete_fact(fact_id)
 
 
+def edit(fact_id: str, content: str = None, category: str = None):
+    """Edit one fact in place. Returns the updated fact, or None if unknown."""
+    return store.update_fact(fact_id, content=content, category=category)
+
+
 def list_memories(category: str = None, query: str = None) -> list:
     return store.list_facts(category=category, query=query)
 

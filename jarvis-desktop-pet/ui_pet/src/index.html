@@ -25,18 +25,29 @@
       <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
       <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
-    <symbol id="i-mochi" viewBox="0 0 128 128">
+    <!-- Pip, the Jarvis companion (spec 34 section 1.1) -->
+    <symbol id="i-pip" viewBox="0 0 128 128">
       <defs>
-        <linearGradient id="mochi-b" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#fffdf8"/>
-          <stop offset="100%" stop-color="#f6e7d2"/>
+        <linearGradient id="pip-b" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#fffdf8"/>
+          <stop offset="1" stop-color="#f3e3cc"/>
         </linearGradient>
+        <radialGradient id="pip-c" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stop-color="#ffd27a" stop-opacity="0.95"/>
+          <stop offset="0.55" stop-color="#f5a524" stop-opacity="0.42"/>
+          <stop offset="1" stop-color="#f5a524" stop-opacity="0"/>
+        </radialGradient>
       </defs>
-      <ellipse cx="42" cy="30" rx="14" ry="17" fill="url(#mochi-b)" transform="rotate(-14 42 30)"/>
-      <ellipse cx="86" cy="30" rx="14" ry="17" fill="url(#mochi-b)" transform="rotate(14 86 30)"/>
-      <ellipse cx="43" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.85" transform="rotate(-14 43 31)"/>
-      <ellipse cx="85" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.85" transform="rotate(14 85 31)"/>
-      <rect x="17" y="34" width="94" height="82" rx="36" fill="url(#mochi-b)"/>
+      <!-- single antenna-sprout: stem, leaf and the amber bud light -->
+      <g>
+        <path d="M64 37 C63 28 65 20 73 14" stroke="#f3e3cc" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+        <ellipse cx="57.5" cy="24" rx="7.5" ry="3.6" fill="#fb923c" transform="rotate(-32 57.5 24)"/>
+        <circle cx="74" cy="13" r="10" fill="url(#pip-c)"/>
+        <circle cx="74" cy="13" r="4.6" fill="#f5a524"/>
+      </g>
+      <!-- egg body with a warm amber core light inside -->
+      <path d="M64 34 C89 34 107 62 107 87 C107 106 89 118 64 118 C39 118 21 106 21 87 C21 62 39 34 64 34 Z" fill="url(#pip-b)"/>
+      <ellipse cx="64" cy="98" rx="28" ry="16" fill="url(#pip-c)" opacity="0.55"/>
       <ellipse cx="34" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
       <ellipse cx="94" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
       <ellipse cx="47" cy="70" rx="7" ry="9" fill="#35292a"/>
@@ -52,19 +63,50 @@
       <symbol id="i-gauge" viewBox="0 0 24 24"><path d="M4.5 17.5a8.5 8.5 0 1 1 15 0"/><path d="M12 13.5l4-4.5"/></symbol>
       <symbol id="i-collapse" viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></symbol>
       <symbol id="i-brain" viewBox="0 0 24 24"><path d="M12 5a3 3 0 0 0-5.6-.8A2.7 2.7 0 0 0 4 8.5c0 .6.2 1.2.5 1.7A2.8 2.8 0 0 0 5.5 15 3 3 0 0 0 9 19.5h.5A2.5 2.5 0 0 0 12 21zM12 5a3 3 0 0 1 5.6-.8A2.7 2.7 0 0 1 20 8.5c0 .6-.2 1.2-.5 1.7A2.8 2.8 0 0 1 18.5 15 3 3 0 0 1 15 19.5h-.5A2.5 2.5 0 0 1 12 21zM12 5v16"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4"/></symbol>
       <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M8 7l.8 12h6.4L16 7"/></symbol>
     </defs>
   </svg>
 
+  <!-- spec 34 section 4: one 36px black header = titlebar + tabs (no sidebar, no topbar) -->
   <header id="window-titlebar" data-tauri-drag-region>
     <div class="titlebar-left" data-tauri-drag-region>
-      <div class="titlebar-brand" data-tauri-drag-region>
-        <svg class="mochi-mini-logo" aria-hidden="true" data-tauri-drag-region><use href="#i-mochi"/></svg>
-        <span class="titlebar-app-name" data-tauri-drag-region>Jarvis</span>
-        <span class="titlebar-version-pill" data-tauri-drag-region>v0.2</span>
+      <div class="brand titlebar-brand" data-tauri-drag-region>
+        <svg class="logo pip-mini-logo" aria-hidden="true" data-tauri-drag-region><use href="#i-pip"/></svg>
+        <span class="status conn-status" role="status" aria-live="polite" title="Local service">
+          <i class="dot" id="conn-dot"></i><span id="conn">Connecting&hellip;</span>
+        </span>
       </div>
+      <nav id="nav" aria-label="Primary">
+        <button class="nav-item active" data-tab="chat" aria-current="page"><span class="nav-label">Chat</span></button>
+        <button class="nav-item" data-tab="activity"><span class="nav-label">Activity</span></button>
+        <button class="nav-item" data-tab="memory"><span class="nav-label">Memory</span></button>
+        <button class="nav-item" data-tab="settings"><span class="nav-label">Settings</span></button>
+      </nav>
     </div>
     <div class="titlebar-center" data-tauri-drag-region></div>
+    <div class="titlebar-tools">
+      <span class="model-badge"><i class="core-dot"></i> Local Model</span>
+      <button class="tb-btn" id="cmd-palette-btn" title="Command palette (Ctrl+K)" aria-label="Open command palette"><svg class="ic"><use href="#i-search"/></svg></button>
+      <button class="tb-btn" id="dictate-btn" title="Dictate to cursor (Ctrl+Alt+D)" aria-label="Dictate to cursor"><svg class="ic"><use href="#i-mic"/></svg></button>
+      <div class="plus-wrap">
+        <button class="tb-btn" id="quick-actions-btn" type="button" title="More" aria-label="More actions" aria-haspopup="menu" aria-expanded="false" aria-controls="plus-menu"><svg class="ic"><use href="#i-plus"/></svg></button>
+        <div id="plus-menu" role="menu" aria-label="More actions" hidden>
+          <div class="pm-row pet-mini">
+            <svg class="pip-mini" aria-hidden="true"><use href="#i-pip"/></svg>
+            <span class="pet-mini-label">Show pet</span>
+            <label class="switch" title="Show / hide floating pet">
+              <input type="checkbox" id="pet-side-toggle" data-pet-toggle checked aria-label="Show floating pet" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <button type="button" role="menuitem" class="pm-item" data-act="quick"><svg class="ic"><use href="#i-plus"/></svg>Quick actions</button>
+          <button type="button" role="menuitem" class="pm-item" data-act="palette"><svg class="ic"><use href="#i-search"/></svg>Command palette<span class="key">Ctrl K</span></button>
+          <button type="button" role="menuitem" class="pm-item" data-act="dictate"><svg class="ic"><use href="#i-mic"/></svg>Dictate to cursor<span class="key">Ctrl Alt D</span></button>
+          <button type="button" role="menuitem" class="pm-item" id="top-settings" data-act="settings"><svg class="ic"><use href="#i-sliders"/></svg>Settings</button>
+        </div>
+      </div>
+    </div>
     <div class="titlebar-right">
       <button class="win-btn" id="win-min" title="Minimize" aria-label="Minimize">
         <svg viewBox="0 0 12 12"><line x1="2" y1="6" x2="10" y2="6"/></svg>
@@ -79,58 +121,12 @@
   </header>
 
   <div id="app">
-    <aside id="sidebar">
-      <div class="brand">
-        <svg class="logo mochi-logo" aria-hidden="true"><use href="#i-mochi"/></svg>
-        <div class="brand-text">
-          <span class="name">Jarvis</span>
-          <span class="status" role="status" aria-live="polite">
-            <i class="dot" id="conn-dot"></i><span class="svc">Local Service</span><span class="sep">&bull;</span><span id="conn">Connecting&hellip;</span>
-          </span>
-        </div>
-        <button id="sb-toggle" class="icon-btn ghost" title="Collapse sidebar" aria-label="Collapse sidebar"><svg class="ic"><use href="#i-collapse"/></svg></button>
-      </div>
-
-      <nav id="nav" aria-label="Primary">
-        <button class="nav-item active" data-tab="chat"><svg class="ic"><use href="#i-chat"/></svg><span class="nav-label">Chat</span></button>
-        <button class="nav-item" data-tab="activity"><svg class="ic"><use href="#i-activity"/></svg><span class="nav-label">Activity</span></button>
-        <button class="nav-item" data-tab="memory"><svg class="ic"><use href="#i-brain"/></svg><span class="nav-label">Memory</span></button>
-        <button class="nav-item" data-tab="settings"><svg class="ic"><use href="#i-sliders"/></svg><span class="nav-label">Settings</span></button>
-      </nav>
-
-      <div class="sidebar-foot">
-        <div class="pet-mini">
-          <svg class="mochi-mini" aria-hidden="true"><use href="#i-mochi"/></svg>
-          <span class="pet-mini-label">Pet Visible</span>
-          <label class="switch" title="Show / hide floating pet">
-            <input type="checkbox" id="pet-side-toggle" data-pet-toggle checked />
-            <span class="slider"></span>
-          </label>
-        </div>
-        <button id="quick-actions-btn" class="qa-btn" type="button"><svg class="ic"><use href="#i-plus"/></svg><span class="nav-label">Quick actions</span></button>
-      </div>
-    </aside>
-
+    <div id="offline-banner" role="status" aria-live="polite" hidden>
+      <i class="ob-dot" aria-hidden="true"></i>
+      <span><b>Jarvis isn&rsquo;t running.</b> <span id="offline-count">Reconnecting&hellip;</span></span>
+      <button type="button" id="offline-retry">Retry now</button>
+    </div>
     <div id="main">
-      <header id="topbar">
-        <div class="topbar-context">
-          <span class="session-pill">Active Session</span>
-          <span class="model-badge"><i class="core-dot"></i> Local Model</span>
-        </div>
-        <div class="topbar-actions">
-          <button class="topbar-tool-btn" id="cmd-palette-btn" title="Command Palette (Ctrl+K)" aria-label="Open command palette">
-            <svg class="ic"><use href="#i-search"/></svg>
-            <span class="kbd-hint">Ctrl K</span>
-          </button>
-          <button class="topbar-tool-btn" id="dictate-btn" title="Dictate to Cursor (Ctrl+Alt+D)" aria-label="Dictate to cursor">
-            <svg class="ic"><use href="#i-mic"/></svg>
-            <span class="kbd-hint">Ctrl Alt D</span>
-          </button>
-          <div class="topbar-divider" aria-hidden="true"></div>
-          <button class="icon-btn" id="top-settings" title="Settings" aria-label="Open settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
-        </div>
-      </header>
-
       <div id="cmd-palette" hidden>
         <div class="cp-backdrop"></div>
         <div class="cp-panel" role="dialog" aria-label="Command palette">
@@ -146,18 +142,28 @@
         <div id="msgs">
           <div id="empty-state">
             <div class="hero-orb" aria-hidden="true">
-              <svg class="hero-mochi" viewBox="0 0 128 128" role="img" aria-label="Jarvis mascot">
+              <svg class="hero-pip" viewBox="0 0 128 128" role="img" aria-label="Pip, the Jarvis companion">
                 <defs>
-                  <linearGradient id="hm-body" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="hp-b" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0" stop-color="#fffdf8"/>
-                    <stop offset="1" stop-color="#f6e7d2"/>
+                    <stop offset="1" stop-color="#f3e3cc"/>
                   </linearGradient>
+                  <radialGradient id="hp-c" cx="0.5" cy="0.5" r="0.5">
+                    <stop offset="0" stop-color="#ffd27a" stop-opacity="0.95"/>
+                    <stop offset="0.55" stop-color="#f5a524" stop-opacity="0.42"/>
+                    <stop offset="1" stop-color="#f5a524" stop-opacity="0"/>
+                  </radialGradient>
                 </defs>
-                <ellipse cx="42" cy="30" rx="14" ry="17" fill="url(#hm-body)" transform="rotate(-14 42 30)"/>
-                <ellipse cx="86" cy="30" rx="14" ry="17" fill="url(#hm-body)" transform="rotate(14 86 30)"/>
-                <ellipse cx="43" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.8" transform="rotate(-14 43 31)"/>
-                <ellipse cx="85" cy="31" rx="6.5" ry="9" fill="#fb923c" opacity="0.8" transform="rotate(14 85 31)"/>
-                <rect x="17" y="34" width="94" height="82" rx="36" fill="url(#hm-body)"/>
+                <!-- single antenna-sprout: stem, leaf and the amber bud light -->
+                <g class="hp-sprout">
+                  <path d="M64 37 C63 28 65 20 73 14" stroke="#f3e3cc" stroke-width="3.6" stroke-linecap="round" fill="none"/>
+                  <ellipse cx="57.5" cy="24" rx="7.5" ry="3.6" fill="#fb923c" transform="rotate(-32 57.5 24)"/>
+                  <circle cx="74" cy="13" r="10" fill="url(#hp-c)"/>
+                  <circle cx="74" cy="13" r="4.6" fill="#f5a524"/>
+                </g>
+                <!-- egg body with a warm amber core light inside -->
+                <path d="M64 34 C89 34 107 62 107 87 C107 106 89 118 64 118 C39 118 21 106 21 87 C21 62 39 34 64 34 Z" fill="url(#hp-b)"/>
+                <ellipse class="hp-core" cx="64" cy="98" rx="28" ry="16" fill="url(#hp-c)" opacity="0.55"/>
                 <ellipse cx="34" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
                 <ellipse cx="94" cy="86" rx="8.5" ry="5" fill="#ff9e9e" opacity="0.75"/>
                 <ellipse cx="47" cy="70" rx="7" ry="9" fill="#35292a"/>
@@ -169,8 +175,8 @@
                 <path d="M57 92 Q64 99.5 71 92" stroke="#35292a" stroke-width="3.2" stroke-linecap="round" fill="none"/>
               </svg>
             </div>
-            <h1 class="es-title" id="greeting">Good morning, Ammar</h1>
-            <p class="es-sub">Ready when you are. You can ask me to do something,<br />or use the quick actions below.</p>
+            <h1 class="es-title" id="greeting">Hello</h1>
+            <p class="es-sub">Ask for anything, or start with one of these.</p>
             <div class="chips" id="hero-chips" role="group" aria-label="Quick actions">
               <button class="chip" type="button" data-prompt="Help me open an app "><svg class="ic"><use href="#i-plus"/></svg>Open an app</button>
               <button class="chip" type="button" data-prompt="Help me find a file on this PC "><svg class="ic"><use href="#i-folder"/></svg>Find a file</button>
@@ -180,7 +186,7 @@
             <p class="es-hint">Say <kbd>Hey Jarvis</kbd> anytime, or press <kbd>Ctrl+Alt+J</kbd> to talk from anywhere.</p>
           </div>
           <div id="typing" class="msg-row" hidden>
-            <div class="msg-avatar assistant"><svg class="mochi-ic" aria-hidden="true"><use href="#i-mochi"/></svg></div>
+            <div class="msg-avatar assistant"><svg class="pip-ic" aria-hidden="true"><use href="#i-pip"/></svg></div>
             <div class="msg assistant typing-bubble"><i></i><i></i><i></i><span class="tb-text">Thinking&hellip;</span></div>
           </div>
         </div>
@@ -268,7 +274,7 @@
           <div class="mem-empty" id="memory-empty">
             <div class="mem-empty-orb orb" aria-hidden="true"><i class="core"></i></div>
             <div class="mem-empty-title">Nothing remembered yet</div>
-            <p class="mem-empty-sub">Tell Jarvis &ldquo;remember that &hellip;&rdquo; and the fact will appear here &mdash; searchable, editable, forgettable.</p>
+            <p class="mem-empty-sub">Tell Jarvis &ldquo;remember that &hellip;&rdquo; and the fact will appear here &mdash; searchable, and easy to forget.</p>
           </div>
         </div>
 
@@ -280,14 +286,15 @@
 
       <main id="pane-settings" class="pane">
         <nav id="settings-index" aria-label="Settings sections">
-          <button type="button" data-sec="sec-voice" class="active"><svg class="ic"><use href="#i-wave"/></svg><span>Voice</span></button>
-          <button type="button" data-sec="sec-assistant"><svg class="ic"><use href="#i-face"/></svg><span>Assistant &amp; Pet</span></button>
-          <button type="button" data-sec="sec-models"><svg class="ic"><use href="#i-globe"/></svg><span>Models &amp; Connection</span></button>
-          <button type="button" data-sec="sec-safety"><svg class="ic"><use href="#i-shield"/></svg><span>Safety &amp; Permissions</span></button>
+          <button type="button" data-sec="sec-models" class="active"><svg class="ic"><use href="#i-globe"/></svg><span>Model</span></button>
+          <button type="button" data-sec="sec-voice"><svg class="ic"><use href="#i-wave"/></svg><span>Voice</span></button>
+          <button type="button" data-sec="sec-assistant"><svg class="ic"><use href="#i-face"/></svg><span>Character &amp; Desktop</span></button>
+          <button type="button" data-sec="sec-safety"><svg class="ic"><use href="#i-shield"/></svg><span>Privacy &amp; Safety</span></button>
           <button type="button" data-sec="sec-performance"><svg class="ic"><use href="#i-gauge"/></svg><span>Performance</span></button>
           <button type="button" data-sec="sec-dictionary"><svg class="ic"><use href="#i-search"/></svg><span>Dictionary</span></button>
           <button type="button" data-sec="sec-history"><svg class="ic"><use href="#i-activity"/></svg><span>Dictation History</span></button>
           <button type="button" data-sec="sec-integrations"><svg class="ic"><use href="#i-globe"/></svg><span>Integrations</span></button>
+          <button type="button" data-sec="sec-about"><svg class="ic"><use href="#i-user"/></svg><span>About</span></button>
         </nav>
         <div id="settings-content">
           <div class="section" id="sec-voice">
@@ -296,6 +303,7 @@
 
             <div class="card">
               <div class="card-title">Wake Word</div>
+              <p class="card-desc">Start a request hands-free by saying the wake phrase.</p>
               <div class="field switch-field">
                 <div class="field-text">
                   <label for="v-wake">Enable wake word</label>
@@ -314,6 +322,7 @@
 
             <div class="card">
               <div class="card-title">Microphone</div>
+              <p class="card-desc">Which input Jarvis hears you through, and how sensitive it is.</p>
               <div class="field"><label for="v-device">Input device</label>
                 <select id="v-device">
                   <option value="">System default input</option>
@@ -348,6 +357,7 @@
 
             <div class="card">
               <div class="card-title">Spoken Responses</div>
+              <p class="card-desc">Whether Jarvis talks back, and in which voice.</p>
               <div class="field-grid">
                 <div class="field"><label for="v-engine">Engine</label>
                   <select id="v-engine">
@@ -416,11 +426,12 @@
           </div>
 
           <div class="section" id="sec-assistant">
-            <h3>Assistant &amp; Pet</h3>
+            <h3>Character &amp; Desktop</h3>
             <p class="sec-desc">Identity, desktop pet and startup behaviour.</p>
 
             <div class="card">
               <div class="card-title">Desktop Pet &amp; Startup</div>
+              <p class="card-desc">Show the companion on your desktop and launch with Windows.</p>
               <div class="field switch-field">
                 <div class="field-text">
                   <label for="v-autostart">Start with Windows (chat hidden)</label>
@@ -428,6 +439,15 @@
                 </div>
                 <label class="switch">
                   <input type="checkbox" id="v-autostart" />
+                  <span class="slider"></span>
+                </label>
+              </div>              <div class="field switch-field">
+                <div class="field-text">
+                  <label for="close-to-tray">Keep running in the tray when closed</label>
+                  <p class="hint">On: closing the window hides it and the pet keeps working. Off: closing quits Jarvis completely. Quit is always in the tray menu.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="close-to-tray" checked />
                   <span class="slider"></span>
                 </label>
               </div>
@@ -452,7 +472,7 @@
               <div class="field">
                 <label for="pet-colorway">Pet colorway</label>
                 <select id="pet-colorway">
-                  <option value="porcelain" selected>Porcelain Mochi (cozy default)</option>
+                  <option value="porcelain" selected>Porcelain Pip (cozy default)</option>
                   <option value="obsidian">Jarvis Obsidian</option>
                   <option value="cyberpunk">Cyberpunk 2077</option>
                   <option value="titanium">Titanium Frosted Glass</option>
@@ -463,10 +483,11 @@
 
             <div class="card">
               <div class="card-title">Companion Appearance</div>
+              <p class="card-desc">How the character is drawn: flat 2D or 3D.</p>
               <div class="field">
                 <label>Pet Render Style</label>
                 <div class="seg" id="pet-render-seg" role="group" aria-label="Pet render style">
-                  <button type="button" data-render="2d" class="on">2D Vector (Classic Mochi)</button>
+                  <button type="button" data-render="2d" class="on">2D Vector (Classic Pip)</button>
                   <button type="button" data-render="3d">3D WebGL (Dimensional)</button>
                 </div>
                 <p class="hint">2D Vector: ultra-crisp, battery-efficient, expressive SVG companion. 3D WebGL: tactile dimensional mesh. Applies immediately; press Save to keep.</p>
@@ -475,6 +496,7 @@
 
             <div class="card">
               <div class="card-title">Identity</div>
+              <p class="card-desc">The assistant's name, wake label and speaking style.</p>
               <div class="field-grid">
                 <div class="field"><label for="p-name">Assistant name</label><input id="p-name" /></div>
                 <div class="field"><label for="p-wake">Wake word label</label><input id="p-wake" /></div>
@@ -484,11 +506,12 @@
           </div>
 
           <div class="section" id="sec-models">
-            <h3>Models &amp; Connection</h3>
+            <h3>Model</h3>
             <p class="sec-desc">Where Jarvis runs its models and how it connects.</p>
 
             <div class="card">
               <div class="card-title">Model Provider</div>
+              <p class="card-desc">Where replies come from. Cloud keys stay on this PC.</p>
               <div class="field">
                 <label>Provider</label>
                 <div class="seg" id="provider-seg" role="group" aria-label="Model provider">
@@ -498,6 +521,16 @@
                 </div>
                 <p class="hint">Pick a provider and paste its API key &mdash; endpoints are preconfigured. Auto-routing selects the best model per task.</p>
               </div>
+              <div class="field switch-field">
+                <div class="field-text">
+                  <label for="prov-auto-routing">Auto-routing</label>
+                  <p class="hint">Pick the best model per task automatically &mdash; fast for chat, heavy for code &amp; planning, vision for the screen.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="prov-auto-routing" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
               <div class="field prov-field" id="prov-lm-field">
                 <label for="lm-url">Endpoint URL</label><input id="lm-url" />
               </div>
@@ -506,11 +539,19 @@
               </div>
               <div class="field prov-field" id="prov-openai-field" hidden>
                 <label for="prov-openai-key">OpenAI API key</label>
-                <input id="prov-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+                <div class="key-wrap">
+                  <input id="prov-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+                  <button type="button" class="key-reveal" data-target="prov-openai-key" aria-label="Show API key"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+                </div>
+                <p class="hint key-saved" id="prov-openai-saved" hidden>Saved in Windows Credential Manager. Type a new key to replace it. <button type="button" class="link-btn" data-forget-key="openai">Forget key</button></p>
               </div>
               <div class="field prov-field" id="prov-anthropic-field" hidden>
                 <label for="prov-anthropic-key">Anthropic API key</label>
-                <input id="prov-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+                <div class="key-wrap">
+                  <input id="prov-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+                  <button type="button" class="key-reveal" data-target="prov-anthropic-key" aria-label="Show API key"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+                </div>
+                <p class="hint key-saved" id="prov-anthropic-saved" hidden>Saved in Windows Credential Manager. Type a new key to replace it. <button type="button" class="link-btn" data-forget-key="anthropic">Forget key</button></p>
               </div>
               <div class="field test-field">
                 <button id="test" class="small"><svg class="ic"><use href="#i-globe"/></svg>Test connection</button>
@@ -538,11 +579,12 @@
           </div>
 
           <div class="section" id="sec-safety">
-            <h3>Safety &amp; Permissions</h3>
+            <h3>Privacy &amp; Safety</h3>
             <p class="sec-desc">How careful Jarvis should be before it acts.</p>
 
             <div class="card">
               <div class="card-title">Approval Mode</div>
+              <p class="card-desc">How often Jarvis asks before it changes something.</p>
               <div class="field">
                 <label for="safety-mode">Mode</label>
                 <select id="safety-mode">
@@ -562,6 +604,7 @@
 
             <div class="card">
               <div class="card-title">Model Memory (live)</div>
+              <p class="card-desc">Which local models are loaded right now.</p>
               <div id="rm-status" class="rm-status" role="status" aria-live="polite">Asking backend&hellip;</div>
               <p class="hint" id="rm-hint">Models load when a task needs them and unload after they sit idle, so memory stays free.</p>
             </div>
@@ -587,6 +630,7 @@
 
             <div class="card">
               <div class="card-title">Mappings</div>
+              <p class="card-desc">Words dictation should always spell your way.</p>
               <div id="vocab-table" class="vocab-table" role="table">
                 <div class="vocab-head" role="row"><span>Heard as</span><span>Replace with</span><span></span></div>
               </div>
@@ -604,6 +648,7 @@
 
                 <div class="card">
                   <div class="card-title">Recent dictations</div>
+                  <p class="card-desc">What you dictated lately, newest first.</p>
                   <div id="dict-history" class="dict-history"><p class="hint">Loading&hellip;</p></div>
                   <div class="field test-field">
                     <button id="dict-history-refresh" class="small"><svg class="ic"><use href="#i-activity"/></svg>Refresh</button>
@@ -618,6 +663,7 @@
 
                 <div class="card">
                   <div class="card-title">Claude Code</div>
+                  <p class="card-desc">Let Claude Code ask you for approvals through Jarvis.</p>
                   <p class="hint" id="hook-claude-state">Checking&hellip;</p>
                   <div class="field test-field">
                     <button id="hook-claude-install" class="small"><svg class="ic"><use href="#i-plus"/></svg>Install hook</button>
@@ -628,6 +674,7 @@
 
                 <div class="card">
                   <div class="card-title">Antigravity (agy)</div>
+                  <p class="card-desc">Let Antigravity ask you for approvals through Jarvis.</p>
                   <p class="hint" id="hook-agy-state">Checking&hellip;</p>
                   <div class="field test-field">
                     <button id="hook-agy-install" class="small"><svg class="ic"><use href="#i-plus"/></svg>Install hook</button>
@@ -638,12 +685,45 @@
 
                 <div class="card">
                   <div class="card-title">Relay status</div>
+                  <p class="card-desc">Whether the approval relay is up and listening.</p>
                   <p class="hint" id="hook-relay-state">Asking backend&hellip;</p>
                   <p class="hint">Terminal approvals appear as Approval Cards in the chat and on the 3D pet &mdash; Allow once, Deny, or Always allow for session.</p>
                 </div>
               </div>
 
 
+          <div class="section" id="sec-about">
+            <h3>About</h3>
+            <p class="sec-desc">Version, diagnostics and credits.</p>
+
+            <div class="card">
+              <div class="card-title">Jarvis</div>
+              <p class="card-desc">Your local desktop assistant.</p>
+              <dl class="about-facts">
+                <dt>Version</dt><dd id="about-version">&hellip;</dd>
+                <dt>Backend</dt><dd id="about-backend">Checking&hellip;</dd>
+              </dl>
+              <div class="field test-field">
+                <button id="quit-app" class="small" type="button">Quit Jarvis</button>
+              </div>
+              <p class="hint">Ends the window, the companion and the background service.</p>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Diagnostics</div>
+              <p class="card-desc">One zip with logs, settings (API keys removed) and model state, for a bug report.</p>
+              <div class="field test-field">
+                <button id="diag-export" class="small" type="button"><svg class="ic"><use href="#i-folder"/></svg>Export diagnostics</button>
+                <button id="diag-reveal" class="small" type="button" hidden>Show in folder</button>
+              </div>
+              <p class="hint" id="diag-status" role="status" aria-live="polite"></p>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Credits</div>
+              <p class="card-desc">The island and design tokens adapt ideas from coucou (MIT). See ATTRIBUTIONS.md.</p>
+            </div>
+          </div>
           <div id="settings-actions">
             <button id="save" class="primary" disabled>Save changes</button>
             <div id="settings-note" aria-live="polite">Loading...</div>
@@ -662,21 +742,21 @@
     <div class="ob-backdrop"></div>
     <div class="ob-panel">
       <div class="ob-head">
-        <svg class="ob-logo" aria-hidden="true"><use href="#i-mochi"/></svg>
+        <svg class="ob-logo" aria-hidden="true"><use href="#i-pip"/></svg>
         <h2>Welcome to Jarvis</h2>
         <p class="sec-desc">Three quick checks and your companion is ready.</p>
       </div>
       <ol class="ob-stepbar" id="ob-stepbar">
-        <li data-step="1" class="on"><b>1</b>Meet your companion</li>
-        <li data-step="2"><b>2</b>Microphone check</li>
-        <li data-step="3"><b>3</b>Model connection</li>
+        <li data-step="1" class="on"><b>1</b>Meet Pip</li>
+        <li data-step="2"><b>2</b>Microphone</li>
+        <li data-step="3"><b>3</b>Model</li>
       </ol>
       <section class="ob-step" id="ob-step-1">
-        <h3>Step 1: Meet your companion</h3>
-        <p class="sec-desc">Pick how Mochi renders on your desktop &mdash; switchable any time in Settings.</p>
+        <h3>Meet Pip</h3>
+        <p class="sec-desc">Pick how Pip appears on your desktop &mdash; switchable any time in Settings.</p>
         <div class="ob-choices" id="ob-choices">
           <button type="button" class="ob-choice active" data-render="2d">
-            <span class="ob-choice-title">2D Vector Mochi</span>
+            <span class="ob-choice-title">2D Vector Pip</span>
             <span class="ob-choice-sub">Crisp, light, expressive</span>
           </button>
           <button type="button" class="ob-choice" data-render="3d">
@@ -686,7 +766,7 @@
         </div>
       </section>
       <section class="ob-step" id="ob-step-2" hidden>
-        <h3>Step 2: Microphone &amp; audio check</h3>
+        <h3>Microphone</h3>
         <p class="sec-desc">Press Test and say &ldquo;Hey Jarvis&rdquo; &mdash; the meter should pulse with your voice.</p>
         <div class="ob-row">
           <button id="ob-mic-test" class="small" type="button"><svg class="ic"><use href="#i-mic"/></svg>Test microphone</button>
@@ -695,7 +775,7 @@
         <div class="mic-meter"><div id="ob-level"></div></div>
       </section>
       <section class="ob-step" id="ob-step-3" hidden>
-        <h3>Step 3: Model connection</h3>
+        <h3>Model</h3>
         <p class="sec-desc">Choose where replies come from &mdash; local LM Studio, OpenAI, or Anthropic Claude. Keys stay on this PC.</p>
         <div class="ob-row">
           <div class="seg" id="ob-provider-seg" role="group" aria-label="Model provider">
@@ -710,11 +790,17 @@
         </div>
         <div class="field ob-prov-field" id="ob-openai-field" hidden>
           <label for="ob-openai-key">OpenAI API key</label>
-          <input id="ob-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+          <div class="key-wrap">
+            <input id="ob-openai-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+            <button type="button" class="key-reveal" data-target="ob-openai-key" aria-label="Show API key"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+          </div>
         </div>
         <div class="field ob-prov-field" id="ob-anthropic-field" hidden>
           <label for="ob-anthropic-key">Anthropic API key</label>
-          <input id="ob-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+          <div class="key-wrap">
+            <input id="ob-anthropic-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+            <button type="button" class="key-reveal" data-target="ob-anthropic-key" aria-label="Show API key"><svg class="ic" aria-hidden="true"><use href="#i-eye"/></svg></button>
+          </div>
         </div>
         <div class="ob-row">
           <button id="ob-lm-test" class="small" type="button"><svg class="ic"><use href="#i-globe"/></svg>Check connection</button>
@@ -725,12 +811,13 @@
       <div class="ob-foot">
         <button id="ob-back" class="ghost-btn" type="button" hidden>Back</button>
         <button id="ob-next" class="primary" type="button">Next</button>
-        <button id="ob-finish" class="primary" type="button" hidden>Start exploring Jarvis &rarr;</button>
+        <button id="ob-finish" class="primary" type="button" hidden>Start using Jarvis</button>
       </div>
     </div>
   </div>
 
   <script src="ws.js"></script>
+  <script src="approval_text.js"></script>
   <script src="chat.js"></script>
   <script src="activity.js"></script>
   <script src="memory.js"></script>

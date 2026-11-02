@@ -3,9 +3,10 @@
 # State -> window mapping:
 #   pet_idle | pet_hover | pet_speech | pet_approval  -> Jarvis Pet
 #   dock_collapsed | dock_expanded                    -> Jarvis Dynamic Island
-#   main_app_expanded                                 -> Jarvis
-# (main_app_collapsed is captured by scripts/inspect_states.py after a real
-#  coordinate click on the toggle, then this script in collapsed state.)
+#   main_app_expanded | main_app_menu                 -> Jarvis
+#   main_activity | main_memory | main_settings       -> Jarvis
+# (the menu and pane states are reached by scripts/inspect_states.py with real
+#  coordinate clicks on the header, then captured by this script.)
 #
 # Usage: .\inspect_ui.ps1 -State pet_idle [-OutputDir <dir>]
 param(
@@ -30,6 +31,7 @@ public class InspectWin {
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr h);
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
     [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
@@ -58,10 +60,31 @@ $StateMap = @{
     "pet_hover"        = @("Jarvis Pet", "pet_hover.png")
     "pet_speech"       = @("Jarvis Pet", "pet_speech.png")
     "pet_approval"     = @("Jarvis Pet", "pet_approval.png")
+    "pet3d_idle"       = @("Jarvis Pet", "pet3d_idle.png")
+    "pet3d_hover"      = @("Jarvis Pet", "pet3d_hover.png")
+    "pet3d_speech"     = @("Jarvis Pet", "pet3d_speech.png")
+    "main_hero"        = @("Jarvis", "main_hero.png")
     "dock_collapsed"   = @("Jarvis Dynamic Island", "dock_collapsed.png")
     "dock_expanded"    = @("Jarvis Dynamic Island", "dock_expanded.png")
+    # spec 34 section 3: one capture per island state
+    "island_hidden"    = @("Jarvis Dynamic Island", "island_hidden.png")
+    "island_overview"  = @("Jarvis Dynamic Island", "island_overview.png")
+    "island_approval"  = @("Jarvis Dynamic Island", "island_approval.png")
+    "island_question"  = @("Jarvis Dynamic Island", "island_question.png")
+    "island_result"    = @("Jarvis Dynamic Island", "island_result.png")
+    "island_error"     = @("Jarvis Dynamic Island", "island_error.png")
+    "island_chat"      = @("Jarvis Dynamic Island", "island_chat.png")
+    "island_drop"      = @("Jarvis Dynamic Island", "island_drop.png")
     "main_app_expanded" = @("Jarvis", "main_app_expanded.png")
-    "main_app_collapsed" = @("Jarvis", "main_app_collapsed.png")
+    # spec 34: the sidebar (and its collapsed state) is gone; the header "+"
+    # menu and each pane get their own capture instead
+    "main_app_menu"     = @("Jarvis", "main_app_menu.png")
+    "main_activity"     = @("Jarvis", "main_activity.png")
+    "main_memory"       = @("Jarvis", "main_memory.png")
+    "main_settings"     = @("Jarvis", "main_settings.png")
+    "main_onboarding"   = @("Jarvis", "main_onboarding.png")
+    "main_about"        = @("Jarvis", "main_about.png")
+    "main_offline"      = @("Jarvis", "main_offline.png")
 }
 
 if (-not $StateMap.ContainsKey($State)) {
@@ -82,6 +105,14 @@ if ($hwnd -eq [IntPtr]::Zero) {
 }
 
 [void][InspectWin]::SetForegroundWindow($hwnd)
+if ($titles[0] -eq "Jarvis") {
+    # SetForegroundWindow is refused when this shell isn't foreground, so the
+    # main window could stay occluded. A TOPMOST/NOTOPMOST round trip raises it
+    # to the top of the normal z-band without needing focus rights.
+    # (0x0001 NOSIZE | 0x0002 NOMOVE | 0x0040 SHOWWINDOW)
+    [void][InspectWin]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x43)
+    [void][InspectWin]::SetWindowPos($hwnd, [IntPtr](-2), 0, 0, 0, 0, 0x43)
+}
 Start-Sleep -Milliseconds 350
 
 $r = [InspectWin]::Rect($hwnd)

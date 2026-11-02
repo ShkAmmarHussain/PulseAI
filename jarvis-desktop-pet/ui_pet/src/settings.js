@@ -128,6 +128,43 @@ let provTestT = null;
   });
 });
 
+// eye toggle for API key fields (settings + onboarding share this document)
+document.addEventListener("click", (e) => {
+  const btn = e.target && e.target.closest ? e.target.closest(".key-reveal") : null;
+  if (!btn) return;
+  const inp = document.getElementById(btn.getAttribute("data-target"));
+  if (!inp) return;
+  const showing = inp.type === "text";
+  inp.type = showing ? "password" : "text";
+  btn.classList.toggle("on", !showing);
+  btn.setAttribute("aria-label", showing ? "Show API key" : "Hide API key");
+  inp.focus();
+});
+
+// cloud keys live in Windows Credential Manager; config.yaml only keeps a ref
+const forgetKeys = new Set();
+function showKeySaved(provider, saved) {
+  const hint = document.getElementById("prov-" + provider + "-saved");
+  const inp = document.getElementById("prov-" + provider + "-key");
+  if (hint) {
+    hint.hidden = !saved;
+    if (saved) hint.innerHTML = 'Saved in Windows Credential Manager. Type a new key to replace it. ' +
+      '<button type="button" class="link-btn" data-forget-key="' + provider + '">Forget key</button>';
+  }
+  if (inp) inp.placeholder = saved ? "Saved •••••• (type to replace)" : (provider === "openai" ? "sk-..." : "sk-ant-...");
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest && e.target.closest("[data-forget-key]");
+  if (b) {
+    const p = b.dataset.forgetKey;
+    forgetKeys.add(p);
+    showKeySaved(p, false);
+    const hint = document.getElementById("prov-" + p + "-saved");
+    if (hint) { hint.hidden = false; hint.textContent = "The saved key will be removed when you press Save."; }
+    setDirty(true);
+  }
+});
+
 function fill(s) {
   current = s;
   const cfg = s.config || {};
@@ -140,8 +177,12 @@ function fill(s) {
   const prov = llm.provider === "openai" || llm.provider === "anthropic" ? llm.provider : "lm_studio";
   setProviderSeg(prov);
   showProvFields(prov);
+  const arCb = document.getElementById("prov-auto-routing");
+  if (arCb) arCb.checked = llm.auto_routing !== false;
   setv("prov-openai-key", ((llm.openai || {}).api_key) || "");
   setv("prov-anthropic-key", ((llm.anthropic || {}).api_key) || "");
+  forgetKeys.clear();
+  ["openai", "anthropic"].forEach((p) => showKeySaved(p, !!((llm[p] || {}).api_key_saved)));
 
   const ar = s.agents && s.agents.agent_roles ? s.agents.agent_roles : {};
   setv("m-orchestrator", (ar.orchestrator || {}).model_id);
@@ -186,6 +227,9 @@ function fill(s) {
   setCompanionSeg(((cfg.runtime || {}).companion) === "dock" ? "dock" : "pet");
   setRenderSeg(((cfg.runtime || {}).pet_render_mode) === "3d" ? "3d" : "2d");
   setv("pet-colorway", (cfg.runtime || {}).pet_colorway || "porcelain");
+  const ctt = document.getElementById("close-to-tray");
+  if (ctt) ctt.checked = (cfg.runtime || {}).close_to_tray !== false;
+  applyCloseToTray((cfg.runtime || {}).close_to_tray !== false);
   note.textContent = "Loaded. Edit and press Save.";
   note.classList.remove("ok");
   setDirty(false);
@@ -205,9 +249,12 @@ function collect() {
   s.config.lm_studio.timeout_ms = (Number(val("lm-timeout")) || 30) * 1000;
   s.config.llm = s.config.llm || {};
   s.config.llm.provider = selectedProvider();
-  if (typeof s.config.llm.auto_routing === "undefined") s.config.llm.auto_routing = true;
+  const arCb = document.getElementById("prov-auto-routing");
+  s.config.llm.auto_routing = arCb ? !!arCb.checked : true;
   s.config.llm.openai = Object.assign({}, s.config.llm.openai || {}, { api_key: val("prov-openai-key").trim() });
   s.config.llm.anthropic = Object.assign({}, s.config.llm.anthropic || {}, { api_key: val("prov-anthropic-key").trim() });
+  // an empty field keeps the stored key; Forget key clears it (spec 34 section 7.6)
+  forgetKeys.forEach((p) => { if (!s.config.llm[p].api_key) s.config.llm[p].api_key_clear = true; });
   s.config.resource_manager = s.config.resource_manager || {};
   s.config.resource_manager.vision_timeout_ms = (Number(val("rm-vision-timeout")) || 20) * 1000;
   s.config.resource_manager.unload_idle_ms = (Number(val("rm-unload-idle")) || 60) * 1000;
@@ -216,6 +263,8 @@ function collect() {
   s.config.runtime.companion = selectedCompanion();
   s.config.runtime.pet_render_mode = selectedRender();
   s.config.runtime.pet_colorway = val("pet-colorway") || "porcelain";
+  const cttBox = document.getElementById("close-to-tray");
+  if (cttBox) s.config.runtime.close_to_tray = !!cttBox.checked;
 
   s.agents = s.agents || {};
   const ar = s.agents.agent_roles = s.agents.agent_roles || {};
@@ -717,3 +766,80 @@ for (const t of ['claude', 'agy']) {
   if (ib) ib.addEventListener('click', () => Jarvis.hookInstall(t));
   if (ub) ub.addEventListener('click', () => Jarvis.hookUninstall(t));
 }
+
+// ---- About + diagnostics (spec 34 section 7.5) ----
+// tauri.conf.json "package.version" is the single version source; the mirror
+// tabs have no Tauri and say so instead of inventing a number.
+let appVersion = "";
+(async function loadVersion() {
+  const el = document.getElementById("about-version");
+  try {
+    const ta = window.__TAURI__;
+    if (ta && ta.app && ta.app.getVersion) appVersion = await ta.app.getVersion();
+  } catch (e) { /* not in the app */ }
+  if (el) el.textContent = appVersion ? "v" + appVersion : "Development build";
+  window.APP_VERSION = appVersion;
+})();
+function setBackendFact(on) {
+  const el = document.getElementById("about-backend");
+  if (el) el.textContent = on ? "Connected on 127.0.0.1:8765" : "Not running \u2014 reconnecting";
+}
+document.addEventListener("jarvis:connected", () => setBackendFact(true));
+document.addEventListener("jarvis:disconnected", () => setBackendFact(false));
+
+const diagBtn = document.getElementById("diag-export");
+const diagReveal = document.getElementById("diag-reveal");
+const diagStatus = document.getElementById("diag-status");
+let diagPath = "";
+if (diagBtn) diagBtn.addEventListener("click", () => {
+  diagBtn.disabled = true;
+  if (diagStatus) diagStatus.textContent = "Collecting logs and settings\u2026";
+  Jarvis.diagnosticsExport(appVersion || "dev");
+});
+Jarvis.on("diagnostics.export", (d) => {
+  const p = d.payload || {};
+  if (diagBtn) diagBtn.disabled = false;
+  diagPath = p.ok ? p.path : "";
+  if (diagReveal) diagReveal.hidden = !diagPath;
+  if (diagStatus) diagStatus.textContent = p.ok ? "Saved to " + p.path : "Couldn\u2019t export: " + (p.error || "unknown error");
+});
+if (diagReveal) diagReveal.addEventListener("click", () => { if (diagPath) Jarvis.diagnosticsReveal(diagPath); });
+
+// ---- close behaviour + Quit (docs/35 L5/L6) ----
+// Rust keeps the flag; the window's close button asks Rust to hide or quit.
+function applyCloseToTray(on) {
+  const ta = window.__TAURI__;
+  if (ta && ta.tauri && ta.tauri.invoke) ta.tauri.invoke("set_close_to_tray", { enabled: !!on });
+}
+const cttToggle = document.getElementById("close-to-tray");
+if (cttToggle) cttToggle.addEventListener("change", () => applyCloseToTray(cttToggle.checked));
+const quitBtn = document.getElementById("quit-app");
+if (quitBtn) quitBtn.addEventListener("click", () => {
+  const ta = window.__TAURI__;
+  if (ta && ta.tauri && ta.tauri.invoke) ta.tauri.invoke("quit");
+});
+// ---- narrow window: the section strip scrolls sideways (docs/35 visual pass) ----
+// fade whichever edge hides more tabs, let the mouse wheel scroll it, and
+// keep the active section in view when picked
+(function sectionStripScroll() {
+  const strip = document.getElementById("settings-index");
+  if (!strip) return;
+  const update = () => {
+    const scrollable = strip.scrollWidth > strip.clientWidth + 2;
+    strip.classList.toggle("more-left", scrollable && strip.scrollLeft > 2);
+    strip.classList.toggle("more-right", scrollable && strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 2);
+  };
+  strip.addEventListener("scroll", update, { passive: true });
+  window.addEventListener("resize", update);
+  strip.addEventListener("wheel", (e) => {
+    if (strip.scrollWidth <= strip.clientWidth || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+    strip.scrollLeft += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
+  strip.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-sec]");
+    if (b && strip.scrollWidth > strip.clientWidth) b.scrollIntoView({ block: "nearest", inline: "nearest" });
+    setTimeout(update, 250);
+  });
+  update();
+})();

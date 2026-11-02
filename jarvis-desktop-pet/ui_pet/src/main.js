@@ -1,4 +1,4 @@
-// Shell: navigation, sidebar collapse, pet visibility (single source of
+// Shell: header tab navigation, "+" menu, pet visibility (single source of
 // truth for pet state stays the backend config).
 
 const PANES = ["chat", "activity", "memory", "settings"];
@@ -7,6 +7,8 @@ function showTab(name) {
   if (PANES.indexOf(name) < 0) name = "chat";
   document.querySelectorAll(".nav-item").forEach((t) => {
     t.classList.toggle("active", t.dataset.tab === name);
+    if (t.dataset.tab === name) t.setAttribute("aria-current", "page");
+    else t.removeAttribute("aria-current");
   });
   PANES.forEach((n) => {
     const el = document.getElementById("pane-" + n);
@@ -27,41 +29,62 @@ document.querySelectorAll(".nav-item").forEach((t) => {
 if (location.hash === "#settings") showTab("settings");
 else if (location.hash === "#activity") showTab("activity");
 
-// ---- sidebar collapse (manual override wins; auto below 1100px) ----
-const appEl = document.getElementById("app");
-const sbToggle = document.getElementById("sb-toggle");
-let sbManual = null;
-function sbApply() {
-  if (!appEl) return;
-  const collapsed = sbManual === null ? window.innerWidth < 1100 : sbManual;
-  appEl.classList.toggle("sb-collapsed", collapsed);
-}
-if (sbToggle) {
-  sbToggle.onclick = () => {
-    sbManual = !appEl.classList.contains("sb-collapsed");
-    sbApply();
-  };
-}
-window.addEventListener("resize", () => {
-  if (sbManual === null) sbApply();
-});
-sbApply();
-
-// ---- header shortcuts ----
-const topSettings = document.getElementById("top-settings");
-if (topSettings) topSettings.onclick = () => showTab("settings");
-
+// ---- header "+" menu (spec 34 section 4: pet toggle + quick actions moved
+// here when the sidebar was removed) ----
 const qaBtn = document.getElementById("quick-actions-btn");
-if (qaBtn) {
-  qaBtn.onclick = () => {
-    showTab("chat");
-    const chip = document.querySelector("#empty-state .chip");
-    if (chip) chip.focus();
-    else {
-      const input = document.getElementById("chat-input");
-      if (input) input.focus();
-    }
+const plusMenu = document.getElementById("plus-menu");
+
+function setPlusMenu(open) {
+  if (!qaBtn || !plusMenu) return;
+  plusMenu.hidden = !open;
+  qaBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  qaBtn.classList.toggle("on", open);
+  if (open) {
+    const first = plusMenu.querySelector("input, .pm-item");
+    if (first) first.focus();
+  }
+}
+
+function focusQuickActions() {
+  showTab("chat");
+  const chip = document.querySelector("#empty-state .chip");
+  if (chip) chip.focus();
+  else {
+    const input = document.getElementById("chat-input");
+    if (input) input.focus();
+  }
+}
+
+const PLUS_ACTIONS = {
+  quick: focusQuickActions,
+  palette: () => window.openCmdPalette && window.openCmdPalette(),
+  dictate: () => Jarvis.dictation("toggle"),
+  settings: () => showTab("settings"),
+};
+
+if (qaBtn && plusMenu) {
+  qaBtn.onclick = (e) => {
+    e.stopPropagation();
+    setPlusMenu(plusMenu.hidden);
   };
+  plusMenu.querySelectorAll(".pm-item").forEach((b) => {
+    b.onclick = () => {
+      setPlusMenu(false);
+      const fn = PLUS_ACTIONS[b.dataset.act];
+      if (fn) fn();
+    };
+  });
+  // the pet switch lives inside the menu; clicks there must not close it
+  plusMenu.addEventListener("click", (e) => e.stopPropagation());
+  document.addEventListener("click", () => {
+    if (!plusMenu.hidden) setPlusMenu(false);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !plusMenu.hidden) {
+      setPlusMenu(false);
+      qaBtn.focus();
+    }
+  });
 }
 
 // ---- pet visibility ----
@@ -94,7 +117,21 @@ window.onSettingsLoaded = (s) => {
     applyPet(rt.pet_enabled, false);
   }
   applyCompanion(rt.companion || "pet");
+  updateModelBadge((s.config && s.config.llm) || {});
+  if (window.setGreeting) window.setGreeting(s.personality || null);
 };
+
+// header badge follows the selected provider (was hardcoded "Local Model")
+const PROVIDER_LABELS = { lm_studio: "Local Model", openai: "OpenAI", anthropic: "Claude" };
+function updateModelBadge(llm) {
+  const badge = document.querySelector(".model-badge");
+  if (!badge) return;
+  const label = PROVIDER_LABELS[llm.provider] || PROVIDER_LABELS.lm_studio;
+  const dot = badge.querySelector(".core-dot");
+  badge.textContent = " " + label + (llm.auto_routing === false ? "" : " \u00b7 Auto");
+  if (dot) badge.prepend(dot);
+  badge.title = llm.auto_routing === false ? "Fixed model per agent" : "Auto-routing picks the model per task";
+}
 
 // ---- companion presentation: floating pet vs top-edge dock (spec 29, section 5.1) ----
 let companionMode = null;

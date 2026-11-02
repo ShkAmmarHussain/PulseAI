@@ -313,7 +313,7 @@ The pet is never a static sprite. It transitions between dynamic behavioral stat
 Coucou's seasonal hats and outfits gave it massive personality. Jarvis introduces an optional **Accessory & Colorway System**:
 - **Colorways (Shader Themes):**
   - `Jarvis Obsidian`: Matte stealth black body with electric cyan internal illumination and neon highlights.
-  - `Porcelain Mochi`: Creamy matte white ceramic body with pastel lavender accents and soft pink cheek glows.
+  - `Porcelain Pip`: Creamy matte white ceramic body with pastel lavender accents and soft pink cheek glows.
   - `Cyberpunk 2077`: Deep dark violet body with vibrant solar-amber and hot-magenta neon trims.
   - `Titanium Frosted Glass`: Semi-translucent frosted glass body with optical refractive caustics.
 - **Accessories (Toggable in Settings):**

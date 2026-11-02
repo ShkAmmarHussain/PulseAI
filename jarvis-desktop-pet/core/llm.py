@@ -4,6 +4,8 @@ import logging
 import httpx
 from openai import OpenAI
 
+from core import credentials
+
 logger = logging.getLogger("llm")
 
 DEFAULT_BASE_URL = "http://localhost:1234/v1"
@@ -27,6 +29,9 @@ def get_provider(cfg: dict) -> str:
 def get_api_key(cfg: dict, provider: str) -> str:
     llm_cfg = get_llm_cfg(cfg)
     sec = llm_cfg.get(provider) or {}
+    if provider in credentials.PROVIDERS:
+        # inline key first, then the Credential Manager ref (spec 34 section 7.6)
+        return credentials.resolve(sec)
     key = str(sec.get("api_key") or "").strip()
     if not key and provider == "lm_studio":
         lm = ((cfg or {}).get("config") or {}).get("lm_studio") or {}

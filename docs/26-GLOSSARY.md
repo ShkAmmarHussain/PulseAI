@@ -26,7 +26,7 @@
 
 ## N–R
 
-- **Mochi** — The mascot: creamy dumpling with bunny ears (hero SVG in `index.html`, 2D engine `pet2d.js`, 3D `pet3d.js`).
+- **Pip** — The companion character (spec 34 section 1.1): a cream egg-shaped body with a single antenna-sprout and a warm amber core light, no ears (logo symbol `#i-pip` and hero `.hero-pip` in `index.html`, 2D engine `pet2d.js`, 3D `pet3d.js`, island face in `dock.html`). Formerly "Mochi", renamed because coucou reserves that name and design.
 - **Mood machine** — Pet states: `idle, sleep, listening, thinking, speaking, happy, poked, curious, approval, ingesting, dizzy…` exposed as `data-mood` on `#pet`.
 - **`pet_render_mode`** — `runtime.pet_render_mode: "2d" | "3d"` in `config.yaml`; default `2d`; applied live via `window.setRenderMode(mode, persist)`.
 - **Phonetic vocabulary** — `config/vocabulary.json` whole-word STT replacements (`kubectl` → "cube control") applied by `core/stt.py::apply_vocabulary()`.

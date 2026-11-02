@@ -31,12 +31,14 @@ if (container) {
   scene.add(fillLight);
 
   // ---- continuous-curvature superellipse body (spec 30, section 9.2) ----
-  // n = 2.5 -> soft chubby dumpling matching the 2D hero SVG (NOT a boxy dice)
+  // n = 2.5 -> soft rounded body (NOT a boxy dice); Pip's egg shape comes
+  // from a taper that narrows the upper half (spec 34 section 1.1)
   const SUPER_N = 2.5;
   function sp(w, e) {
     return w < 0 ? -Math.pow(-w, e) : Math.pow(w, e);
   }
-  function superellipsoid(a, b, c, n, su, sv) {
+  function superellipsoid(a, b, c, n, su, sv, taper) {
+    const tp = taper || 0;
     const e = 2 / n;
     const pos = [];
     const uv = [];
@@ -49,7 +51,10 @@ if (container) {
         const v = -Math.PI + (2 * Math.PI * j) / sv;
         const cv = Math.cos(v);
         const sv2 = Math.sin(v);
-        pos.push(a * sp(cu, e) * sp(cv, e), b * sp(sn, e), c * sp(cu, e) * sp(sv2, e));
+        const yn = sp(sn, e);
+        // egg: the crown narrows, the base swells a touch
+        const f = 1 - tp * Math.pow(Math.max(0, yn), 1.6) + 0.12 * tp * Math.max(0, -yn);
+        pos.push(a * sp(cu, e) * sp(cv, e) * f, b * yn, c * sp(cu, e) * sp(sv2, e) * f);
         uv.push(j / sv, i / su);
       }
     }
@@ -113,30 +118,33 @@ if (container) {
     transparent: true,
     opacity: 0.65,
   });
-  const innerEarMat = new THREE.MeshStandardMaterial({
+  // Pip's sprout leaf takes the colorway accent
+  const leafMat = new THREE.MeshStandardMaterial({
     color: 0xfb923c,
     roughness: 0.55,
     metalness: 0.0,
   });
+  // the sprout bud is the signature warm amber light; it follows the core colour
+  const budMat = new THREE.MeshBasicMaterial({ color: 0xf5a524 });
 
   const robot = new THREE.Group();
   scene.add(robot);
 
-  // single-piece squishy "Mochi" body (doc 30 course correction): one seamless
-  // squircle dumpling with soft ear nubs - no antenna, screen face, or torso
+  // Pip (spec 34 section 1.1): one seamless egg-shaped body with a single
+  // antenna-sprout on top and a warm amber core light inside - no ears
   const body = new THREE.Group();
   body.position.y = 0.1;
   robot.add(body);
 
-  const shell = new THREE.Mesh(superellipsoid(1.22, 1.08, 1.05, SUPER_N, 48, 64), shellMat);
+  const shell = new THREE.Mesh(superellipsoid(1.14, 1.24, 1.02, SUPER_N, 48, 64, 0.4), shellMat);
   body.add(shell);
 
   const innerCore = new THREE.Mesh(
-    superellipsoid(0.94, 0.9, 0.86, SUPER_N, 24, 32),
+    superellipsoid(0.86, 1.0, 0.8, SUPER_N, 24, 32, 0.4),
     new THREE.MeshBasicMaterial({
-      color: 0x00f0ff,
+      color: 0xf5a524,
       transparent: true,
-      opacity: 0.12,
+      opacity: 0.2,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     })
@@ -149,7 +157,7 @@ if (container) {
   body.add(innerLight);
 
   // projection surface = the body itself (no separate face panel)
-  const FA = 1.22, FB = 1.08, FC = 1.05, FCZ = 0;
+  const FA = 1.14, FB = 1.24, FC = 1.02, FCZ = 0;
   function faceSurf(dx, dy, dz, out) {
     const l = Math.hypot(dx, dy, dz) || 1;
     const x = dx / l, y = dy / l, z = dz / l;
@@ -162,29 +170,28 @@ if (container) {
     return out;
   }
 
-  // prominent bunny ears: 30% of body width (2*0.43*0.85 = 0.73 of 2.44),
-  // standing proud on the top corners, tilted 14 deg outward like the hero SVG
-  const earGeo = new THREE.SphereGeometry(0.43, 28, 20);
-  const earL = new THREE.Mesh(earGeo, shellMat);
-  const earR = new THREE.Mesh(earGeo, shellMat);
-  earL.position.set(-0.55, 1.12, 0.02);
-  earR.position.set(0.55, 1.12, 0.02);
-  earL.scale.set(0.85, 1.15, 0.65);
-  earR.scale.set(0.85, 1.15, 0.65);
-  earL.rotation.z = 0.244;
-  earR.rotation.z = -0.244;
-  body.add(earL, earR);
-  // warm apricot inner ear cavities (#fb923c, hero SVG opacity 0.8)
-  const innerEarGeo = new THREE.SphereGeometry(0.22, 20, 16);
-  const innerEarL = new THREE.Mesh(innerEarGeo, innerEarMat);
-  const innerEarR = new THREE.Mesh(innerEarGeo, innerEarMat);
-  innerEarL.position.set(-0.52, 1.09, 0.24);
-  innerEarR.position.set(0.52, 1.09, 0.24);
-  innerEarL.scale.set(0.65, 0.95, 0.35);
-  innerEarR.scale.set(0.65, 0.95, 0.35);
-  innerEarL.rotation.z = 0.244;
-  innerEarR.rotation.z = -0.244;
-  body.add(innerEarL, innerEarR);
+  // single antenna-sprout: a curved stem from the crown, a small leaf and a
+  // glowing amber bud that sways with the mood's "ant" energy
+  const sprout = new THREE.Group();
+  sprout.position.set(0, 1.16, 0);
+  sprout.scale.setScalar(1.35);
+  body.add(sprout);
+  const stemCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0.02, 0.22, 0.01),
+    new THREE.Vector3(0.1, 0.42, 0.02),
+    new THREE.Vector3(0.2, 0.55, 0.02),
+  ]);
+  const stem = new THREE.Mesh(new THREE.TubeGeometry(stemCurve, 20, 0.04, 10, false), shellMat);
+  sprout.add(stem);
+  const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 14), leafMat);
+  leaf.position.set(-0.1, 0.3, 0.02);
+  leaf.scale.set(1.0, 0.42, 0.5);
+  leaf.rotation.z = 0.55;
+  sprout.add(leaf);
+  const bud = new THREE.Mesh(new THREE.SphereGeometry(0.11, 20, 16), budMat);
+  bud.position.set(0.21, 0.58, 0.02);
+  sprout.add(bud);
 
   // spherical surface projection helpers for facial elements (spec 29, 5.5.3)
   const _n = new THREE.Vector3();
@@ -395,6 +402,7 @@ if (container) {
     coreCol.setHex(CORE[m] || CORE.idle);
     innerLight.color.copy(coreCol);
     innerCore.material.color.copy(coreCol);
+    budMat.color.copy(coreCol);
     pMat.color.copy(coreCol);
     glowTargetMul = m === "sleep" ? 0.15 : 1; // eco-sleep dims the rim to an ember
   }
@@ -416,7 +424,7 @@ if (container) {
     shellMat.roughness = cw.rough;
     shellMat.opacity = cw.opacity;
     accentMat.color.setHex(cw.accent);
-    innerEarMat.color.setHex(cw.accent);
+    leafMat.color.setHex(cw.accent);
     featureMat.color.setHex(cw.ink || 0x35292a);
     glowMat.color.setHex(cw.glow);
     glowMatDim.color.setHex(cw.glow);
@@ -517,7 +525,7 @@ if (container) {
   const baseDirL = new THREE.Vector3(-0.44, 0.14, 1).normalize();
   const baseDirR = new THREE.Vector3(0.44, 0.14, 1).normalize();
 
-  // adaptive 60 / 10 / 1 FPS render loop (spec 29, section 5.5.8)
+  // adaptive 60 / 10 FPS render loop, paused while hidden (spec 29 section 5.5.8, spec 34 section 7.4)
   let renderBudget = 1000 / 60;
   let renderCount = 0;
   let lastFrameAt = performance.now();
@@ -525,7 +533,10 @@ if (container) {
 
   function frame(now) {
     requestAnimationFrame(frame);
-    const interval = document.hidden ? 1000 : renderBudget;
+    // hidden window: render nothing (spec 34 section 7.4); restart the clock
+    // on return so springs don't integrate the whole gap at once
+    if (document.hidden || window.__petHidden) { lastFrameAt = now; return; }
+    const interval = renderBudget;
     if (now - lastFrameAt < interval) return;
     const rawDt = (now - lastFrameAt) / 1000;
     lastFrameAt = now;
@@ -549,6 +560,9 @@ if (container) {
 
     robot.position.y = Math.sin(t * cur.bobSpeed * 2.1) * 0.06 * cur.bob;
     body.rotation.x = cur.lean + Math.sin(t * 7) * 0.06 * cur.nod;
+    // the sprout sways faster and wider as the mood's antenna energy rises
+    sprout.rotation.z = Math.sin(t * (1.4 + cur.ant * 0.9)) * (0.05 + cur.ant * 0.025);
+    sprout.rotation.x = Math.sin(t * 1.1 + 0.6) * 0.04;
     body.rotation.z = cur.tilt * Math.sin(t * 2.6) * 0.16 + leanS.x * 0.2;
 
     // saccadic gaze target: cursor + preset bias + micro-jitter (section 5.5.3)

@@ -86,9 +86,19 @@ function showApproval(data, cid) {
   pendingApproval = { payload: data.payload || data, cid: cid || data.correlation_id };
   const pp = pendingApproval.payload;
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  let html = esc(pp.message || "Approve?");
-  if (pp.action && pp.action.target) html += '<div class="ac-target">Target: ' + esc(pp.action.target) + "</div>";
-  html += ' <span class="risk">Risk level ' + (pp.risk == null ? "?" : pp.risk) + "/10</span>";
+  // friendly title + risk shown once (UI review item 1); the raw
+  // "Allow this action? (delete_file, risk 9/10)" string is not displayed
+  const AT = window.ApprovalText;
+  const fa = AT ? AT.friendlyAction(pp) : { title: "Run an action" };
+  const band = AT ? AT.riskBand(pp.risk) : { cls: "med", label: "Unknown risk" };
+  const extra = AT ? AT.extraMessage(pp) : esc(pp.message || "");
+  const act = (pp.action && typeof pp.action === "object" && pp.action) || {};
+  const tgt = act.target || act.path || act.url || act.cmd || "";
+  let html = '<div class="ap-title">' + esc(fa.title) + "</div>";
+  html += '<div class="ap-sub"><span class="risk ' + band.cls + '" title="' +
+    (pp.risk == null ? "Risk unknown" : "Risk " + esc(pp.risk) + "/10") + '">' + esc(band.label) + "</span></div>";
+  if (tgt) html += '<div class="ac-target">' + esc(tgt) + "</div>";
+  if (extra) html += '<div class="ap-extra">' + esc(extra) + "</div>";
   if (approvalMsg) approvalMsg.innerHTML = html;
   resetApprovalButtons();
   approval.querySelectorAll(".hook-extra").forEach((b) => b.remove());
@@ -182,7 +192,20 @@ Jarvis.on("ui.chat", (d) => {
     clearTimeout(moodTimer);
   }
 });
-Jarvis.on("ui.approval", (d) => showApproval(d, d.correlation_id));
+// spec 34 section 3: while the island is the companion it owns approvals;
+// the pet card stays as the fallback when the island is off
+// Rust tells the pet when its window is shown or hidden (Tauri v1 leaves
+// document.hidden false); the 2D and 3D renderers pause while hidden
+window.__petHidden = false;
+window.setPetVisible = (v) => {
+  window.__petHidden = !v;
+  document.dispatchEvent(new CustomEvent("pet:visibility", { detail: { visible: !!v } }));
+};let companionMode = "pet";
+window.onCompanionChanged = (mode) => { companionMode = mode === "dock" ? "dock" : "pet"; };
+Jarvis.on("ui.approval", (d) => {
+  if (companionMode === "dock") return;
+  showApproval(d, d.correlation_id);
+});
 Jarvis.on("tool.result", (d) => {
   markActive();
   if (petEl.dataset.mood === "approval") return;
@@ -249,8 +272,16 @@ Jarvis.on("ui.voice_state", (d) => {
 document.addEventListener("jarvis:connected", () => {
   showBubble('Say "Hey Jarvis" or type a message.', 5000);
 });
+let petOnline = false;
+document.addEventListener("jarvis:connected", () => { petOnline = true; });
 document.addEventListener("jarvis:disconnected", () => {
-  showBubble("Reconnecting...", 3000);
+  if (petOnline) showBubble("Lost the backend — reconnecting…", 3000);
+  petOnline = false;
+});
+// a longer outage keeps a quiet countdown in the bubble (spec 34 section 7.2)
+document.addEventListener("jarvis:reconnecting", (e) => {
+  const s = (e.detail || {}).seconds || 0;
+  if (!petOnline && s >= 3) showBubble("Offline — retrying in " + s + "s", 1100);
 });
 
 function tcmd(name) {
@@ -332,6 +363,7 @@ function syncPetSound(d) {
   const cfg = payload.config || {};
   const v = cfg.voice || {};
   petSoundMuted = v.ui_sounds === false;
+  if ((cfg.runtime || {}).companion) companionMode = cfg.runtime.companion === "dock" ? "dock" : "pet";
   // wardrobe/colorway (spec 29, section 5.5.7)
   const cw = (cfg.runtime || {}).pet_colorway || "porcelain";
   if (window.Pet3D && window.Pet3D.applyColorway) window.Pet3D.applyColorway(cw);
