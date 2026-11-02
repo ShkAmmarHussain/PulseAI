@@ -1,6 +1,6 @@
 # 35. Full QA test plan (real Windows build, end to end)
 
-Status: **plan written 2026-11-01; not yet executed.** Results are filled in, with evidence, in §12 once the run happens.
+Status: **executed 2026-11-03 on the installed build; results with evidence in §12.**
 
 ## 1. Why this exists
 
@@ -162,15 +162,141 @@ For Chat (empty and with messages), Activity, Memory, every Settings section, Ab
 
 Each pane gets a screenshot at both sizes: `artifacts/qa35/visual/<pane>-<w>x<h>.png`.
 
-## 12. Results
+## 12. Results (executed 2026-11-03, installed build in `test_install`)
 
-To be filled in during execution. Columns: ID · result (PASS / FAIL → fixed in `<commit>` / N/A with reason) · evidence (screenshot path, process dump, log line).
+Build: `revamp/spec34` + the fixes below, deployed as `test_install\JarvisDesktopPet.exe` with a fresh PyInstaller `jarvis-backend.exe` sidecar. Before the fix, the user's previous build (backed up as `*.bak-20261101`) reproduced the bugs: **B3** a second launch gave 2 UIs and 4 backend processes; **B1** ending the UI left all backend processes and :8765 alive; **B2** the titlebar ✕ called `appWindow.close()`, which destroyed the main window (its CDP target vanished), so every "open chat" path had no window left to show.
 
-Execution order:
-1. Reproduce B1–B3 on the current build and record the evidence.
-2. Root-cause and fix B1–B3.
-3. Run §3–§10 on the rebuilt `test_install`.
-4. Run the §11 visual pass.
-5. Fix every failure.
-6. Re-run the failed cases and the non-mic gates.
-7. Push.
+Fixes: `e767cd7` (single instance on 127.0.0.1:47823; ✕ hides via Rust instead of destroying; Quit/Exit end the whole backend tree with `taskkill /T`; the backend exits when `JARVIS_PARENT_PID` dies; the reopen brings the window to the front), `8dba260` (Settings "Keep running in the tray when closed", About → Quit Jarvis, the close hint goes in the pet bubble or island instead of a toast over the pet), and the visual-pass commit (a scroll fade plus wheel on the narrow Settings strip, and a sticky section list when wide).
+
+Drivers: `scripts/qa35_lifecycle.py` (processes, ports, Win32 window state, physical clicks) and `scripts/qa35_surfaces.py` (physical mouse and `SendInput` keys; CDP :9335 only to read state and rects; `%APPDATA%\JarvisDesktopPet` backed up and restored). Screenshots and the raw `*_results.json` are under `jarvis-desktop-pet/artifacts/qa35/` **on the test PC only**. They are not committed, because they show local chat text, paths and devices.
+
+### 12.1 Lifecycle and the reported bugs (19/19 PASS)
+
+| Case | Result | Evidence | Screenshot |
+|---|---|---|---|
+| L2 launch: one UI, backend sidecar up, :8765 listening | PASS | (['JarvisDesktopPet:16592'], ['jarvis-backend:5028', 'jarvis-backend:21760']) | qa35/L2_launch.png |
+| L3 (B3) second launch: no duplicate UI or backend | PASS | (['JarvisDesktopPet:16592'], ['jarvis-backend:5028', 'jarvis-backend:21760'], ['JarvisDesktopPet:16592'], ['ja |  |
+| L3 second launch: existing main window shown | PASS | {'exists': True, 'visible': True, 'minimized': False, 'foreground': True, 'zoomed': False} |  |
+| L5 close button hides the main window (not destroyed) | PASS | {'exists': True, 'visible': False, 'minimized': False, 'foreground': False, 'zoomed': False} |  |
+| L5 after close: UI + backend keep running (tray mode) | PASS | (['JarvisDesktopPet:16592'], ['jarvis-backend:5028', 'jarvis-backend:21760']) |  |
+| B2 root cause: main webview still alive after close | PASS |  |  |
+| C5 (B2) pet click reopens the chat window on Chat | PASS | ({'exists': True, 'visible': True, 'minimized': False, 'foreground': True, 'zoomed': False}, 'chat') | qa35/C5_pet_click_reopens.png |
+| C6 (B2) pet dock Chat button reopens chat | PASS | {'exists': True, 'visible': True, 'minimized': False, 'foreground': True, 'zoomed': False} |  |
+| C7 pet dock Settings opens Settings | PASS | ({'exists': True, 'visible': True, 'minimized': False, 'foreground': True, 'zoomed': False}, 'settings') |  |
+| L4 (B3) launch while closed to tray: shows existing window, no duplicate | PASS | ({'exists': True, 'visible': True, 'minimized': False, 'foreground': True, 'zoomed': False}, ['JarvisDesktopPe |  |
+| L10 minimize button minimizes | PASS | {'exists': True, 'visible': True, 'minimized': True, 'foreground': False, 'zoomed': False} |  |
+| C5 (B2) pet click restores a minimized window | PASS | {'exists': True, 'visible': True, 'minimized': False, 'foreground': True, 'zoomed': False} | qa35/C5_pet_click_reopens.png |
+| L10 maximize then restore | PASS | (True, False) |  |
+| C8 (B2) island Workspace button reopens chat | PASS | {'exists': True, 'visible': True, 'minimized': False, 'foreground': True, 'zoomed': False} |  |
+| L5b close with 'keep running in tray' off quits UI + backend | PASS | ([], []) |  |
+| L6 (B1) Quit ends the UI and every backend process, :8765 freed | PASS | ([], []) |  |
+| L8 UI killed -> backend exits on its own (no orphan) | PASS | ([], []) |  |
+| L11 --hidden launch: main hidden, pet shown, one UI | PASS | ({'exists': True, 'visible': False, 'minimized': False, 'foreground': False, 'zoomed': False}, ['JarvisDesktop |  |
+| L9 backend crash -> offline banner with countdown | PASS | {"b":true,"t":"Reconnecting in 2s…"} | qa35/L9_backend_down.png |
+
+### 12.2 Surfaces, keyboard and visual pass (84 PASS, 0 FAIL, 4 N/A)
+
+| Case | Result | Evidence | Screenshot |
+|---|---|---|---|
+| O1 onboarding step 1 is 'Meet Pip' | PASS | Meet Pip | qa35/O1_meet_pip.png |
+| O2 Next goes to Microphone | PASS | 2 | qa35/O2_microphone.png |
+| O3 Next goes to Model | PASS | 3 | qa35/O3_model.png |
+| O3 Back returns to step 2 | PASS | 2 | qa35/O3_model.png |
+| H tab activity switches pane + aria-current | PASS | ('activity', True) |  |
+| H tab memory switches pane + aria-current | PASS | ('memory', True) |  |
+| H tab settings switches pane + aria-current | PASS | ('settings', True) |  |
+| H tab chat switches pane + aria-current | PASS | ('chat', True) |  |
+| H9 + menu opens, Esc closes | PASS | (True, True) |  |
+| H9 + menu Settings item opens Settings | PASS |  |  |
+| H9 + menu pet switch hides then shows the pet | PASS | (True, True) |  |
+| H7 command palette opens focused, Esc closes | PASS | ('cmd-palette-input', True) |  |
+| H6 provider pill shows provider | PASS |  Local Model · Auto |  |
+| CH1 empty state with Pip hero on a fresh start | PASS | True | qa35/CH1_empty_state.png |
+| CH2 chip 1 prefills composer (not sent) | PASS | Help me open an app  |  |
+| CH2 chip 2 prefills composer (not sent) | PASS | Help me find a file on this PC  |  |
+| CH2 chip 3 prefills composer (not sent) | PASS | Summarize what is on my screen  |  |
+| CH2 chip 4 prefills composer (not sent) | PASS | Run this routine for me:  |  |
+| CH3 Shift+Enter makes a new line | PASS | 'hello pip\nsecond line' |  |
+| CH3 Enter on empty composer sends nothing | PASS | 0 |  |
+| CH3 Enter sends the message | PASS | 1 |  |
+| CH4 assistant reply rendered | PASS | 2 | qa35/CH4_reply.png |
+| CH5 approval card appears in chat | PASS | Delete qa35_probe.txt Jarvis wants to do this · High risk qa35_probe.txt Nothing happens on your computer unti | qa35/CH5_approval_card.png |
+| CH5 approval card has no raw tool names | PASS | Delete qa35_probe.txt Jarvis wants to do this · High risk qa35_probe.txt Nothing happens on your computer unti | qa35/CH5_approval_card.png |
+| CH5 Deny keeps the file | PASS | True | qa35/CH5_approval_card.png |
+| A1 activity has task cards | PASS | TODAY Jarvis replied Done 03:53 03:53 Jarvis replied Action denied. No changes made. delete the file qa35_prob | qa35/A1_activity.png |
+| A1 no raw tool names in Activity | PASS | [] | qa35/A1_activity.png |
+| A2 timer pill with countdown appears | PASS | 1 | qa35/A2_timer.png |
+| A2 Cancel removes the timer | PASS | (1, 0) | qa35/A2_timer.png |
+| A3 Clear empties Activity | PASS | No activity yet  Actions Jarvis takes — requests, approvals, completed work — wi |  |
+| M2 Add Fact saves a fact | PASS | True |  |
+| M1 search filters live | PASS | 1 |  |
+| M3 inline edit saves with Enter and marks edited | PASS | qa35 favourite colour is amber / 03:54 AM · edited | qa35/M3_memory_edit.png |
+| M4 Forget removes, Undo restores | PASS | (0, 1) |  |
+| M1 category chips switch | PASS | all |  |
+| M5 Clear all | N/A | not clicked: would wipe the user's real memories |  |
+| S1 sec-models shows only its section | PASS | ['sec-models'] |  |
+| S1 sec-voice shows only its section | PASS | ['sec-voice'] |  |
+| S1 sec-assistant shows only its section | PASS | ['sec-assistant'] |  |
+| S1 sec-safety shows only its section | PASS | ['sec-safety'] |  |
+| S1 sec-performance shows only its section | PASS | ['sec-performance'] |  |
+| S1 sec-dictionary shows only its section | PASS | ['sec-dictionary'] |  |
+| S1 sec-history shows only its section | PASS | ['sec-history'] |  |
+| S1 sec-integrations shows only its section | PASS | ['sec-integrations'] |  |
+| S1 sec-about shows only its section | PASS | ['sec-about'] |  |
+| S2 provider seg openai | PASS | openai | qa35/S2_model.png |
+| S2 provider seg anthropic | PASS | anthropic | qa35/S2_model.png |
+| S2 provider seg lm_studio | PASS | lm_studio | qa35/S2_model.png |
+| S2 key reveal toggles visibility | PASS | ('password', 'text') | qa35/S2_model.png |
+| S2 Test connection shows a result card | PASS | LM Studio connection failed Connection error. | qa35/S2_model.png |
+| S4 companion seg switches pet <-> island live | PASS | (True, True) |  |
+| S4 render seg 3D then 2D applies to the pet | PASS | (True, True) |  |
+| S10 Save enables when dirty and saves | PASS | (True, False, 'Saved.') |  |
+| S7 dictionary Add row | PASS | (4, 5) |  |
+| S8 history refresh clickable | PASS |  |  |
+| S9 Integrations install/remove | N/A | not clicked: edits the user's real ~/.claude + agy configs; hook_e2e covers it with backups |  |
+| S3 wake test / mic test | N/A | needs a live microphone |  |
+| AB1 About shows the version | PASS | v0.1.0 | qa35/AB_about.png |
+| AB2 Export diagnostics writes a zip | PASS | Saved to %APPDATA%\JarvisDesktopPet\diagnostics\pulseai-diagnostics-20261103-035541.zip | qa35/AB_about.png |
+| K3 Tab moves focus with a visible ring | PASS | ('mic', 'solid 2px') |  |
+| P4 right-click menu | N/A | not implemented in this build (spec 34 section 5 lists it as Phase 4+ pet simplification) |  |
+| I1 hover expands the island | PASS | True |  |
+| I2 island Chat tab shows the chat card | PASS | chat |  |
+| I5 island inline chat sends | PASS | set a timer for 9 minutes Timer set for 9 minutes timer. hi from the island | qa35/I5_island_chat.png |
+| V overflow-free chat-1100x760 | PASS | False | qa35/visual/chat-1100x760.png |
+| V overflow-free activity-1100x760 | PASS | False | qa35/visual/activity-1100x760.png |
+| V overflow-free memory-1100x760 | PASS | False | qa35/visual/memory-1100x760.png |
+| V overflow-free settings-sec-models-1100x760 | PASS | False | qa35/visual/settings-sec-models-1100x760.png |
+| V overflow-free settings-sec-voice-1100x760 | PASS | False | qa35/visual/settings-sec-voice-1100x760.png |
+| V overflow-free settings-sec-assistant-1100x760 | PASS | False | qa35/visual/settings-sec-assistant-1100x760.png |
+| V overflow-free settings-sec-safety-1100x760 | PASS | False | qa35/visual/settings-sec-safety-1100x760.png |
+| V overflow-free settings-sec-performance-1100x760 | PASS | False | qa35/visual/settings-sec-performance-1100x760.png |
+| V overflow-free settings-sec-dictionary-1100x760 | PASS | False | qa35/visual/settings-sec-dictionary-1100x760.png |
+| V overflow-free settings-sec-history-1100x760 | PASS | False | qa35/visual/settings-sec-history-1100x760.png |
+| V overflow-free settings-sec-integrations-1100x760 | PASS | False | qa35/visual/settings-sec-integrations-1100x760.png |
+| V overflow-free settings-sec-about-1100x760 | PASS | False | qa35/visual/settings-sec-about-1100x760.png |
+| V overflow-free chat-760x560 | PASS | False | qa35/visual/chat-760x560.png |
+| V overflow-free activity-760x560 | PASS | False | qa35/visual/activity-760x560.png |
+| V overflow-free memory-760x560 | PASS | False | qa35/visual/memory-760x560.png |
+| V overflow-free settings-sec-models-760x560 | PASS | False | qa35/visual/settings-sec-models-760x560.png |
+| V overflow-free settings-sec-voice-760x560 | PASS | False | qa35/visual/settings-sec-voice-760x560.png |
+| V overflow-free settings-sec-assistant-760x560 | PASS | False | qa35/visual/settings-sec-assistant-760x560.png |
+| V overflow-free settings-sec-safety-760x560 | PASS | False | qa35/visual/settings-sec-safety-760x560.png |
+| V overflow-free settings-sec-performance-760x560 | PASS | False | qa35/visual/settings-sec-performance-760x560.png |
+| V overflow-free settings-sec-dictionary-760x560 | PASS | False | qa35/visual/settings-sec-dictionary-760x560.png |
+| V overflow-free settings-sec-history-760x560 | PASS | False | qa35/visual/settings-sec-history-760x560.png |
+| V overflow-free settings-sec-integrations-760x560 | PASS | False | qa35/visual/settings-sec-integrations-760x560.png |
+| V overflow-free settings-sec-about-760x560 | PASS | False | qa35/visual/settings-sec-about-760x560.png |
+
+### 12.3 Failures found during the run and what happened
+- **First-close Windows toast covered the pet** (C5 failed on the first lifecycle run: the click landed on the toast). Fixed in `8dba260`; the hint now goes in Pip's bubble or the island headline.
+- **Narrow Settings (760×560): the section strip ran off the right edge with no sign it scrolls** (9 visual FAILs). Fixed: an edge fade on whichever side has hidden tabs, wheel-to-scroll, and the active tab kept in view. The overflow check now ignores content inside a horizontal scroller.
+- **Wide Settings: the section list scrolled away under the header on long sections.** Fixed with a sticky list.
+- Test-side issues, not app bugs: the `+` menu pet switch is a styled label (the hidden checkbox has no box to click), so the driver now clicks the slider; the 2D render button sat under the sticky Save bar at the bottom edge, so the driver now scrolls controls into view first, like a user; and S10 started dirty from the earlier live controls, so the driver now saves first.
+
+### 12.4 Not covered by automation (honest gaps)
+- **Tray menu clicks (C1–C4, L6 via tray).** The tray uses the same Rust functions as the tested paths (`open_main_tab`, `quit_app`); Quit was verified through About → Quit Jarvis and through close with "keep running" off. A manual tray click is still worth one try.
+- **Mic-dependent:** global hotkeys K1/K2 with real audio, wake test and mic test (S3), `hotkey_e2e`, `dictation_flow_test`.
+- **Not clicked to protect real data:** Memory → Clear all (M5) and Integrations hook install/remove (S9; covered by `hook_e2e` with backups).
+- **P4 pet right-click menu:** not implemented in this build.
+
+Non-mic gates after the fixes: smoke, ws_ping, a11y 31/31, credentials 19/19, perf 5/5, memory_update 14/14, model_router 30/30, fast_router 71/71, vocab 17/17, audio_cache, tts_wake, injector 17/17, hook_e2e 37/37, dictation_ui 27/27, phase5_e2e 14/14, phase5_dock 27/27, phase5_visual 28/28, chat_e2e, agent_e2e, voice_e2e ALL OK, pet_springs 9/9, inspect_states 46/46; wake_e2e PASS, then the known teardown crash.

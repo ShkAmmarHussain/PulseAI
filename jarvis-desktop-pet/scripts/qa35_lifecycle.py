@@ -337,6 +337,15 @@ async def run():
         gone = wait_for(lambda: procs() == ([], []) and not port_open(), 15)
         check("L8 UI killed -> backend exits on its own (no orphan)", gone, procs())
 
+        # L11: autostart path (--hidden): no main window, companion + backend up
+        launch(["--hidden"])
+        wait_for(lambda: port_open(), 40)
+        time.sleep(5)
+        st = main_state()
+        ui, be = procs()
+        check("L11 --hidden launch: main hidden, pet shown, one UI", st.get("exists") and not st.get("visible")
+              and bool(find_window("Jarvis Pet")) and len(ui) == 1, (st, ui))
+        kill_all()
         # L9: backend crash -> offline banner with countdown
         launch()
         wait_for(lambda: port_open() and main_state().get("visible"), 40)
