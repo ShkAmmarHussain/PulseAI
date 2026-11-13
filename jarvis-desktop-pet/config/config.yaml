@@ -54,3 +54,7 @@ resource_manager:
   max_active_subagents: 4
   max_spawn_depth: 6
   vision_timeout_ms: 20000
+world:
+  enabled: false
+  brain_concurrency: 1
+  caps: {max_active_temp: 6, max_temp_per_job: 3, max_tasks: 8, task_timeout_s: 300}
