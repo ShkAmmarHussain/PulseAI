@@ -245,7 +245,7 @@ Files go to `%APPDATA%\JarvisDesktopPet\skills\custom\<name>\v<n>\` with `skill.
 
 The world is **one building, PulseAI HQ, cut away like a dollhouse**: floors stacked vertically, each split into rooms, with a lift shaft on the side. three.js renders it in 3D. The default camera looks at the cut face with a slight tilt, and the user can orbit, zoom or click a floor number to focus one floor. *(Owner: "a building divided by floors and rooms, like an office". This replaces the earlier idea of separate Office and House scenes.)*
 
-Default layout (3 floors x 3 rooms) *(call)*:
+Layout: **3 floors, each a 3 x 3 grid of rooms (27 rooms)** *(owner, 2026-11-14)*. The front row of each floor holds the default rooms below. The middle and back rows are spare rooms for new agents, and low glass partitions keep them visible from the default camera. Default rooms:
 
 | Floor | Rooms |
 |---|---|
@@ -254,7 +254,7 @@ Default layout (3 floors x 3 rooms) *(call)*:
 | 1 | Lobby with the front door and front desk (Reporter), Archive (Archivist), Studio (spare) |
 
 - New agents enter through the **lobby door**, take the **lift** if their room is on another floor, and leave the same way.
-- **Spare rooms** hold temporary and custom agents. When every room is full, the building **grows a floor** (a new floor of spare rooms slides in on top). Empty extra floors are removed after a while. The concurrency cap (§12) bounds this.
+- **Spare rooms** (19 of them) hold temporary and custom agents. When every room is full, the building **grows a floor** (a new floor of spare rooms slides in on top). Empty extra floors are removed after a while. The concurrency cap (§12) bounds this.
 - Each room has its own lamp colour and props matching the role. A room's lamp turns amber when someone inside needs approval.
 - The building is described by a manifest instead of free-placed stations:
 
@@ -275,7 +275,8 @@ ui_pet/src/world/building/
   ],
   "lift": {"side": "right"},
   "lobby": {"floor": 1, "room": "lobby", "door": "left"},
-  "grow": {"rooms_per_floor": 3, "max_floors": 6}
+  "grid": {"rows": 3, "cols": 3},
+  "grow": {"max_floors": 6}
 }
 ```
 
