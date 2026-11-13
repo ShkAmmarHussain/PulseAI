@@ -36,6 +36,7 @@ class TaskInfo:
     state: str = "queued"  # queued | working | done | failed | skipped | stopped
     result: str = ""
     error: str = ""
+    params: dict = field(default_factory=dict)
 
 
 @dataclass

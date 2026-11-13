@@ -36,9 +36,11 @@ class Director:
         workers: Dict[str, Worker],
         reporter: Reporter,
         caps: dict,
+        make_temp_worker: Optional[Callable[[str], Worker]] = None,
     ):
         self.bus, self.state, self.runtime, self.brain = bus, state, runtime, brain
         self.thinker, self.workers, self.reporter, self.caps = thinker, workers, reporter, caps
+        self.make_temp_worker = make_temp_worker
         self.timeout_s = float(caps.get("task_timeout_s", 300))
         self._stopping: Set[str] = set()
         self._open: Set[str] = set()
@@ -119,6 +121,7 @@ class Director:
             self.state.add_task(TaskInfo(
                 id=ids[t["id"]], job_id=job_id, role=str(t["role"]), goal=str(t.get("goal", "")),
                 needs=[ids[d] for d in t.get("needs") or []],
+                params={"steps": t["steps"]} if t.get("steps") else {},
             ))
 
         results: Dict[str, str] = {}
@@ -135,6 +138,8 @@ class Director:
                     continue
                 agent = self._agent_for(task.role, job_id, busy)
                 worker = self.workers.get(task.role)
+                if worker is None and self.make_temp_worker is not None and agent is not None and self.state.agents[agent].kind == "temp":
+                    worker = self.workers[task.role] = self.make_temp_worker(task.role)
                 if agent is None or worker is None:
                     self.state.update_task(task.id, state="failed", error=f"no agent for role {task.role}")
                     continue
