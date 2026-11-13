@@ -47,6 +47,12 @@ class App:
             fast = getattr(self, "fast", None)
             if text and fast is not None and await fast.try_handle(text, ev.correlation_id):
                 return
+            world = getattr(self, "world", None)
+            if text and world is not None:
+                # Mini World (doc 36, behind world.enabled): the Director takes
+                # everything the fast path did not
+                await world.handle_input(text, ev.correlation_id)
+                return
             await self.bus.publish(
                 create_event(
                     "orchestrator.input", "input", ev.payload,
@@ -56,6 +62,14 @@ class App:
 
         self.bus.subscribe("input.text", on_input)
         self.bus.subscribe("input.voice", on_input)
+
+        from core.world.service import WorldService, world_enabled
+
+        self.world = None
+        if world_enabled(self.cfg):
+            self.world = WorldService(self.bus, self.cfg, rtm=self.rtm)
+            self.world.start()
+            logger.info("Mini World enabled: requests go to the Director")
 
         async def on_settings(ev: Event):
             self.cfg = load_config()
@@ -129,9 +143,12 @@ class App:
         app.router.add_get("/ws", self.bridge.handle_ws)
         runner = web.AppRunner(app)
         await runner.setup()
-        site = web.TCPSite(runner, "127.0.0.1", 8765)
+        import os
+
+        port = int(os.environ.get("PULSEAI_WS_PORT", "8765"))
+        site = web.TCPSite(runner, "127.0.0.1", port)
         await site.start()
-        logger.info("WS server on ws://127.0.0.1:8765/ws")
+        logger.info("WS server on ws://127.0.0.1:%d/ws", port)
 
 
 async def main():
