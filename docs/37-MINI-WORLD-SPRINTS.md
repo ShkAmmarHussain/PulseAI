@@ -187,3 +187,41 @@ Each later sprint gets its own task-level section here when it starts, written a
 - [ ] **Step 3:** Add the block and the exports.
 - [ ] **Step 4:** Run all five world tests. Expected: all exit 0. Run `tests/smoke_test.py` if it needs no backend, to confirm nothing else broke.
 - [ ] **Step 5: Commit** `feat(world): config flag and exports`.
+
+---
+
+## Sprint 2: Thinker, workers and Reporter
+
+**Goal:** real model-backed thinking and work behind the Sprint 1 Director, still unwired (Sprint 3 wires it).
+
+**Files:**
+- Modify: `agents/planner.py` (extract `plan_steps(q: str) -> list[dict] | None`; the agent calls it, behaviour unchanged)
+- Modify: `agents/tool_control.py` (extract `async execute_step(cfg, rtm, step: dict) -> str`; the agent calls it)
+- Modify: `core/world/state.py` (`TaskInfo.params: dict`) and `core/world/director.py` (copies a plan task's `steps` into `params`)
+- Create: `core/world/roles.py`, `core/world/thinker.py`, `core/world/worker.py`, `core/world/reporter.py`, `core/world/team.py`
+- Tests: `tests/world_thinker_test.py`, `tests/world_worker_test.py`, `tests/world_team_test.py`, `tests/world_live_test.py` (skips when LM Studio is not reachable)
+
+### Task 2.1: Shared planner rules and skill execution
+- `plan_steps("open notepad") == [{"action": "launch_app", "target": "notepad", "risk": 2}]`; `plan_steps("what is the capital of France") is None`.
+- `execute_step(cfg, None, {"action": "respond", "text": "hi"}) == "hi"`.
+- Existing offline tests (`model_router_test`, `vocab_test`, `injector_test`, `smoke_test`) still pass.
+
+### Task 2.2: Thinker
+**Interfaces:** `make_thinker(cfg, *, chat, roles: dict[str, list[str]]) -> Callable[[str], Awaitable[dict]]`, where `chat(messages, tier) -> str` is injected.
+- Rule match: one task, the role from `ROLE_FOR_ACTION`, `steps` carried, **zero** `chat` calls.
+- No rule and `model_router.is_complex(q)` is false: one `archivist` task with goal = q, zero `chat` calls.
+- Complex: one `chat(..., "heavy")` call. The JSON plan is parsed even inside a ```json fence or surrounding prose. Unparseable output returns `{}`, which the Director rejects and retries once.
+- A retry text (containing "Your last plan was invalid") always goes to the model.
+
+### Task 2.3: Workers
+**Interfaces:** `make_worker(role, cfg, *, chat, execute, approve, allowed: list[str], max_steps=6) -> Worker`, where `approve(step: dict, risk: int) -> Awaitable[bool]`.
+- A task with `params.steps`: each step is risk-scored with `core.guardrails.risk_score`. Risk >= 6 needs `approve` unless the policy is `autonomous`. A denied step raises `PermissionError("denied: <action>")`. Steps run through `execute`.
+- An action not in `allowed` raises `PermissionError("not allowed for <role>: <action>")`.
+- Model loop: the model answers JSON `{"action": ..., ...}` or `{"final": "..."}`. Up to `max_steps` actions, then `RuntimeError("no final answer after 6 steps")`. The `LoopGuard` stops repeats. Results from needed tasks are included in the prompt.
+- `archivist` answers with recall + web context like `MemoryAgent`.
+
+### Task 2.4: Reporter and team
+**Interfaces:** `make_reporter(cfg, *, chat)`. One result is returned as is, with no model call. Several results get one `chat(..., "fast")` call. `build_world(cfg, bus, *, chat=None, execute=None, approve=None) -> World(state, runtime, brain, director)` registers the 8 default agents (doc 36 §8 names and rooms) and uses `world.brain_concurrency` and `world.caps`.
+- End to end with fakes: "search the web for pulse oximeters" runs one researcher task, makes 0 model calls, and the answer is the search result.
+- A complex request runs the LLM plan through the Director with a temp agent and closes `done`.
+- Live (LM Studio up): "what is 2+2" answers, and a complex request yields a plan that validates.
