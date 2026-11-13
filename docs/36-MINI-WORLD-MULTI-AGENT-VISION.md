@@ -1,6 +1,6 @@
 # 36. VISION: THE MINI WORLD (3D multi-agent workspace)
 
-Status: **vision / design, waiting on approval. No code yet.** Next step after approval: an implementation plan per milestone (§17).
+Status: **vision / design, waiting on approval. No code yet.** Visual design canvas: World tab looks, the building cutaway and the chibi sheet (claude.ai artifact, private to the owner). Next step after approval: an implementation plan per milestone (§17).
 
 Decided with the owner (2026-11-14):
 - The world exists so you can **see what Jarvis is doing**, have **more control**, **extend it** with new agents and skills, and have it **look new and interesting**.
@@ -15,7 +15,7 @@ Everything else in this doc is a proposal. Each call made without the owner is m
 
 ## 1. The idea in one paragraph
 
-You pick an environment: a house, an office, and later more. PulseAI builds a small 3D version of it. In the middle stands the **Director**, the main agent (Pip). You talk to the Director by voice or chat. The Director does not think or act. It sends every request to a **Thinker** agent, gets back a plan, and gives each piece to an agent at a desk. You watch them work: someone at the computer browsing, someone at the bookshelf searching memory, someone at the window watching the screen. When the job needs a specialist that does not exist, the Director asks the **Builder** to create one. The new agent walks in, works, reports, and walks out when the Director dismisses it. You can click any agent to see what it is doing, stop it, edit it or delete it, and you can create your own agents and skills.
+The world is a small 3D office building, PulseAI HQ, cut open so you can see every floor and room. In the Director's office sits the **Director**, the main agent (Pip). You talk to the Director by voice or chat. The Director does not think or act. It sends every request to a **Thinker** agent, gets back a plan, and gives each piece to an agent in their room. You watch them work: someone in the research lab browsing, someone in the archive searching memory, someone in the watch room looking at the screen. When the job needs a specialist that does not exist, the Director asks the **Builder** to create one. A new chibi with its own unique look walks in through the lobby, takes the lift to a spare room, works, reports, and walks out when the Director dismisses it. You can click any agent to see what it is doing, stop it, edit it or delete it, and you can create your own agents and skills.
 
 ## 2. Goals, non-goals, anti-goals
 
@@ -29,7 +29,7 @@ You pick an environment: a house, an office, and later more. PulseAI builds a sm
 **Non-goals (v1)**
 - No multiplayer or shared worlds.
 - No free-roam game controls (WASD, physics, inventory). The camera orbits and focuses; agents walk on fixed paths.
-- No user-built environments or level editor. Environments ship with the app (§11.4 keeps the door open).
+- No user-built buildings or level editor. The building and its themes ship with the app (§11.4 keeps the door open).
 - No agents creating agents. Only the Director spawns (depth 1).
 - No marketplace for agents or skills.
 
@@ -62,21 +62,21 @@ The owner picked **A**. For the 3D engine, three.js (already shipped) beats Baby
 
 | Term | Meaning |
 |---|---|
-| **World** | The 3D scene in the World tab. One environment loaded at a time. |
-| **Environment** | A themed place (House, Office, ...) defined by a 3D model plus a manifest of stations and paths (§11). |
+| **World** | The 3D scene in the World tab. Set inside the building. |
+| **Building** | PulseAI HQ: the 3D cutaway of floors and rooms the world is set in, defined by a modular kit plus `building.json` (§11). |
 | **Director** | The main agent, shown as Pip. Routes only. Never calls an LLM and never runs a tool. |
 | **Agent** | A worker with a role, a model tier, allowed skills and a look. It is **default** (ships with the app, never removed), **custom** (made by the user, persistent) or **temp** (made by the Director for one job, removed when done). |
 | **Skill** | A callable capability (Python), for example `web_search`, `file_ops`. Agents use skills. Skills have permissions and a risk level. |
 | **Job** | One user request, from what you said to the final answer. |
 | **Task** | One piece of a job, given to one agent. A job is a small graph of tasks. |
-| **Station** | A spot in the environment where an agent works (desk, bookshelf, window, workbench). |
+| **Room** | A room in the building where an agent works (Planning room, Research lab, ...). Spare rooms hold new agents. |
 
 ## 6. Architecture
 
 ```
 ┌──────────────── Tauri UI (main window) ─────────────────────────────┐
 │ World tab (home)                                                    │
-│   world/scene.js      three.js renderer, environment loader, camera │
+│   world/scene.js      three.js renderer, building loader, camera   │
 │   world/actors.js     agent avatars (Pip rig variants), animations  │
 │   world/paths.js      waypoint graph, walking                       │
 │   world/hud.js        chat bar, roster, inspector, create forms     │
@@ -156,18 +156,18 @@ Migration happens behind a flag (`world.enabled`) so the old pipeline can be swi
 
 ## 8. Default agents
 
-They are always present, sitting at their stations when idle. None can be deleted. Each can be disabled and edited (name, look, model tier, prompt additions).
+They are always present, sitting in their rooms when idle. None can be deleted. Each can be disabled and edited (name, look, model tier, prompt additions).
 
-| Agent | Station (office / house) | Does | Skills | Tier |
+| Agent | Room | Does | Skills | Tier |
 |---|---|---|---|---|
-| **Director** (Pip) | centre desk / living-room sofa | routes, staffs, tracks. No LLM. | none | none |
-| **Thinker** | whiteboard / kitchen table | turns a request into a plan. Fast path first. | none (plan only) | heavy |
-| **Researcher** | computer desk / study desk | web search, read pages | `web_search`, `browser` (read) | fast |
-| **Operator** | workstation / home PC | files, apps, shell, keyboard and mouse | `file_ops`, `app_control`, `shell`, `input_control` | fast |
-| **Watcher** | window / TV | screen and image understanding | `screen_vision` | vision |
-| **Archivist** | filing cabinet / bookshelf | recall and store memories | `memory_skills` | fast |
-| **Reporter** | mail desk / armchair | writes the final answer for chat and voice | none | fast |
-| **Builder** | workshop bench / garage | creates temp and custom agents and drafts new skills | `create_agent`, `draft_skill` | heavy |
+| **Director** (Pip, amber egg) | Director's office, F3 | routes, staffs, tracks. No LLM. | none | none |
+| **Thinker** | Planning room, F3 | turns a request into a plan. Fast path first. | none (plan only) | heavy |
+| **Researcher** (Rhea) | Research lab, F2 | web search, read pages | `web_search`, `browser` (read) | fast |
+| **Operator** (Otto) | Ops room, F2 | files, apps, shell, keyboard and mouse | `file_ops`, `app_control`, `shell`, `input_control` | fast |
+| **Watcher** (Vee) | Watch room, F2 | screen and image understanding | `screen_vision` | vision |
+| **Archivist** (Ada) | Archive, F1 | recall and store memories | `memory_skills` | fast |
+| **Reporter** (Remy) | Lobby front desk, F1 | writes the final answer for chat and voice | none | fast |
+| **Builder** (Bodie) | Workshop, F3 | creates temp and custom agents and drafts new skills | `create_agent`, `draft_skill` | heavy |
 
 "Writer", "Coder", "Translator" and others are **not** defaults. They are what the Builder creates on demand, so the "new agent walks in" moment happens often enough to be part of the experience *(call)*.
 
@@ -184,8 +184,8 @@ created_by: director      # director | user | system
 model_tier: heavy         # fast | heavy | vision (model_router)
 skills: [file_ops.read]   # allow-list; a skill outside it is refused
 system_prompt: "You write clear, structured documents..."
-look: {body: pip, color: "#7dd3fc", accessory: glasses}
-station: auto             # a station id, or auto (free spare desk)
+look: {seed: 7f3a, skin: 3, hair_style: bob, hair_color: blue, outfit: lilac, accessory: glasses}
+room: auto                # a room id, or auto (free spare room)
 limits: {max_steps: 12, timeout_s: 300, max_tokens: 20000}
 version: 1
 ```
@@ -238,48 +238,62 @@ Files go to `%APPDATA%\JarvisDesktopPet\skills\custom\<name>\v<n>\` with `skill.
 ### 11.1 Rendering *(calls)*
 - three.js (vendored), one `WebGLRenderer`, `CSS2DRenderer` for name tags, speech bubbles and progress chips (crisp text, cheap).
 - Stylised low-poly, warm lighting, the amber accent from doc 34. Baked lighting plus one soft shadow light.
-- Budget: environment at most 60k triangles, at most 12 avatars on screen, `pixelRatio` capped at 1.5, **render loop paused** when the tab or window is hidden or minimised, and 30 fps when nothing is moving.
-- WebGL failure (`onContextCreationError` already exists): fall back to a **2D top-down board** (same stations, flat icons) so the feature still works.
+- Budget: building at most 60k triangles, at most 12 avatars on screen, `pixelRatio` capped at 1.5, **render loop paused** when the tab or window is hidden or minimised, and 30 fps when nothing is moving.
+- WebGL failure (`onContextCreationError` already exists): fall back to a **2D flat cutaway** (same floors and rooms, chibi icons) so the feature still works.
 
-### 11.2 Environments
+### 11.2 The building (decided 2026-11-14)
 
-v1 ships **Office** and **House** *(call)*. Later candidates: Lab, Café, Space station. Each environment is a folder:
+The world is **one building, PulseAI HQ, cut away like a dollhouse**: floors stacked vertically, each split into rooms, with a lift shaft on the side. three.js renders it in 3D. The default camera looks at the cut face with a slight tilt, and the user can orbit, zoom or click a floor number to focus one floor. *(Owner: "a building divided by floors and rooms, like an office". This replaces the earlier idea of separate Office and House scenes.)*
+
+Default layout (3 floors x 3 rooms) *(call)*:
+
+| Floor | Rooms |
+|---|---|
+| 3 | Planning room (Thinker), Director's office (Pip), Workshop (Builder) |
+| 2 | Research lab (Researcher), Ops room (Operator), Watch room (Watcher) |
+| 1 | Lobby with the front door and front desk (Reporter), Archive (Archivist), Studio (spare) |
+
+- New agents enter through the **lobby door**, take the **lift** if their room is on another floor, and leave the same way.
+- **Spare rooms** hold temporary and custom agents. When every room is full, the building **grows a floor** (a new floor of spare rooms slides in on top). Empty extra floors are removed after a while. The concurrency cap (§12) bounds this.
+- Each room has its own lamp colour and props matching the role. A room's lamp turns amber when someone inside needs approval.
+- The building is described by a manifest instead of free-placed stations:
 
 ```
-ui_pet/src/world/envs/office/
-  scene.glb          # model, CC0 or own assets, credited in ATTRIBUTIONS.md
-  manifest.json
-  thumb.webp         # picker card
+ui_pet/src/world/building/
+  kit.glb            # modular room shell, slab, lift, props (own or CC0 art)
+  building.json      # floors, rooms, lift, camera presets, lighting
 ```
 
 ```json
 {
-  "id": "office",
-  "name": "Office",
-  "camera": {"home": [8, 7, 8], "target": [0, 0.5, 0]},
-  "director": {"pos": [0, 0, 0], "facing": 180},
-  "door": [6, 0, -4],
-  "stations": [
-    {"id": "whiteboard", "for": "thinker", "pos": [-3, 0, -2], "pose": "stand"},
-    {"id": "desk_1", "for": "researcher", "pos": [2, 0, 1], "pose": "sit_type"},
-    {"id": "spare_1", "for": "any", "pos": [3, 0, 3], "pose": "sit_type"}
+  "floors": [
+    {"num": 3, "rooms": [
+      {"id": "planning", "name": "Planning room", "for": "thinker", "props": ["whiteboard"], "lamp": "#818cf8"},
+      {"id": "director", "name": "Director's office", "for": "director", "props": ["desk"]},
+      {"id": "workshop", "name": "Workshop", "for": "builder", "props": ["bench"]}
+    ]}
   ],
-  "waypoints": {"nodes": [[6, 0, -4], [3, 0, -1], [0, 0, 2]], "edges": [[0, 1], [1, 2]]},
-  "lighting": {"day": "office_day", "night": "office_night"}
+  "lift": {"side": "right"},
+  "lobby": {"floor": 1, "room": "lobby", "door": "left"},
+  "grow": {"rooms_per_floor": 3, "max_floors": 6}
 }
 ```
 
-Spare stations are where temp and custom agents sit. With no spare left, extra agents stand in a "waiting area". That matches the concurrency cap.
+- Themes (Night Studio by default: dark shell, warm amber lights, matching the doc 34 tokens) are swapped by lighting and materials, not by new models. The environment picker becomes a **theme picker** for the same building.
 
-### 11.3 Characters and animation
-- Every agent is a **Pip-family character**: the same egg body and spring rig as Pip (reused from `pet3d.js`), with a per-role colour and one accessory (headset, glasses, hard hat, ...). On brand, one rig, cheap to animate *(call)*.
-- The Director is Pip itself, slightly larger.
-- Procedural animation, no skeletal clips at first: walk (bob plus lean), sit and type, think (a bubble with dots), wait for the model (a small hourglass over the head), hand raised (approval), celebrate (hop on done), fail (puff of grey smoke, sad face), arrive and leave through the door.
-- Walking follows the waypoint graph (A* over a tiny graph), with no physics.
-- When a job has steps that hand data along, a short **glowing paper** flies from one agent to the next. That makes the task graph visible.
+### 11.3 Characters (decided 2026-11-14)
+- **Pip stays the amber egg**, so the Director is always recognisable *(call)*.
+- **Every other agent is a chibi**: a big head, a small body and stubby legs, built from a small modular kit (head, hair, outfit, accessory meshes) on one shared rig.
+- **Default agents have fixed looks and names** (Thinker, Bodie the Builder, Rhea the Researcher, Otto the Operator, Vee the Watcher, Ada the Archivist, Remy the Reporter). The user can restyle them.
+- **Every new agent that is not in that list gets a unique generated look** *(owner)*. The look is seeded from the agent id. Parts: skin (6), hair style (5), hair colour (8), outfit (10, tinted toward the role), accessory (5), which gives about 12,000 combinations. The generator rerolls if an active agent already has the same combination. The inspector offers **Reroll look** and **Customise**. **Keep as custom** keeps the look, the name and a room.
+- `AgentSpec.look` becomes `{seed, skin, hair_style, hair_color, outfit, accessory}`, so the same agent always looks the same.
+- Temporary agents wear a **dashed name tag** until they leave.
+- Animation is still procedural on one rig: walk, ride the lift, sit and type, think (bubble), wait for the model (hourglass), raise a hand (approval), hop (done), grey puff (failed), wave goodbye at the door.
+- Work handed between agents shows as a glowing paper carried along the corridor or up the lift.
+- The 2D fallback (WebGL failure) draws the same building as a flat cutaway with chibi icons.
 
 ### 11.4 Later (not v1)
-- Environment packs loaded from `%APPDATA%` with the same manifest, which opens the door to user environments.
+- Building themes and room kits loaded from `%APPDATA%` with the same manifest, which opens the door to user-made rooms.
 - Desk props that react to skills (the monitor shows the page being read).
 
 ## 12. Concurrency, the model and limits
@@ -324,11 +338,11 @@ Events are diffs on top of the snapshot. Every event carries an increasing `seq`
 
 ```
 ┌ titlebar ─────────────────────────────────────────────── ─ □ × ┐
-│ [World] Activity  Memory  Settings            Office ▾  ⌂  ■ Stop all
+│ [World] Activity  Memory  Settings            Floor All 3 2 1  ⌂  ■ Stop all
 ├──────────┬─────────────────────────────────────────┬───────────┤
 │ ROSTER   │                                         │ INSPECTOR │
 │ ● Pip    │            3D scene                     │ Wren      │
-│ ● Thinker│     (agents at stations, name tags,     │ writer·tmp│
+│ ● Thinker│     (agents in rooms, name tags,      │ writer·tmp│
 │ ◐ Resear.│      bubbles, hourglass, hand raised)   │ Task t3   │
 │ ○ Watcher│                                         │ "Writing  │
 │ ◐ Wren ✦ │                                         │  table…"  │
@@ -344,11 +358,11 @@ Events are diffs on top of the snapshot. Every event carries an increasing `seq`
 - **Inspector** (right drawer): role, kind, model tier, skills, the current task, a live progress log, and Stop / Edit / Delete (as allowed by §9.3).
 - **Chat bar** (bottom): the same composer as Chat. `⌄` expands the transcript over the scene. Voice works as today.
 - **Job strip** (above the chat bar, only while jobs run): a mini graph of the job's tasks with states. Click a task to focus its agent.
-- **+ Agent** form: name, role description, look (colour, accessory, live preview), model tier, skills (checkboxes, risky ones flagged), station.
+- **+ Agent** form: name, role description, look (generated, with reroll and customise, live preview), model tier, skills (checkboxes, risky ones flagged), room.
 - **Skills drawer:** list with status (Draft, Enabled, Disabled), risk badge, versions. Draft review shows code, permissions and test output with Enable / Reject.
-- **Environment picker** (`Office ▾`): cards with thumbnails. Switching keeps all agents and jobs and only reloads the scene.
+- **Floor buttons** (All, 3, 2, 1) focus the camera on a floor. A **theme picker** swaps lighting and materials. Switching keeps all agents and jobs.
 - **Camera:** orbit and zoom with the mouse, `⌂` returns home, double-click an agent to follow it.
-- **Onboarding:** a new step after "Meet Pip": "Pick your world" (Office / House).
+- **Onboarding:** a new step after "Meet Pip": "Meet your team" (the building tour, then a theme).
 - The **Activity tab** shows the same jobs and tasks as a list (from the same events) for people who prefer text.
 - Style follows the doc 34 tokens (`--card`, `--hairline`, amber accent, state glows).
 
@@ -356,7 +370,7 @@ Events are diffs on top of the snapshot. Every event carries an increasing `seq`
 
 | What | Where | Format |
 |---|---|---|
-| Selected environment, camera, world flags, caps | `config/config.yaml` → `world:` | yaml |
+| Selected theme, camera, world flags, caps | `config/config.yaml` → `world:` | yaml |
 | Default agent overrides + custom agents | `config/agents.yaml` (existing file, new schema) | yaml, `AgentSpec` |
 | Custom skills | `skills/custom/<name>/v<n>/` + entries in `config/skills.yaml` | yaml + py + json |
 | Jobs, tasks, progress logs | `data/world.db` | sqlite, tables `jobs`, `tasks`, `task_log`; logs kept 30 days |
@@ -382,10 +396,10 @@ Each milestone ends with tests in the doc 23/35 style and a short results sectio
 |---|---|---|
 | **M0** | **Runtime, headless.** `core/world/` (state, runtime, brain queue, director, worker loop), protocol events, `world.enabled` flag, old pipeline still the default. | A scripted job ("search X and save it to a file") runs end to end with fake agents in tests. Snapshot plus diffs reproduce the state. Stop all works. |
 | **M1** | **Director + default agents for real.** Thinker with the fast path + LLM plans, Researcher, Operator, Watcher, Archivist, Reporter on the new runtime. Approvals moved over. | Every doc 35 voice/chat flow passes with `world.enabled=true`. Fast-path commands are no slower than today (measured). |
-| **M2** | **World tab, Office.** Scene, Pip-family avatars, stations, walking, state animations, roster, inspector, chat bar, job strip. | Live jobs are shown correctly. Under 2 ms of render work per idle frame on the target iGPU, paused when hidden, 2D fallback works. |
+| **M2** | **World tab, the building.** 3-floor cutaway, lift, chibi kit with the default team, walking, state animations, roster, inspector, chat bar, job strip. | Live jobs are shown correctly. Under 2 ms of render work per idle frame on the target iGPU, paused when hidden, 2D fallback works. |
 | **M3** | **Create and delete agents.** Builder temp agents (arrive, work, leave), + Agent form, edit, delete, archive, caps. | The Director spawns and dismisses a temp agent in a real job. The user creates a custom agent and it gets work. Caps and the loop guard are tested. |
 | **M4** | **Skills.** Draft, static check, sandbox, review drawer, enable, versions, delete. | A generated skill is drafted, reviewed, enabled and used. A malicious draft (subprocess, network without permission) is rejected in tests. |
-| **M5** | **House + polish.** House environment, environment picker, onboarding step, day/night, paper hand-offs, sounds. | Both environments pass the visual checklist. Switching keeps running jobs. |
+| **M5** | **Growth + polish.** Look generator (reroll, customise), floors that grow, theme picker, onboarding step, day/night, paper hand-offs, sounds. | Ten generated agents in a row all look different. The building grows and shrinks. The visual checklist passes. |
 | **M6** | **QA and release.** Full doc 35 style pass on the installed build, perf on low-end hardware, then `world.enabled=true` by default and the old pipeline removed. | Results table green. README and docs index updated. |
 
 M0 and M1 carry most of the risk and no visuals. M2 is the first point where the world can be seen. M3 to M5 can be reordered if something feels more important once it is visible.
@@ -410,8 +424,8 @@ M0 and M1 carry most of the risk and no visuals. M2 is the first point where the
 3. **Default agents:** Thinker, Researcher, Operator, Watcher, Archivist, Reporter, Builder. Safety and voice stay services, not visible agents.
 4. **Writer, Coder and similar** are created on demand, not defaults.
 5. **Only the Director spawns** (depth 1). Temp agents need no prompt. Persistent agents and every new skill need the user.
-6. **Pip-family characters** for all agents, procedural animation, no new rigs.
-7. **Office and House** in v1.
+6. **Pip stays an egg**, every other agent is a chibi on one modular rig, procedural animation.
+7. **One building** with 3 floors x 3 rooms by default, growing a floor when full. The environment picker becomes a theme picker.
 8. Caps: 6 extra active agents, 8 tasks per job, 3 temp agents per job, 300 s per task.
 9. three.js (vendored) over Babylon, Unity or Godot.
 10. Built behind a `world.enabled` flag, with the old pipeline removed only in M6.
