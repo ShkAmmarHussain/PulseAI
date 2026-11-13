@@ -54,6 +54,8 @@ This project is designed to run 100% locally using your 3060 12GB GPU with LM St
 - [33. Bespoke Titlebar, Cloud Models & Luxury UI Polish](./33-CUSTOM-TITLEBAR-CLOUD-MODELS-AND-UI-POLISH.md) - Frameless custom titlebar, OpenAI & Anthropic Claude key support, intelligent auto-model routing, Memory Studio dark theme fix
 - [34. Sleek Revamp (coucou-inspired, production-ready)](./34-SLEEK-REVAMP-SPEC.md) - Design tokens, header-tab shell, Activity/Memory/Settings/Onboarding restyle, top-edge island states, Pip character (rename + redraw), offline states, accessibility, performance, About + diagnostics, API keys in Windows Credential Manager
 - [35. Full QA Test Plan & Results](./35-FULL-QA-TEST-PLAN.md) - End-to-end plan for the installed build (lifecycle, single instance, close vs quit, every surface, visual checklist) and the executed pass/fail results
+- [36. Mini World (3D multi-agent workspace) - Vision](./36-MINI-WORLD-MULTI-AGENT-VISION.md) - World tab as home, Director that only routes, default/custom/temp agents, skill creation with sandbox + approval, three.js environments (Office, House), protocol, data model, milestones M0-M6, risks
+- [37. Mini World - Sprint Plan](./37-MINI-WORLD-SPRINTS.md) - Eight sprints from headless runtime to release; Sprint 1 broken into TDD tasks
 
 ---
 
