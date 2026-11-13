@@ -225,3 +225,34 @@ Each later sprint gets its own task-level section here when it starts, written a
 - End to end with fakes: "search the web for pulse oximeters" runs one researcher task, makes 0 model calls, and the answer is the search result.
 - A complex request runs the LLM plan through the Director with a temp agent and closes `done`.
 - Live (LM Studio up): "what is 2+2" answers, and a complex request yields a plan that validates.
+
+---
+
+## Sprint 3: Wire the world into the app (behind `world.enabled`)
+
+**Goal:** with `world.enabled: true` (or env `PULSEAI_WORLD=1`), typed and spoken requests that the fast path does not take go to the Director. Approvals use the existing cards, and the UI receives `world.*` events. With the flag off, nothing changes.
+
+**Files:**
+- Create: `core/world/approvals.py` (`ApprovalBridge`) and `core/world/service.py` (`WorldService`)
+- Modify: `backend/app.py` (route `on_input` to the world when enabled), `backend/ws_bridge.py` (forward `world.*`, accept `world_say` / `world_stop` / `world_snapshot`)
+- Tests: `tests/world_service_test.py` (offline, real `MessageBus`) and `tests/world_backend_e2e.py` (starts the real backend with `PULSEAI_WORLD=1` on a spare port)
+
+### Task 3.1: ApprovalBridge
+`ApprovalBridge(bus, timeout_s)` with `async ask(step, risk, job_id) -> bool`. It publishes `ui.approval` `{action, risk, message}` on a fresh cid and resolves on the first `ui.approval.response` with that cid (`payload.allow`). On timeout it publishes `ui.approval_cancelled {reason: "timeout"}` and returns False. Duplicate answers are ignored. Answers for cids it did not raise are ignored, because the old Orchestrator owns those. `timeout_s` comes from `permissions.approvals.timeout_ms` (45000).
+
+### Task 3.2: WorldService
+`WorldService(bus, cfg, rtm=None, chat=None, execute=None)`:
+- `start()` subscribes `world.cmd.say` (`{text}`), `world.cmd.stop` and `world.cmd.snapshot`.
+- `handle_input(text, cid)` echoes `ui.chat {role:"user"}`, runs `director.handle(text, job_id=cid)` as a task, and on close publishes `voice.say {text: answer}` and `memory.store`.
+- `world.cmd.snapshot` publishes `world.snapshot` with `state.snapshot()`.
+- `stop_all()` is used by `world.cmd.stop` and returns how many jobs were stopped.
+
+### Task 3.3: Backend wiring
+`App.start`: when the world is enabled, build a `WorldService` before the bus starts. `on_input`: the fast path first, as today, then `world.handle_input` instead of `orchestrator.input`. `ws_bridge`: forward the topics `world.agent.*`, `world.job.*`, `world.task.*` and `world.snapshot`, and map the client types `world_say`, `world_stop` and `world_snapshot` to `world.cmd.*`. The port comes from env `PULSEAI_WS_PORT` (default 8765) so the e2e test can run next to a live app.
+
+### Task 3.4: End-to-end
+`tests/world_backend_e2e.py` starts `backend/main.py` with `PULSEAI_WORLD=1` and `PULSEAI_WS_PORT=8799`, then checks:
+- `text_input` "list files in ." gives `world.job.opened`, `world.task.*`, a `ui.chat` answer and `world.job.closed` done.
+- `world_snapshot` returns the 8 agents.
+- `world_stop` returns, and no job is left open.
+- With the flag off, the same input produces no `world.*` events.
