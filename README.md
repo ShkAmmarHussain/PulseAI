@@ -30,7 +30,8 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 
 ```
 ┌────────────────────────── Tauri (Rust) ──────────────────────────┐
-│  index.html  ── main window (chat, activity, memory, settings)   │
+│  index.html  ── main window (world, chat, activity, memory, …)   │
+│    world/    ── World tab: 3D HQ building, chibi agents, skills  │
 │  pet.html    ── always-on-top transparent pet, Pip (SVG/three.js)│
 │  dock.html   ── top-edge island (alternative companion)          │
 │        │  WebSocket  ws://127.0.0.1:8765/ws                      │
@@ -42,6 +43,8 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 │  voice_service:                                                  │
 │    mic → wake word → capture → whisper → bus → LLM → Kokoro → you│
 │                                                                  │
+│  core/world (Mini World): Director → Thinker → workers → Reporter │
+│    brain queue · agent runtime · approvals · skills sandbox      │
 │  agents: orchestrator, planner, tool_control, perception,        │
 │          memory_agent, safety, vision, pet_ux, voice_tts          │
 │  skills: shell, file_ops, browser, web_search, app_control       │
@@ -55,9 +58,24 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 1. `voice_service` keeps a mic stream open and scores every 80 ms frame with openWakeWord.
 2. Score crosses the threshold → state flips to **listening**, mic audio is buffered with an RMS VAD.
 3. Silence → faster-whisper transcribes the buffer.
-4. Text goes onto the bus → orchestrator/agents produce a reply through LM Studio.
+4. Text goes onto the bus → the fast-path router takes simple commands; everything else goes to the Mini World Director (or, with the world off, the classic orchestrator) and the agents produce a reply through LM Studio.
 5. Reply is spoken by Kokoro; while it plays the mic is suppressed so the pet never hears itself.
 6. State returns to **listening** for the next "Hey Jarvis".
+
+---
+
+## Mini World
+
+The **World** tab (home screen when it is on) shows PulseAI HQ: a 3D building, 3 floors of 3×3 rooms, cut open so you can see everyone at work.
+
+- **Pip, the Director**, never thinks or acts itself. Each request goes to **the Thinker** for a plan, then to the right agents: **Rhea** (research), **Otto** (PC control), **Vee** (screen), **Ada** (memory), **Remy** (writes the answer) and **Bodie** (builds new agents and skills).
+- **New agents** are created for a job (temporary) or by you (**New agent**, lasting). Each gets a unique chibi look, walks in through the lobby, takes the lift, and leaves when dismissed. Deleted agents can be brought back for 30 days.
+- **Skills**: describe one in the Skills drawer and Bodie drafts it. It is checked for unsafe code, test-run in a sandbox, and only works after you turn it on.
+- **Approvals**: risky steps raise the agent's hand and the usual approval card (Y / N).
+- **Controls**: Stop all, floor buttons, day/night, click any agent to inspect it. The building grows a floor when every room is full.
+- **On/off**: on by default. Turn it off in the World tab (or `world.enabled: false`, or env `PULSEAI_WORLD=0`) to use the classic pipeline.
+
+Design and plan: [docs/36](docs/36-MINI-WORLD-MULTI-AGENT-VISION.md), sprints [docs/37](docs/37-MINI-WORLD-SPRINTS.md), QA [docs/38](docs/38-MINI-WORLD-QA.md).
 
 ---
 
@@ -69,9 +87,11 @@ Personal_AI/
 ├── jarvis-desktop-pet/
 │   ├── backend/              # aiohttp WS server, voice_service, ws_bridge
 │   ├── core/                 # bus, config, llm, orchestrator, guardrails
+│   ├── core/world/           # Mini World: state, Director, brain, runtime, workers, skills lab
 │   ├── agents/               # multi-agent implementations
 │   ├── skills/               # shell, files, browser, web_search, app_control
 │   ├── ui_pet/src/           # frontend served raw by Tauri (HTML/CSS/JS + three.js)
+│   ├── ui_pet/src/world/     # World tab: store, building, chibi kit, scene, tab UI
 │   ├── ui_pet/src-tauri/     # Rust shell: windows, tray, sidecar launch
 │   ├── tests/                # e2e suites (voice, wake, agent, chat, smoke)
 │   ├── scripts/              # setup.ps1, run-dev.bat
@@ -168,11 +188,11 @@ All config lives in `%APPDATA%\JarvisDesktopPet\`:
 
 | File | Purpose |
 |------|---------|
-| `config\config.yaml` | LM Studio URL, voice (`stt_model`, `wake.threshold`, `device`, TTS), resource limits |
+| `config\config.yaml` | LM Studio URL, voice (`stt_model`, `wake.threshold`, `device`, TTS), resource limits, `world:` (Mini World on/off, caps) |
 | `config\agents.yaml` | per-agent model ids + quantization |
 | `config\permissions.yaml` | safety policy, approval timeouts |
 | `config\personality.yaml` | name, wake word, voice style |
-| `data\` | memory facts, tasks/timers, onboarding marker |
+| `data\` | memory facts, tasks/timers, onboarding marker, Mini World custom agents (`world_agents.json`) and skills (`world_skills\`) |
 | `models\` | downloaded model weights |
 | `backend.log` | runtime log (wake scores, mic device, TTS, errors) |
 | `diagnostics\` | bundles from Settings → About → **Export diagnostics** (logs, settings with secrets redacted, model state) |
