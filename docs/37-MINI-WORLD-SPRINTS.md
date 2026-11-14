@@ -310,3 +310,20 @@ When the world is off, the World tab shows an empty state with **Turn on Mini Wo
   - Recently deleted list with Bring back.
   - New agents walk in, and a reroll rebuilds the chibi.
 - Tests: `tests/world_agents_test.py` (26 checks), plus every earlier suite.
+
+---
+
+## Sprint 6: Skills (done)
+
+- `core/world/skills_lab.py`:
+  - `check_code` is an AST allow-list. `subprocess`, `eval`/`exec`, `os`, sockets, dunder access and `getattr` are always refused. File modules and `open()` need `files`, and network modules need `network`.
+  - `risk_of(permissions)` gives none 1, network 3, files 5, both 7.
+  - `run_sandboxed` runs the skill in a separate `python -I` process in a throwaway folder, with a minimal environment and a 10 s timeout. Params the skill does not take are dropped.
+  - `SkillStore` keeps `data/world_skills/<name>/v<n>/`. Deleting moves a skill to `.archive`.
+- `WorldService` handles `world.cmd.skill {op: draft | enable | disable | delete | test | list}`.
+  - A draft is written by Bodie through the brain queue (heavy model), then checked and test-run.
+  - A draft with problems can never be enabled.
+- Enabled skills appear to every working, custom and temp agent as `skill.<name>`, with their own risk level. Risk 6 or more still needs approval. A failed tool call goes back to the model to fix instead of failing the task.
+- World tab: a Skills drawer in the right column. Draft from a description, see the permissions, risk, problems, example result and code, then turn it on or off, run the example, or delete it.
+- Tests: `tests/world_skills_test.py` (34 checks). A live run with LM Studio: the real model drafted `convert_temperature`, it passed check and test, and the Director then used it to answer "100 °C in °F" with 212.
+- Known limit: the sandbox needs a Python interpreter. In the packaged (frozen) build `sys.executable` is the backend exe, so Sprint 8 must ship or locate an embedded Python for skills.

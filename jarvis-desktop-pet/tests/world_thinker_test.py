@@ -125,6 +125,14 @@ async def main():
     check("repeated disallowed ask fails the task", await expect(PermissionError, w(T(), {}), "not allowed for writer: web_search"))
     w = make_worker("writer", {}, chat=FakeChat(["Plain text answer"]), execute=execute, approve=None, allowed=[])
     check("plain reply is the result", await w(T(), {}) == "Plain text answer")
+    async def flaky(step):
+        if step.get("query") == "bad":
+            raise RuntimeError("missing 1 required argument")
+        return "good result"
+
+    fc = FakeChat(['{"action": "web_search", "query": "bad"}', '{"action": "web_search", "query": "ok"}', '{"final": "fixed"}'])
+    w = make_worker("researcher", {}, chat=fc, execute=flaky, approve=None, allowed=ROLE_ACTIONS["researcher"])
+    check("failed tool call is fed back, model fixes it", await w(T(), {}) == "fixed" and any("Error: missing 1 required argument" in m["content"] for m in fc.calls[-1][0]))
     w = make_worker("researcher", {}, chat=FakeChat(['{"action": "web_search", "query": "same"}']), execute=execute, approve=None, allowed=ROLE_ACTIONS["researcher"])
     check("loop guard stops repeats", await expect(LoopError, w(T(), {})))
 
