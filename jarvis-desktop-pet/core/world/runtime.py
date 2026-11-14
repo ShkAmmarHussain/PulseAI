@@ -22,6 +22,10 @@ DEFAULT_ROOMS: Dict[str, str] = {
 }
 _ALL_ROOMS = [f"f{f}r{r}c{c}" for f in (1, 2, 3) for r in (1, 2, 3) for c in (1, 2, 3)]
 SPARE_ROOMS = ["f2r1c3"] + [x for x in _ALL_ROOMS if x not in DEFAULT_ROOMS.values() and x != "f2r1c3"]
+# when every room is taken the building grows a floor (doc 36 section 11.2), up to 6 floors
+MAX_FLOORS = 6
+GROWTH_ROOMS = [f"f{f}r{r}c{c}" for f in range(4, MAX_FLOORS + 1) for r in (1, 2, 3) for c in (1, 2, 3)]
+ALL_SPARE = SPARE_ROOMS + GROWTH_ROOMS
 
 
 class CapError(Exception):
@@ -51,7 +55,7 @@ class AgentRuntime:
         self.state = state
         self.max_active_temp = int(caps.get("max_active_temp", 6))
         self.max_temp_per_job = int(caps.get("max_temp_per_job", 3))
-        self.max_custom = int(caps.get("max_custom", 6))
+        self.max_custom = int(caps.get("max_custom", 16))
         self._running: Dict[str, asyncio.Task] = {}
         self._stopped: Set[str] = set()
         self._ids = itertools.count(1)
@@ -68,7 +72,7 @@ class AgentRuntime:
         if len(self.temps(job_id)) >= self.max_temp_per_job:
             raise CapError(f"job {job_id} already has {self.max_temp_per_job} temporary agents")
         used = {a.room for a in self.state.agents.values()}
-        room = next((r for r in SPARE_ROOMS if r not in used), None)
+        room = next((r for r in ALL_SPARE if r not in used), None)
         if room is None:
             raise CapError("no free room")
         agent_id = f"temp-{role}-{next(self._ids)}"
@@ -77,7 +81,7 @@ class AgentRuntime:
 
     def free_room(self) -> Optional[str]:
         used = {a.room for a in self.state.agents.values()}
-        return next((r for r in SPARE_ROOMS if r not in used), None)
+        return next((r for r in ALL_SPARE if r not in used), None)
 
     def customs(self):
         return [a for a in self.state.agents.values() if a.kind == "custom"]
@@ -88,7 +92,7 @@ class AgentRuntime:
         if len(self.customs()) >= self.max_custom:
             raise CapError(f"already {self.max_custom} custom agents")
         used = {a.room for a in self.state.agents.values()}
-        if not room or room in used or room not in SPARE_ROOMS:
+        if not room or room in used or room not in ALL_SPARE:
             room = self.free_room()
         if room is None:
             raise CapError("no free room")

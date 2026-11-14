@@ -327,3 +327,20 @@ When the world is off, the World tab shows an empty state with **Turn on Mini Wo
 - World tab: a Skills drawer in the right column. Draft from a description, see the permissions, risk, problems, example result and code, then turn it on or off, run the example, or delete it.
 - Tests: `tests/world_skills_test.py` (34 checks). A live run with LM Studio: the real model drafted `convert_temperature`, it passed check and test, and the Director then used it to answer "100 °C in °F" with 212.
 - Known limit: the sandbox needs a Python interpreter. In the packaged (frozen) build `sys.executable` is the backend exe, so Sprint 8 must ship or locate an embedded Python for skills.
+
+---
+
+## Sprint 7: Growth and polish (done)
+
+- **The building grows**: once all 19 spare rooms are taken, new agents get rooms on floor 4 (up to 6, `runtime.GROWTH_ROOMS`). The scene adds the floor, raises the roof and the lift, reframes the camera, and the floor buttons follow (All, 4, 3, 2, 1). `max_custom` is now 16, so growth can actually happen.
+- **Day / night theme**: a sun button in the World toolbar. The choice is remembered in local storage.
+- **Onboarding step 4, "Meet your team"**, with a Mini World checkbox (on by default) that sends `set_world` when you finish.
+- **Sounds** through the app's existing earcons (and its mute setting): a soft swoosh when an agent arrives, success or error when a job closes.
+- **Look generator** moved to `world/looks.js` (no three.js), so node can test it: ten generated agents all differ, a look is rerolled when taken, and the role tint shows.
+- Tests: `tests/world_looks_test.mjs` (8) and runtime growth checks (24), plus every earlier suite. Browser pass at 4 floors with 29 agents, in both themes.
+
+---
+
+## Sprint 8: QA and release (done)
+
+On by default, the World tab is home, skills run in the packaged app through `backend.exe --run-skill`, and the README and tests table are updated. Results are in [docs/38](./38-MINI-WORLD-QA.md). The old pipeline is kept as the "off" path instead of being removed (reason in doc 38).

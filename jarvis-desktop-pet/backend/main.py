@@ -8,7 +8,14 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from backend.app import App
+if __name__ == "__main__" and "--run-skill" in sys.argv:
+    # packaged builds run Mini World skills through the backend exe itself
+    # (doc 37 sprint 8): a separate, short-lived process in a throwaway folder
+    from core.world.skills_lab import run_skill_main
+
+    sys.exit(run_skill_main())
+
+from backend.app import App  # noqa: E402
 
 
 def setup_logging() -> None:
