@@ -113,6 +113,32 @@ async def world_off():
         await s.close()
 
 
+async def live_toggle():
+    s, ws = await connect()
+    try:
+        await ws.send_str(json.dumps({"type": "world_status", "payload": {}, "correlation_id": "t0"}))
+        got = await collect(ws, lambda d, g: d.get("topic") == "world.status", 10)
+        st = next((d for d in got if d.get("topic") == "world.status"), None)
+        check("toggle: starts off", st and st["payload"]["enabled"] is False, st)
+        await ws.send_str(json.dumps({"type": "set_world", "payload": {"enabled": True}, "correlation_id": "t1"}))
+        got = await collect(ws, lambda d, g: d.get("topic") == "world.status", 15)
+        st = next((d for d in got if d.get("topic") == "world.status"), None)
+        check("toggle: on without restart", st and st["payload"]["enabled"] is True, st)
+        await ws.send_str(json.dumps({"type": "text_input", "payload": {"text": "list files in ."}, "correlation_id": "t2"}))
+        got = await collect(ws, lambda d, g: d.get("topic") == "world.job.closed", 20)
+        check("toggle: job runs in the world", any(d.get("topic") == "world.job.closed" for d in got))
+        await ws.send_str(json.dumps({"type": "set_world", "payload": {"enabled": False}, "correlation_id": "t3"}))
+        got = await collect(ws, lambda d, g: d.get("topic") == "world.status", 15)
+        st = next((d for d in got if d.get("topic") == "world.status"), None)
+        check("toggle: off again", st and st["payload"]["enabled"] is False, st)
+        await ws.send_str(json.dumps({"type": "text_input", "payload": {"text": "list files in ."}, "correlation_id": "t4"}))
+        got = await collect(ws, lambda d, g: d.get("topic") == "ui.chat" and d["payload"].get("role") == "assistant", 60)
+        check("toggle: off means old pipeline, no world events", not any(str(d.get("topic")).startswith("world.") for d in got) and got)
+    finally:
+        await ws.close()
+        await s.close()
+
+
 def run(world: bool, fn):
     p = start_backend(world)
     try:
@@ -125,7 +151,13 @@ def run(world: bool, fn):
             p.kill()
 
 
-run(True, world_on)
-run(False, world_off)
+CONFIG = ROOT / "config" / "config.yaml"
+_backup = CONFIG.read_bytes()
+try:
+    run(True, world_on)
+    run(False, world_off)
+    run(False, live_toggle)
+finally:
+    CONFIG.write_bytes(_backup)  # set_world rewrites config.yaml; leave the repo as it was
 print(f"\n{sum(results)}/{len(results)} passed")
 sys.exit(0 if all(results) else 1)

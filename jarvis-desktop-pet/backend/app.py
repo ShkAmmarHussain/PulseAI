@@ -66,10 +66,35 @@ class App:
         from core.world.service import WorldService, world_enabled
 
         self.world = None
+        self._world_svc = None
+
+        async def set_world(enabled: bool):
+            """Turn the Mini World on/off live (doc 37 task 4.5). The service is
+            built once (bus subscriptions are permanent) and parked when off."""
+            if enabled:
+                if self._world_svc is None:
+                    self._world_svc = WorldService(self.bus, self.cfg, rtm=self.rtm)
+                    self._world_svc.start()
+                self._world_svc.enabled = True
+                self.world = self._world_svc
+                logger.info("Mini World enabled: requests go to the Director")
+            elif self._world_svc is not None:
+                self.world = None
+                self._world_svc.enabled = False
+                await self._world_svc.stop_all()
+                logger.info("Mini World disabled")
+            await self.bus.publish(create_event("world.status", "status", {"enabled": self.world is not None}))
+
+        async def on_world_toggle(ev: Event):
+            await set_world(bool((ev.payload or {}).get("enabled")))
+
+        async def on_world_status(ev: Event):
+            await self.bus.publish(create_event("world.status", "status", {"enabled": self.world is not None}, correlation_id=ev.correlation_id))
+
+        self.bus.subscribe("world.toggle", on_world_toggle)
+        self.bus.subscribe("world.cmd.status", on_world_status)
         if world_enabled(self.cfg):
-            self.world = WorldService(self.bus, self.cfg, rtm=self.rtm)
-            self.world.start()
-            logger.info("Mini World enabled: requests go to the Director")
+            await set_world(True)
 
         async def on_settings(ev: Event):
             self.cfg = load_config()

@@ -173,7 +173,15 @@ class WSBridge:
             logger.info("save_settings: bus published in %.0fms cid=%s", (time.monotonic() - t0) * 1000, cid)
             await self._send(ws, {"type": "settings_saved", "payload": saved, "correlation_id": cid})
             logger.info("save_settings: reply sent in %.0fms cid=%s", (time.monotonic() - t0) * 1000, cid)
-        elif et in ("world_say", "world_stop", "world_snapshot"):
+        elif et == "set_world":
+            enabled = bool(payload.get("enabled"))
+            cfg = _read_yaml("config.yaml") or {}
+            w = cfg.get("world") or {}
+            w["enabled"] = enabled
+            cfg["world"] = w
+            _write_yaml("config.yaml", cfg)
+            await self.bus.publish(create_event("world.toggle", "toggle", {"enabled": enabled}, correlation_id=cid))
+        elif et in ("world_say", "world_stop", "world_snapshot", "world_status"):
             # Mini World commands (doc 36 section 13); ignored when the world is off
             await self.bus.publish(
                 create_event("world.cmd." + et[6:], et[6:], payload, correlation_id=cid)
@@ -543,5 +551,5 @@ class WSBridge:
 
         for t in ("ui.pet_state", "ui.chat", "ui.approval", "ui.question", "ui.state", "ui.pet_visibility", "ui.voice_state", "ui.mic_level", "ui.wake_test", "tts_state", "rm_state", "ui.approval_cancelled", "tool.result", "dictation.start", "dictation.result", "dictation.stop", "intent.fast_path", "agent.hook.session", "agent.hook.diff", "agent.hook.approval_request", "ui.file_ingest", "memory.updated", "tasks.updated", "task.fired", "voice.say",
                   "world.agent.added", "world.agent.updated", "world.agent.removed", "world.job.opened", "world.job.closed",
-                  "world.task.created", "world.task.updated", "world.snapshot"):
+                  "world.task.created", "world.task.updated", "world.snapshot", "world.status"):
             self.bus.subscribe(t, fwd_ui)

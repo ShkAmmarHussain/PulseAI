@@ -32,6 +32,7 @@ class WorldService:
             approve=lambda step, risk: self.approvals.ask(step, risk),
         )
         self._jobs = set()
+        self.enabled = True
 
     def start(self) -> None:
         self.bus.subscribe("world.cmd.say", self._on_say)
@@ -63,6 +64,8 @@ class WorldService:
         return n
 
     async def _on_say(self, ev: Event) -> None:
+        if not self.enabled:
+            return
         await self.handle_input((ev.payload or {}).get("text", ""), ev.correlation_id)
 
     async def _on_stop(self, ev: Event) -> None:
