@@ -256,3 +256,42 @@ Each later sprint gets its own task-level section here when it starts, written a
 - `world_snapshot` returns the 8 agents.
 - `world_stop` returns, and no job is left open.
 - With the flag off, the same input produces no `world.*` events.
+
+---
+
+## Sprint 4: World tab in the app
+
+**Goal:** a real **World** tab in the main window that draws the live world from the backend: the 3x3x3 building, chibi agents, roster, inspector, job strip, approvals, chat, Stop all and floor focus. Built from `docs/prototypes/36-world-hq.html` and the doc 34 tokens.
+
+**Files:**
+- Create: `ui_pet/src/vendor/addons/**` (three r170 add-ons copied unmodified: OrbitControls, CSS2DRenderer, RoundedBoxGeometry, EffectComposer and its passes and shaders), resolved through an import map in `index.html` (`three` maps to `./vendor/three.module.js`, `three/addons/` maps to `./vendor/addons/`).
+- Create: `ui_pet/src/world/store.js` (pure state mirror), `ui_pet/src/world/building.js` (rooms, lift, lights), `ui_pet/src/world/chibi.js` (character kit and look generator), `ui_pet/src/world/scene.js` (renderer, camera, actors, walking), `ui_pet/src/world/tab.js` (UI glue)
+- Modify: `ui_pet/src/index.html` (World nav item first, `#pane-world`), `ui_pet/src/main.js` (pane list), `ui_pet/src/app.css` (World tab styles on the doc 34 tokens)
+- Modify: `backend/ws_bridge.py` (`set_world {enabled}` writes `world.enabled` and publishes `world.toggle`), `backend/app.py` (starts or stops `WorldService` live on `world.toggle`)
+- Tests: `tests/world_store_test.mjs` (node), and an addition to `tests/world_backend_e2e.py` (toggle on and off live)
+
+### Task 4.1: Add-ons via import map
+Copy the files and add the import map before every module script. Check: `pet3d.js` still loads (it imports `./vendor/three.module.js` directly), and the World tab imports `three/addons/controls/OrbitControls.js` without a 404.
+
+### Task 4.2: Store
+`createStore()` returns `{apply(msg) -> "ok"|"gap"|"ignored", state, on(fn)}`. `world.snapshot` replaces the state. A diff with `seq == state.seq + 1` applies, using the same rules as Python `apply_diff`. A diff with `seq <= state.seq` is ignored. A larger jump returns `"gap"`, and the tab then asks for `world_snapshot`. Node test: replaying the Python test's 10-diff script gives the same final state; a gap is detected; duplicates are ignored.
+
+### Task 4.3: Scene
+Room ids `f{floor}r{row}c{col}`. The front row (r1) holds the default rooms with the doc 36 §11.2 names, and the rows behind it are spare. Low glass partitions between rows keep every room visible. The lift is on the right, and the lobby door is on f1 at the left. Agents walk from the door along the front corridor, take the lift, and walk up the room's centre lane to their slot. Scene objects are created and removed only from store events. Rendering pauses when the tab is hidden or the window is minimised. If WebGL fails, a flat floor plan replaces the scene.
+
+### Task 4.4: Tab UI
+- Roster: Team and Temporary groups, a portrait for each agent, and its state.
+- Inspector: the selected agent's state, task, recent log, skills and actions.
+- Job strip: the newest open job's tasks.
+- Composer: sends `world_say`.
+- Stop all: sends `world_stop`.
+- Floor buttons All/3/2/1.
+- An approval card for any `ui.approval` whose cid starts with `world-`; Allow and Deny send `approval_response`.
+
+### Task 4.5: Live on/off
+When the world is off, the World tab shows an empty state with **Turn on Mini World**, which sends `set_world {enabled: true}`. The backend writes `world.enabled`, starts the `WorldService` without a restart, and broadcasts `world.status {enabled}`. Turning it off stops all jobs first.
+
+### Task 4.6: Checks
+- The node store test passes.
+- The backend e2e test adds: live toggle on, then a job runs; toggle off, then no world events.
+- A browser pass on the real backend: the desktop size and a 900 px wide window show the building, the eight regulars and a live job. The detector (`impeccable detect`) is clean or explained.
