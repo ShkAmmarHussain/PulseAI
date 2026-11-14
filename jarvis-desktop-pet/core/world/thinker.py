@@ -63,7 +63,8 @@ def system_prompt(roles) -> str:
         '"new_agents": [{"role": "writer", "why": "..."}]}\n'
         "Rules: at most 8 tasks; ids t1, t2, ...; 'needs' lists task ids whose results this task uses; "
         "use a team role when one fits, otherwise invent a one-word lowercase role (writer, coder, translator) "
-        "and list it in new_agents (at most 3); each goal is one concrete instruction."
+        "and list it in new_agents (at most 3); each goal is one concrete instruction; "
+        "when a skill.<name> fits, the goal must say to use that skill and with which values."
     )
 
 
