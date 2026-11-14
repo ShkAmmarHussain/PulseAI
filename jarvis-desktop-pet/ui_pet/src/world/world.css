@@ -129,3 +129,22 @@
   .wt-job-title { flex-basis: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .wt-dot.approval { animation: none; } }
+
+/* sprint 5: create / edit / delete agents */
+.wt-roster-foot { padding: 10px 12px 14px; border-top: 1px solid var(--border-default); display: flex; flex-direction: column; gap: 10px; }
+.wt-add { width: 100%; }
+.wt-add[hidden], .wt-new[hidden], .wt-edit[hidden], .wt-confirm[hidden], .wt-archived[hidden] { display: none; }
+.wt-new, .wt-edit, .wt-confirm { display: flex; flex-direction: column; gap: 8px; background: var(--card); border-radius: 16px; padding: 14px; }
+.wt-new label, .wt-edit label { font-size: 12.5px; color: var(--dim); }
+.wt-field { width: 100%; box-sizing: border-box; border-radius: 10px; border: 1px solid var(--border-strong); background: var(--card-flat); color: var(--ink); font: inherit; font-size: 13.5px; padding: 8px 10px; outline: none; resize: vertical; }
+.wt-field:focus { border-color: rgba(245, 165, 36, .6); }
+.wt-field::placeholder { color: var(--dim-3); }
+.wt-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.wt-preset { height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border-strong); background: transparent; color: var(--dim); font: inherit; font-size: 12px; cursor: pointer; }
+.wt-preset:hover { color: var(--ink); border-color: rgba(255, 255, 255, .2); }
+.wt-form-btns { display: flex; gap: 8px; justify-content: flex-end; }
+.wt-confirm p { margin: 0; font-size: 13px; color: var(--ink); }
+.wt-desc { margin: 0; font-size: 13.5px; color: var(--ink); overflow-wrap: anywhere; }
+.wt-archived { display: flex; flex-direction: column; gap: 4px; }
+.wt-arch-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; padding: 4px 8px; }
+.wt-arch-row small { color: var(--dim-3); font-size: 12px; margin-left: 4px; }

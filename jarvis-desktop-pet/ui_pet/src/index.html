@@ -146,6 +146,23 @@
           <aside class="wt-roster" aria-label="Agents">
             <div class="wt-head"><h2>Agents</h2><span class="wt-count" id="wt-count"></span></div>
             <div class="wt-roster-list" id="wt-roster"></div>
+            <div class="wt-roster-foot">
+              <div class="wt-archived" id="wt-archived" hidden></div>
+              <form class="wt-new" id="wt-new-form" hidden>
+                <label for="wt-new-desc">What should the new agent do?</label>
+                <textarea class="wt-field" id="wt-new-desc" rows="2" maxlength="400" placeholder="e.g. Translate my replies into Spanish"></textarea>
+                <div class="wt-presets">
+                  <button type="button" class="wt-preset" data-text="Write and edit longer texts and emails">Writer</button>
+                  <button type="button" class="wt-preset" data-text="Write and explain small pieces of code">Coder</button>
+                  <button type="button" class="wt-preset" data-text="Translate text between languages">Translator</button>
+                  <button type="button" class="wt-preset" data-text="Look at numbers and tables and explain what they mean">Analyst</button>
+                </div>
+                <label for="wt-new-name">Name (optional)</label>
+                <input class="wt-field" id="wt-new-name" maxlength="24" placeholder="Pip picks one if empty" autocomplete="off" />
+                <div class="wt-form-btns"><button type="button" class="wt-btn sm" id="wt-new-cancel">Cancel</button><button type="submit" class="wt-btn sm primary">Create agent</button></div>
+              </form>
+              <button type="button" class="wt-btn primary wt-add" id="wt-add"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New agent</button>
+            </div>
           </aside>
           <section class="wt-center">
             <div class="wt-toolbar">

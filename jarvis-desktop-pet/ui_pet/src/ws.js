@@ -139,6 +139,7 @@ window.Jarvis = (function () {
       snapshot: () => send({ type: "world_snapshot", payload: {} }),
       status: () => send({ type: "world_status", payload: {} }),
       set: (enabled) => send({ type: "set_world", payload: { enabled: !!enabled } }),
+      agent: (payload) => send({ type: "world_agent", payload }),
     },
     voiceListen: (on) => send({ type: "voice_listen", payload: { on: !!on } }),
     voiceWake: (enabled) => send({ type: "voice_wake", payload: { enabled: !!enabled } }),

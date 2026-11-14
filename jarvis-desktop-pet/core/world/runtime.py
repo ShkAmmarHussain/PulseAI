@@ -51,6 +51,7 @@ class AgentRuntime:
         self.state = state
         self.max_active_temp = int(caps.get("max_active_temp", 6))
         self.max_temp_per_job = int(caps.get("max_temp_per_job", 3))
+        self.max_custom = int(caps.get("max_custom", 6))
         self._running: Dict[str, asyncio.Task] = {}
         self._stopped: Set[str] = set()
         self._ids = itertools.count(1)
@@ -71,8 +72,51 @@ class AgentRuntime:
         if room is None:
             raise CapError("no free room")
         agent_id = f"temp-{role}-{next(self._ids)}"
-        self.state.add_agent(AgentInfo(id=agent_id, name=role.title(), role=role, kind="temp", room=room, job_id=job_id))
+        self.state.add_agent(AgentInfo(id=agent_id, name=role.title(), role=role, kind="temp", room=room, job_id=job_id, look_seed=agent_id))
         return agent_id
+
+    def free_room(self) -> Optional[str]:
+        used = {a.room for a in self.state.agents.values()}
+        return next((r for r in SPARE_ROOMS if r not in used), None)
+
+    def customs(self):
+        return [a for a in self.state.agents.values() if a.kind == "custom"]
+
+    def spawn_custom(self, name: str, role: str, description: str = "", look_seed: str = "",
+                     agent_id: Optional[str] = None, room: Optional[str] = None) -> str:
+        """A lasting agent made by the user (doc 36 §9.3). Not counted against temp caps."""
+        if len(self.customs()) >= self.max_custom:
+            raise CapError(f"already {self.max_custom} custom agents")
+        used = {a.room for a in self.state.agents.values()}
+        if not room or room in used or room not in SPARE_ROOMS:
+            room = self.free_room()
+        if room is None:
+            raise CapError("no free room")
+        agent_id = agent_id or f"custom-{role}-{next(self._ids)}"
+        if agent_id in self.state.agents:
+            raise ValueError(f"{agent_id} already exists")
+        self.state.add_agent(AgentInfo(id=agent_id, name=name, role=role, kind="custom", room=room,
+                                       description=description, look_seed=look_seed or agent_id))
+        return agent_id
+
+    def keep(self, agent_id: str) -> AgentInfo:
+        """Turn a temporary agent into a custom (lasting) one."""
+        a = self.state.agents[agent_id]
+        if a.kind != "temp":
+            raise ValueError(f"{agent_id} is not temporary")
+        if len(self.customs()) >= self.max_custom:
+            raise CapError(f"already {self.max_custom} custom agents")
+        return self.state.update_agent(agent_id, kind="custom", job_id=None, look_seed=a.look_seed or agent_id)
+
+    def remove(self, agent_id: str) -> AgentInfo:
+        """Remove a temp or custom agent (defaults can never be removed), stopping its task first."""
+        a = self.state.agents[agent_id]
+        if a.kind == "default":
+            raise ValueError(f"{a.name} is a default agent and cannot be deleted")
+        if a.task_id:
+            self.stop(a.task_id)
+        self.state.remove_agent(agent_id)
+        return a
 
     def dismiss(self, agent_id: str) -> None:
         a = self.state.agents[agent_id]

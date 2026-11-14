@@ -295,3 +295,18 @@ When the world is off, the World tab shows an empty state with **Turn on Mini Wo
 - The node store test passes.
 - The backend e2e test adds: live toggle on, then a job runs; toggle off, then no world events.
 - A browser pass on the real backend: the desktop size and a 900 px wide window show the building, the eight regulars and a live job. The detector (`impeccable detect`) is clean or explained.
+
+---
+
+## Sprint 5: Create and delete agents (done)
+
+- `core/world/agents_store.py`: custom agents are kept in `data/world_agents.json`. Deleted ones are archived for 30 days and can be restored.
+- `AgentRuntime.spawn_custom / keep / remove` and the cap `max_custom` (6). `AgentInfo` gains `description` and `look_seed`.
+- `WorldService` handles `world.cmd.agent {op: create | keep | update | delete | restore | archived}`. Bodie is shown working while he builds. Customs come back after a restart.
+- The Thinker plans with custom roles (listed with their descriptions). A custom agent's worker prompt carries its description.
+- World tab:
+  - New agent form with presets and an optional name.
+  - Inspector actions: Reroll look, Edit, Keep as custom, Dismiss or Delete with an inline confirm.
+  - Recently deleted list with Bring back.
+  - New agents walk in, and a reroll rebuilds the chibi.
+- Tests: `tests/world_agents_test.py` (26 checks), plus every earlier suite.
