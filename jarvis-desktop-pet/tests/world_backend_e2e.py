@@ -31,9 +31,7 @@ def check(name, ok, extra=""):
 
 def start_backend(world: bool) -> subprocess.Popen:
     env = dict(os.environ, PULSEAI_WS_PORT=str(PORT))
-    env.pop("PULSEAI_WORLD", None)
-    if world:
-        env["PULSEAI_WORLD"] = "1"
+    env["PULSEAI_WORLD"] = "1" if world else "0"
     return subprocess.Popen(
         [sys.executable, str(ROOT / "backend" / "main.py")], cwd=str(ROOT), env=env,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

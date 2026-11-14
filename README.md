@@ -19,6 +19,7 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 - **Main window** — Chat, Activity (task cards and live timers), Memory (search, add, inline edit, forget/undo, export) and Settings, plus a first-run onboarding (Meet Pip → Microphone → Model).
 - **Local or cloud models** — LM Studio by default; OpenAI or Anthropic Claude with your own key, with auto-routing of each task to a fast, heavy or vision model. Cloud keys are stored in **Windows Credential Manager**, never in the config files.
 - **Multi-agent core** — planner / tool-control / perception / memory / safety agents route work through an in-process event bus.
+- **Mini World** — a **World** tab where Pip (the Director) hands your requests to a team of chibi agents working in a 3D, 3-floor HQ building. You watch them plan, research, act and report, approve risky steps, create and delete your own agents, and add new skills that are safety-checked and run in a sandbox. On by default; turn it off in the World tab. See [docs/36](docs/36-MINI-WORLD-MULTI-AGENT-VISION.md).
 - **PC control + vision** — skills for files, shell, browser, keyboard/mouse and screen understanding, gated by a permission/approval system with friendly action names and one risk level.
 - **Tray app, single instance** — closing the window hides Jarvis to the tray (Pip keeps working); **Quit** in the tray menu or Settings → About ends the window and the background service together. Launching Jarvis again just brings the existing window back.
 - **Everything local** — models, config, memory and logs live under `%APPDATA%\JarvisDesktopPet\`.
@@ -29,7 +30,8 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 
 ```
 ┌────────────────────────── Tauri (Rust) ──────────────────────────┐
-│  index.html  ── main window (chat, activity, memory, settings)   │
+│  index.html  ── main window (world, chat, activity, memory, …)   │
+│    world/    ── World tab: 3D HQ building, chibi agents, skills  │
 │  pet.html    ── always-on-top transparent pet, Pip (SVG/three.js)│
 │  dock.html   ── top-edge island (alternative companion)          │
 │        │  WebSocket  ws://127.0.0.1:8765/ws                      │
@@ -41,6 +43,8 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 │  voice_service:                                                  │
 │    mic → wake word → capture → whisper → bus → LLM → Kokoro → you│
 │                                                                  │
+│  core/world (Mini World): Director → Thinker → workers → Reporter │
+│    brain queue · agent runtime · approvals · skills sandbox      │
 │  agents: orchestrator, planner, tool_control, perception,        │
 │          memory_agent, safety, vision, pet_ux, voice_tts          │
 │  skills: shell, file_ops, browser, web_search, app_control       │
@@ -54,9 +58,24 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 1. `voice_service` keeps a mic stream open and scores every 80 ms frame with openWakeWord.
 2. Score crosses the threshold → state flips to **listening**, mic audio is buffered with an RMS VAD.
 3. Silence → faster-whisper transcribes the buffer.
-4. Text goes onto the bus → orchestrator/agents produce a reply through LM Studio.
+4. Text goes onto the bus → the fast-path router takes simple commands; everything else goes to the Mini World Director (or, with the world off, the classic orchestrator) and the agents produce a reply through LM Studio.
 5. Reply is spoken by Kokoro; while it plays the mic is suppressed so the pet never hears itself.
 6. State returns to **listening** for the next "Hey Jarvis".
+
+---
+
+## Mini World
+
+The **World** tab (home screen when it is on) shows PulseAI HQ: a 3D building, 3 floors of 3×3 rooms, cut open so you can see everyone at work.
+
+- **Pip, the Director**, never thinks or acts itself. Each request goes to **the Thinker** for a plan, then to the right agents: **Rhea** (research), **Otto** (PC control), **Vee** (screen), **Ada** (memory), **Remy** (writes the answer) and **Bodie** (builds new agents and skills).
+- **New agents** are created for a job (temporary) or by you (**New agent**, lasting). Each gets a unique chibi look, walks in through the lobby, takes the lift, and leaves when dismissed. Deleted agents can be brought back for 30 days.
+- **Skills**: describe one in the Skills drawer and Bodie drafts it. It is checked for unsafe code, test-run in a sandbox, and only works after you turn it on.
+- **Approvals**: risky steps raise the agent's hand and the usual approval card (Y / N).
+- **Controls**: Stop all, floor buttons, day/night, click any agent to inspect it. The building grows a floor when every room is full.
+- **On/off**: on by default. Turn it off in the World tab (or `world.enabled: false`, or env `PULSEAI_WORLD=0`) to use the classic pipeline.
+
+Design and plan: [docs/36](docs/36-MINI-WORLD-MULTI-AGENT-VISION.md), sprints [docs/37](docs/37-MINI-WORLD-SPRINTS.md), QA [docs/38](docs/38-MINI-WORLD-QA.md).
 
 ---
 
@@ -68,9 +87,11 @@ Personal_AI/
 ├── jarvis-desktop-pet/
 │   ├── backend/              # aiohttp WS server, voice_service, ws_bridge
 │   ├── core/                 # bus, config, llm, orchestrator, guardrails
+│   ├── core/world/           # Mini World: state, Director, brain, runtime, workers, skills lab
 │   ├── agents/               # multi-agent implementations
 │   ├── skills/               # shell, files, browser, web_search, app_control
 │   ├── ui_pet/src/           # frontend served raw by Tauri (HTML/CSS/JS + three.js)
+│   ├── ui_pet/src/world/     # World tab: store, building, chibi kit, scene, tab UI
 │   ├── ui_pet/src-tauri/     # Rust shell: windows, tray, sidecar launch
 │   ├── tests/                # e2e suites (voice, wake, agent, chat, smoke)
 │   ├── scripts/              # setup.ps1, run-dev.bat
@@ -167,11 +188,11 @@ All config lives in `%APPDATA%\JarvisDesktopPet\`:
 
 | File | Purpose |
 |------|---------|
-| `config\config.yaml` | LM Studio URL, voice (`stt_model`, `wake.threshold`, `device`, TTS), resource limits |
+| `config\config.yaml` | LM Studio URL, voice (`stt_model`, `wake.threshold`, `device`, TTS), resource limits, `world:` (Mini World on/off, caps) |
 | `config\agents.yaml` | per-agent model ids + quantization |
 | `config\permissions.yaml` | safety policy, approval timeouts |
 | `config\personality.yaml` | name, wake word, voice style |
-| `data\` | memory facts, tasks/timers, onboarding marker |
+| `data\` | memory facts, tasks/timers, onboarding marker, Mini World custom agents (`world_agents.json`) and skills (`world_skills\`) |
 | `models\` | downloaded model weights |
 | `backend.log` | runtime log (wake scores, mic device, TTS, errors) |
 | `diagnostics\` | bundles from Settings → About → **Export diagnostics** (logs, settings with secrets redacted, model state) |
@@ -212,6 +233,10 @@ Run from `jarvis-desktop-pet\` with the virtualenv active.
 | Credential Manager + diagnostics | `python tests\credentials_test.py` | backend running for the export part |
 | Pet performance (idle FPS, paused when hidden) | `python tests\perf_check.py` | real app with `--remote-debugging-port=9335` |
 | Memory inline edit | `python tests\memory_update_test.py` | backend running |
+| Mini World engine (state, plans, queue, runtime, Director, thinker/workers, agents, skills, service) | `python tests\world_<name>_test.py` (state, plan, brain, runtime, director, thinker, team, service, agents, skills) | – |
+| Mini World UI logic | `node tests\world_store_test.mjs`, `node tests\world_looks_test.mjs` | – |
+| Mini World on the real backend (on, off, live toggle) | `python tests\world_backend_e2e.py` | port 8799 free |
+| Mini World with real models | `python tests\world_live_test.py` | LM Studio running (skips if not) |
 | Full QA on the installed build | `python scripts\qa35_lifecycle.py`, `python scripts\qa35_surfaces.py` | `test_install\` built; see [docs/35](docs/35-FULL-QA-TEST-PLAN.md) |
 
 `voice_e2e` and `wake_e2e` bind port `8765` themselves — stop any running backend first, and never run them in parallel. The full test inventory and gate practice are in [docs/23](docs/23-TESTING.md) and [docs/35](docs/35-FULL-QA-TEST-PLAN.md).

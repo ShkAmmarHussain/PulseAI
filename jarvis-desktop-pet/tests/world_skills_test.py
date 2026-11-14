@@ -67,6 +67,13 @@ async def main():
         check("sandbox error surfaces", False)
     except RuntimeError as e:
         check("sandbox error surfaces", "nope" in str(e), str(e))
+    # packaged builds run skills through the backend exe: backend/main.py --run-skill
+    import subprocess as _sp
+    with tempfile.TemporaryDirectory() as td:
+        Path(td, "skill.py").write_text(GOOD, encoding="utf-8")
+        root = Path(__file__).resolve().parents[1]
+        p = _sp.run([sys.executable, str(root / "backend" / "main.py"), "--run-skill"], cwd=td, input='{"radius": "1"}', capture_output=True, text=True, timeout=60)
+        check("backend --run-skill entry works (frozen path)", '__RESULT__{"result": "3.14"}' in p.stdout, (p.stdout[-80:], p.stderr[-200:]))
     secret_env = run_sandboxed("import os\ndef run():\n    return str(sorted(os.environ))", {})
     check("sandbox gets a minimal environment", "LM_API_TOKEN" not in secret_env and "APPDATA" not in secret_env, secret_env[:120])
 

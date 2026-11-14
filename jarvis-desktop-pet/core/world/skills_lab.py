@@ -105,6 +105,20 @@ sys.stdout.write("\n__RESULT__" + json.dumps({"result": str(out)[:8000]}))
 """
 
 
+def run_skill_main() -> int:
+    """Child-process entry for a packaged (frozen) build, where there is no
+    separate python.exe: ``backend.exe --run-skill`` runs the same RUNNER
+    against skill.py in the current (throwaway) folder."""
+    exec(compile(RUNNER, "runner.py", "exec"), {"__name__": "__runner__"})
+    return 0
+
+
+def skill_command() -> list:
+    if getattr(sys, "frozen", False):
+        return [sys.executable, "--run-skill"]
+    return [sys.executable, "-I", "runner.py"]
+
+
 def run_sandboxed(code: str, params: dict, timeout_s: float = 10.0) -> str:
     """Run a skill in a separate isolated Python process in a throwaway folder."""
     with tempfile.TemporaryDirectory(prefix="pulseai-skill-") as tmp:
@@ -113,7 +127,7 @@ def run_sandboxed(code: str, params: dict, timeout_s: float = 10.0) -> str:
         env = {"PATH": os.environ.get("PATH", ""), "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""), "PYTHONIOENCODING": "utf-8"}
         try:
             p = subprocess.run(
-                [sys.executable, "-I", "runner.py"], cwd=tmp, input=json.dumps(params or {}), capture_output=True,
+                skill_command(), cwd=tmp, input=json.dumps(params or {}), capture_output=True,
                 text=True, timeout=timeout_s, env=env, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
         except subprocess.TimeoutExpired:
