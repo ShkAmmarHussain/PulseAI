@@ -20,7 +20,7 @@ from core.world.state import AgentInfo, WorldState
 from core.world.thinker import make_thinker
 from core.world.worker import make_worker
 
-DEFAULT_CAPS = {"max_active_temp": 6, "max_temp_per_job": 3, "max_custom": 6, "max_tasks": 8, "max_new_agents": 3, "task_timeout_s": 300}
+DEFAULT_CAPS = {"max_active_temp": 6, "max_temp_per_job": 3, "max_custom": 16, "max_tasks": 8, "max_new_agents": 3, "task_timeout_s": 300}
 
 
 @dataclass
@@ -44,10 +44,18 @@ def default_chat(cfg: dict):
     return chat
 
 
-def default_execute(cfg: dict, rtm=None):
+def default_execute(cfg: dict, rtm=None, skills=None):
+    import asyncio
+
     from agents.tool_control import execute_step
 
     async def execute(step: dict) -> str:
+        act = str(step.get("action", ""))
+        if act.startswith("skill.") and skills is not None:
+            from core.world.skills_lab import run_sandboxed
+
+            params = {k: v for k, v in step.items() if k not in ("action", "risk")}
+            return await asyncio.to_thread(run_sandboxed, skills.code(act[6:]), params)
         return await execute_step(cfg, rtm, step)
 
     return execute
@@ -75,11 +83,13 @@ def build_world(
     approve: Optional[Callable] = None,
     answer: Optional[Callable] = None,
     rtm=None,
+    skills=None,
 ) -> World:
     wcfg = ((cfg.get("config") or {}).get("world")) or {}
     caps = dict(DEFAULT_CAPS, **(wcfg.get("caps") or {}))
     chat = chat or default_chat(cfg)
-    execute = execute or default_execute(cfg, rtm)
+    execute = execute or default_execute(cfg, rtm, skills)
+    enabled_skills = (lambda: skills.enabled()) if skills is not None else (lambda: {})
     answer = answer or default_answer(cfg)
 
     state = WorldState()
@@ -91,17 +101,18 @@ def build_world(
     workers = {
         role: make_worker(
             role, cfg, chat=chat, execute=execute, approve=approve, allowed=ROLE_ACTIONS[role],
-            tier=ROLE_TIER.get(role, "fast"), answer=answer if role == "archivist" else None,
+            tier=ROLE_TIER.get(role, "fast"), answer=answer if role == "archivist" else None, skills=enabled_skills,
         )
         for role in WORKING_ROLES
     }
 
     def temp_worker(role: str):
         desc = next((a.description for a in state.agents.values() if a.role == role and a.description), "")
-        return make_worker(role, cfg, chat=chat, execute=execute, approve=approve, allowed=[], tier=TEMP_TIER, extra=desc)
+        return make_worker(role, cfg, chat=chat, execute=execute, approve=approve, allowed=[], tier=TEMP_TIER, extra=desc, skills=enabled_skills)
 
     def roles():
-        r = {k: ROLE_ACTIONS[k] for k in WORKING_ROLES}
+        extra = [f"skill.{n}" for n in enabled_skills()]
+        r = {k: ROLE_ACTIONS[k] + extra for k in WORKING_ROLES}
         for a in state.agents.values():
             if a.kind == "custom" and a.role not in r:
                 r[a.role] = f"(custom agent {a.name}) {a.description or 'general helper'}; answers with text"

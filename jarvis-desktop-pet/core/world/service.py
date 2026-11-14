@@ -8,6 +8,7 @@ input in, ``ui.chat`` / ``voice.say`` / ``memory.store`` out, plus the
 from __future__ import annotations
 
 import asyncio
+import re
 import os
 import uuid
 from typing import Optional
@@ -18,7 +19,9 @@ from dataclasses import asdict
 from core.world.agents_store import AgentStore
 from core.world.approvals import ApprovalBridge
 from core.world.runtime import CapError
-from core.world.team import build_world
+from core.world.skills_lab import DRAFT_PROMPT, SkillStore, check_code, run_sandboxed
+from core.world.team import build_world, default_chat
+from core.world.thinker import parse_json
 
 NAMES = ["Wren", "Kai", "Juno", "Moss", "Nova", "Ivo", "Lark", "Pax", "Sol", "Tess", "Rio", "Fen", "Mika", "Zed"]
 RESERVED_ROLES = {"director", "thinker", "builder", "reporter", "researcher", "operator", "watcher", "archivist"}
@@ -48,17 +51,22 @@ def pick_name(state) -> str:
 
 
 def world_enabled(cfg: dict) -> bool:
-    if os.environ.get("PULSEAI_WORLD") == "1":
-        return True
-    return bool((((cfg or {}).get("config") or {}).get("world") or {}).get("enabled", False))
+    env = os.environ.get("PULSEAI_WORLD")
+    if env in ("0", "1"):
+        return env == "1"
+    # on by default since sprint 8; an explicit `enabled: false` still turns it off
+    return bool((((cfg or {}).get("config") or {}).get("world") or {}).get("enabled", True))
 
 
 class WorldService:
-    def __init__(self, bus, cfg: dict, rtm=None, chat=None, execute=None, answer=None, store: Optional[AgentStore] = None):
+    def __init__(self, bus, cfg: dict, rtm=None, chat=None, execute=None, answer=None, store: Optional[AgentStore] = None,
+                 skills: Optional[SkillStore] = None):
         self.bus = bus
         self.approvals = ApprovalBridge(bus, ApprovalBridge.timeout_from(cfg))
+        self.skills = skills or SkillStore()
+        self.chat = chat or default_chat(cfg)
         self.world = build_world(
-            cfg, bus, chat=chat, execute=execute, answer=answer, rtm=rtm,
+            cfg, bus, chat=self.chat, execute=execute, answer=answer, rtm=rtm, skills=self.skills,
             approve=lambda step, risk: self.approvals.ask(step, risk),
         )
         self.store = store or AgentStore()
@@ -79,6 +87,82 @@ class WorldService:
         self.bus.subscribe("world.cmd.stop", self._on_stop)
         self.bus.subscribe("world.cmd.snapshot", self._on_snapshot)
         self.bus.subscribe("world.cmd.agent", self._on_agent)
+        self.bus.subscribe("world.cmd.skill", self._on_skill)
+
+    # ---- skills (doc 37 sprint 6) ----
+    def _skill_view(self, meta: dict) -> dict:
+        v = dict(meta)
+        try:
+            v["code"] = self.skills.code(meta["name"])
+        except (KeyError, OSError):
+            v["code"] = ""
+        return v
+
+    async def _publish_skills(self, cid=None):
+        await self.bus.publish(create_event("world.skills", "skills", {"skills": [self._skill_view(m) for m in self.skills.list()]}, correlation_id=cid))
+
+    async def draft_skill(self, description: str) -> dict:
+        description = str(description or "").strip()
+        if not description:
+            raise ValueError("Describe what the skill should do.")
+        st = self.world.state
+        builder = next((a for a in st.agents.values() if a.role == "builder" and a.kind == "default"), None)
+        if builder:
+            st.update_agent(builder.id, state="working", label="drafting a skill")
+        try:
+            raw = await self.world.brain.submit(
+                lambda: self.chat([{"role": "system", "content": DRAFT_PROMPT}, {"role": "user", "content": description}], "heavy"),
+                job_id="skill-draft", priority=1,
+            )
+        finally:
+            if builder:
+                st.update_agent(builder.id, state="idle", label="")
+        spec = parse_json(raw) or {}
+        code = str(spec.get("code") or "")
+        if not code:
+            raise ValueError("The Builder could not write that skill. Try describing it differently.")
+        name = re.sub(r"[^a-z0-9_]", "_", str(spec.get("name") or "skill").lower()).strip("_")[:32] or "skill"
+        if not name[0].isalpha():
+            name = "s_" + name
+        spec.update(name=name, code=code, description=str(spec.get("description") or description)[:200])
+        perms = [p for p in spec.get("permissions") or [] if p in ("files", "network")]
+        spec["permissions"] = perms
+        errors = check_code(code, perms)
+        test = ""
+        if not errors:
+            try:
+                test = await asyncio.to_thread(run_sandboxed, code, spec.get("example") or {})
+            except Exception as e:  # a skill that fails its own example is not enabled
+                errors.append(f"test run failed: {e}")
+        return self.skills.add_draft(spec, errors, test)
+
+    async def _on_skill(self, ev: Event) -> None:
+        p = ev.payload or {}
+        op, cid = p.get("op"), ev.correlation_id
+        try:
+            if op == "list":
+                pass
+            elif op == "draft":
+                meta = await self.draft_skill(p.get("description", ""))
+                verdict = "passed the safety check and its test" if not meta["check"] else "has problems, so it stays a draft"
+                await self._say(f"Bodie drafted the skill {meta['name']}. It {verdict}. Review it in Skills.", cid)
+            elif op == "enable":
+                self.skills.set_status(p["name"], "enabled")
+                await self._say(f"Skill {p['name']} is on. Agents can use it now.", cid)
+            elif op == "disable":
+                self.skills.set_status(p["name"], "disabled")
+            elif op == "delete":
+                self.skills.delete(p["name"])
+            elif op == "test":
+                out = await asyncio.to_thread(run_sandboxed, self.skills.code(p["name"]), p.get("params") or {})
+                await self.bus.publish(create_event("world.skill.test", "test", {"name": p["name"], "output": out}, correlation_id=cid))
+            else:
+                raise ValueError(f"unknown skill command: {op}")
+        except KeyError:
+            await self._say("That skill does not exist any more.", cid)
+        except (ValueError, RuntimeError) as e:
+            await self._say(str(e)[:1].upper() + str(e)[1:], cid)
+        await self._publish_skills(cid)
 
     # ---- agents (doc 37 sprint 5) ----
     def _say(self, text: str, cid=None):
