@@ -113,10 +113,27 @@ def run_skill_main() -> int:
     return 0
 
 
+RUNNER_EXE = "pulseai-skill-runner.exe"
+
+
 def skill_command() -> list:
+    """How to start the sandbox child. Packaged builds use the small runner exe
+    shipped next to the backend (fast start); the backend exe itself is the
+    fallback (slow: it unpacks ~190 MB first)."""
     if getattr(sys, "frozen", False):
+        runner = Path(sys.executable).with_name(RUNNER_EXE)
+        if runner.exists():
+            return [str(runner)]
         return [sys.executable, "--run-skill"]
     return [sys.executable, "-I", "runner.py"]
+
+
+def skill_timeout(timeout_s: float) -> float:
+    if getattr(sys, "frozen", False):
+        if not Path(sys.executable).with_name(RUNNER_EXE).exists():
+            return max(timeout_s, 90.0)
+        return max(timeout_s, 20.0)  # the runner unpacks itself first (~1 s, more under antivirus)
+    return timeout_s
 
 
 def run_sandboxed(code: str, params: dict, timeout_s: float = 10.0) -> str:
@@ -124,7 +141,11 @@ def run_sandboxed(code: str, params: dict, timeout_s: float = 10.0) -> str:
     with tempfile.TemporaryDirectory(prefix="pulseai-skill-") as tmp:
         Path(tmp, "skill.py").write_text(code, encoding="utf-8")
         Path(tmp, "runner.py").write_text(RUNNER, encoding="utf-8")
-        env = {"PATH": os.environ.get("PATH", ""), "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""), "PYTHONIOENCODING": "utf-8"}
+        # minimal environment: no API tokens or user paths; TEMP points at the
+        # throwaway folder (a packaged runner unpacks itself there)
+        env = {"PATH": os.environ.get("PATH", ""), "SYSTEMROOT": os.environ.get("SYSTEMROOT", ""), "PYTHONIOENCODING": "utf-8",
+               "TEMP": tmp, "TMP": tmp}
+        timeout_s = skill_timeout(timeout_s)
         try:
             p = subprocess.run(
                 skill_command(), cwd=tmp, input=json.dumps(params or {}), capture_output=True,

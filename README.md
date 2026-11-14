@@ -170,6 +170,9 @@ or simply `scripts\run-dev.bat`.
 # 1) Python sidecar (only when backend code changed)
 .venv\Scripts\python.exe -m PyInstaller jarvis-backend.spec --noconfirm
 Copy-Item dist\jarvis-backend.exe ui_pet\src-tauri\binaries\jarvis-backend-x86_64-pc-windows-msvc.exe -Force
+# Mini World skill runner (small sandbox exe; only when core/world/skills_lab.py changed)
+.venv\Scripts\python.exe -m PyInstaller skill-runner.spec --noconfirm
+Copy-Item dist\pulseai-skill-runner.exe ui_pet\src-tauri\binaries\pulseai-skill-runner-x86_64-pc-windows-msvc.exe -Force
 
 # 2) Full app (MSI + NSIS installers → ui_pet\src-tauri\target\release\bundle\)
 build.bat          # writes ..\build_log.txt, ends with BUILD_OK / BUILD_FAILED

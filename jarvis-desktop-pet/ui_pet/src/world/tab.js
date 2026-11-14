@@ -337,7 +337,10 @@ function pick(id, focus) {
 let landed = false;
 function setEnabled(on) {
   // the World tab is home when the Mini World is on (doc 36): land there once
-  if (on && !landed && !location.hash && window.showTab) window.showTab("world");
+  // only while the window is still on its untouched start tab: a late status
+  // (slow backend start, reconnect) must never pull someone out of Settings
+  const untouched = (document.querySelector(".pane.active") || {}).id === "pane-chat" && performance.now() < 20000;
+  if (on && !landed && !location.hash && untouched && window.showTab) window.showTab("world");
   landed = true;
   enabled = on;
   $("#wt-off", pane).hidden = on !== false;
@@ -478,6 +481,9 @@ function wire() {
   $("#wt-allow", pane).onclick = () => answer(true);
   $("#wt-deny", pane).onclick = () => answer(false);
   $("#wt-enable", pane).onclick = () => J.world.set(true);
+  $("#wt-power", pane).onclick = () => J.world.set(false);
+  // read-only hooks for the QA driver (scripts/qa38_world.py)
+  window.__world = { state: () => store.state, scene: () => (scene && scene.debug ? scene.debug() : null), enabled: () => enabled, theme: () => theme };
   const nf = $("#wt-new-form", pane), addBtn = $("#wt-add", pane);
   const closeNew = () => {
     nf.hidden = true;

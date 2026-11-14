@@ -382,6 +382,7 @@ export function createScene(host, { lookFor, onPick } = {}) {
   return {
     syncAgents, setFloor, focus, select, setTheme,
     floorCount: () => B.floors.length,
+    debug: () => ({ shownFloors, floorCount: B.floors.length, actors: actors.size, background: "#" + scene.background.getHexString() }),
     home: () => setFloor(0),
     setActive(on) {
       active = !!on;

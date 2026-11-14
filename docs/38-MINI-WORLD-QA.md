@@ -43,8 +43,37 @@ Release pass for the Mini World (docs 36 and 37). Everything below was run on th
 | Day/night toggle | Pass |
 | Default landing on the World tab with the shipped config | Pass |
 
+## Installed-build pass (click by click), 2026-11-14
+
+A fresh `jarvis-backend.exe`, `pulseai-skill-runner.exe` and `JarvisDesktopPet.exe` were deployed to `test_install`. All input is physical mouse and keyboard (SendInput), with `%APPDATA%\JarvisDesktopPet` backed up and restored.
+
+| Driver | Final result |
+|---|---|
+| `scripts/qa35_lifecycle.py` (launch, single instance, close vs quit, reopen paths, crash handling) | 19/19, twice in a row |
+| `scripts/qa35_surfaces.py` (every surface + onboarding step 4) | 85/85 (4 N/A by design: real memories, real ~/.claude, live microphone, an unbuilt menu) |
+| `scripts/qa38_world.py` (World tab, new) | 44/44 |
+
+`qa38_world` covers:
+- W1: opening on the World tab with the 8 regulars and the 3D view.
+- W2: roster selection and Find.
+- W3: every floor button.
+- W4: day and night, and Home.
+- W5–W7: new agent, reroll, edit, delete with confirm, Recently deleted, Bring back.
+- W8: approval card and Deny.
+- W9: a rule job end to end.
+- W10: Stop all on a running model job.
+- W11: Bodie drafts a skill with the real model. The skill passes the check and its sandbox test inside the packaged app, is turned on, its example runs (32.0) and it is deleted.
+- W12: power off and on without a restart.
+- W13: the 880 px layout.
+- W14: every other tab still opens.
+
+### Bugs found and fixed in this pass
+
+1. **Skills timed out in the installed app.** The packaged child started with no `TEMP`, so the PyInstaller bootloader could not unpack and hung. In addition, the 190 MB backend exe was slow to start as a sandbox. Fix: a separate 9 MB `pulseai-skill-runner.exe` (`skill-runner.spec`, shipped as a Tauri `externalBin`) that starts in about 0.75 s, with `TEMP`/`TMP` pointed at the throwaway folder. The backend's `--run-skill` stays as a fallback with a 90 s timeout.
+2. **A late "world is on" message could pull you out of Settings.** When the backend started slowly, the World tab's one-time landing ran after the user had already moved to another tab. It now only lands while the window is still on its untouched start tab, within the first 20 s.
+3. **The World tab had no way to turn the world off**, even though the README said it did. Added a power button to the toolbar.
+4. Test drivers: the docs/35 driver crashed printing "→" on a cp1252 console, and L6 clicked Quit while another window was on top (Windows refused the focus change). Both are fixed in the drivers.
+
 ## Not covered here
 
-- A full installed-build pass (doc 35 driver) with the new tab. Run `scripts/qa35_surfaces.py` after the next `build.bat`.
-- `--run-skill` was verified through `backend/main.py` in dev. The real frozen exe still needs one check after a build.
 - Animation while the window is hidden is paused on purpose, so a hidden window shows agents where they were.

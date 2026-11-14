@@ -67,6 +67,13 @@ async def run():
         await click(s, "#ob-back")
         st = await ev(s, M, "document.getElementById('onboarding').dataset.step")
         check("O3 Back returns to step 2", st == "2", st)
+        await click(s, "#ob-next")
+        await click(s, "#ob-next")
+        st = await ev(s, M, "document.getElementById('onboarding').dataset.step")
+        t4 = await ev(s, M, "document.querySelector('#ob-step-4 h3').textContent")
+        fin = await ev(s, M, "!document.getElementById('ob-finish').hidden && !!document.getElementById('ob-world')")
+        check("O4 step 4 is 'Meet your team' with the Mini World switch + Finish", st == "4" and t4 == "Meet your team" and fin is True, (st, t4, fin))
+        screenshot("O4_team")
         await ev(s, M, "document.getElementById('onboarding').hidden = true; 1")
 
         # ---------------- header tabs (H2-H5) + keyboard
