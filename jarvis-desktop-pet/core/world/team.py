@@ -20,7 +20,7 @@ from core.world.state import AgentInfo, WorldState
 from core.world.thinker import make_thinker
 from core.world.worker import make_worker
 
-DEFAULT_CAPS = {"max_active_temp": 6, "max_temp_per_job": 3, "max_custom": 6, "max_tasks": 8, "max_new_agents": 3, "task_timeout_s": 300}
+DEFAULT_CAPS = {"max_active_temp": 6, "max_temp_per_job": 3, "max_custom": 16, "max_tasks": 8, "max_new_agents": 3, "task_timeout_s": 300}
 
 
 @dataclass
