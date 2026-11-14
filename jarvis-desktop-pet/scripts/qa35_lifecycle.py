@@ -324,9 +324,24 @@ async def run():
         time.sleep(4)
         await ev(s, "/", "window.showTab('settings'); window.showSettingsTab('sec-about'); 1")
         time.sleep(0.8)
+        # a physical click only lands if the window is in front (it can open
+        # behind another window after the L5b close-to-tray toggle)
+        hq = find_window("Jarvis")
+        if hq:
+            # Windows' foreground lock can refuse SetForegroundWindow; a topmost
+            # toggle still brings the window to the top of the z-order
+            u.ShowWindow(hq, 9)
+            u.SetWindowPos(hq, -1, 0, 0, 0, 0, 0x43)
+            u.SetWindowPos(hq, -2, 0, 0, 0, 0, 0x43)
+            u.SetForegroundWindow(hq)
+            time.sleep(0.6)
+        await ev(s, "/", "window.__quitClicks = 0; document.getElementById('quit-app').addEventListener('click', () => window.__quitClicks++); 1")
         ok = await click_el(s, "/", "Jarvis", "#quit-app")
+        time.sleep(0.5)
+        clicks = await ev(s, "/", "window.__quitClicks")
         gone = wait_for(lambda: procs() == ([], []) and not port_open(), 15)
-        check("L6 (B1) Quit ends the UI and every backend process, :8765 freed", ok and gone, procs())
+        check("L6 (B1) Quit ends the UI and every backend process, :8765 freed", ok and gone,
+              {"procs": procs(), "clicked": ok, "button_saw_click": clicks, "fg": u.GetForegroundWindow() == hq})
 
         # L8: UI crash -> backend follows
         launch()

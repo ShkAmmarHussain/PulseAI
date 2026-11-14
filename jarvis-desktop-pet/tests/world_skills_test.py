@@ -74,6 +74,23 @@ async def main():
         root = Path(__file__).resolve().parents[1]
         p = _sp.run([sys.executable, str(root / "backend" / "main.py"), "--run-skill"], cwd=td, input='{"radius": "1"}', capture_output=True, text=True, timeout=60)
         check("backend --run-skill entry works (frozen path)", '__RESULT__{"result": "3.14"}' in p.stdout, (p.stdout[-80:], p.stderr[-200:]))
+    # packaged builds prefer the small runner exe next to the backend
+    import core.world.skills_lab as lab
+    with tempfile.TemporaryDirectory() as td:
+        fake_backend = Path(td, "jarvis-backend.exe")
+        fake_backend.write_bytes(b"")
+        old = (getattr(sys, "frozen", None), sys.executable)
+        sys.frozen, sys.executable = True, str(fake_backend)
+        try:
+            check("frozen without runner -> backend --run-skill, long timeout", lab.skill_command() == [str(fake_backend), "--run-skill"] and lab.skill_timeout(10) == 90)
+            Path(td, lab.RUNNER_EXE).write_bytes(b"")
+            check("frozen with runner -> runner exe, 20 s timeout", lab.skill_command() == [str(Path(td, lab.RUNNER_EXE))] and lab.skill_timeout(10) == 20)
+        finally:
+            if old[0] is None:
+                del sys.frozen
+            else:
+                sys.frozen = old[0]
+            sys.executable = old[1]
     secret_env = run_sandboxed("import os\ndef run():\n    return str(sorted(os.environ))", {})
     check("sandbox gets a minimal environment", "LM_API_TOKEN" not in secret_env and "APPDATA" not in secret_env, secret_env[:120])
 

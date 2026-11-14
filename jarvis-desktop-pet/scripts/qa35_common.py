@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import time
 from ctypes import wintypes as wt
 
@@ -22,6 +23,11 @@ APPDATA_DIR = os.path.join(os.environ.get("APPDATA", ""), "JarvisDesktopPet")
 
 u = ctypes.windll.user32
 u.SetProcessDPIAware()
+# results contain arrows and other non-ASCII text; never crash on a cp1252 console
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 results = []
 
 
