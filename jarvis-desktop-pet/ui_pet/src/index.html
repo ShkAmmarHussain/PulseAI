@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Jarvis</title>
   <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="world/world.css" />
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -78,6 +79,7 @@
         </span>
       </div>
       <nav id="nav" aria-label="Primary">
+        <button class="nav-item" data-tab="world"><span class="nav-label">World</span></button>
         <button class="nav-item active" data-tab="chat" aria-current="page"><span class="nav-label">Chat</span></button>
         <button class="nav-item" data-tab="activity"><span class="nav-label">Activity</span></button>
         <button class="nav-item" data-tab="memory"><span class="nav-label">Memory</span></button>
@@ -137,6 +139,56 @@
           </div>
         </div>
       </div>
+
+      <!-- Mini World (doc 36): the building, the team and their work, live -->
+      <main id="pane-world" class="pane" aria-label="World">
+        <div class="wt-body" id="wt-body">
+          <aside class="wt-roster" aria-label="Agents">
+            <div class="wt-head"><h2>Agents</h2><span class="wt-count" id="wt-count"></span></div>
+            <div class="wt-roster-list" id="wt-roster"></div>
+          </aside>
+          <section class="wt-center">
+            <div class="wt-toolbar">
+              <div class="wt-seg" role="group" aria-label="Floor" id="wt-floors">
+                <button type="button" aria-pressed="true" data-floor="0">All</button>
+                <button type="button" aria-pressed="false" data-floor="3">3</button>
+                <button type="button" aria-pressed="false" data-floor="2">2</button>
+                <button type="button" aria-pressed="false" data-floor="1">1</button>
+              </div>
+              <button type="button" class="wt-btn icon" id="wt-home" title="Reset the view" aria-label="Reset the view"><svg class="ic" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg></button>
+              <button type="button" class="wt-btn danger" id="wt-stop"><svg class="ic" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>Stop all</button>
+            </div>
+            <div class="wt-stage" id="wt-stage"></div>
+            <div class="wt-hint">Drag to orbit · scroll to zoom · click anyone</div>
+            <div class="wt-dock">
+              <div class="wt-job" id="wt-job" hidden aria-live="polite">
+                <div class="wt-job-title"><strong id="wt-job-title"></strong><span id="wt-job-meta"></span></div>
+                <ol class="wt-tasks" id="wt-tasks"></ol>
+              </div>
+              <form class="wt-composer" id="wt-form">
+                <label for="wt-input" class="sr-only">Ask Pip</label>
+                <input id="wt-input" class="wt-input" placeholder="Ask Pip anything" autocomplete="off" />
+                <button class="wt-btn primary" type="submit"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg>Send</button>
+              </form>
+            </div>
+            <div class="wt-off" id="wt-off" hidden>
+              <div class="wt-off-card">
+                <h2>Mini World is off</h2>
+                <p>Turn it on to hand your requests to Pip and the team, and watch them work in the building. You can turn it off again any time; your chats keep working either way.</p>
+                <button type="button" class="wt-btn primary" id="wt-enable">Turn on Mini World</button>
+              </div>
+            </div>
+          </section>
+          <aside class="wt-inspector" aria-label="Selected agent">
+            <div class="wt-insp" id="wt-insp"></div>
+            <section class="wt-approval" id="wt-approval" hidden aria-live="assertive">
+              <div class="wt-ap-top"><span class="wt-avatar" id="wt-ap-avatar"></span><div><h3 id="wt-ap-title"></h3><p id="wt-ap-sub"></p></div></div>
+              <div class="wt-path" id="wt-ap-path"></div>
+              <div class="wt-ap-btns"><button type="button" class="wt-btn" id="wt-deny">Deny<kbd>N</kbd></button><button type="button" class="wt-btn primary" id="wt-allow">Allow<kbd>Y</kbd></button></div>
+            </section>
+          </aside>
+        </div>
+      </main>
 
       <main id="pane-chat" class="pane active">
         <div id="msgs">
@@ -816,6 +868,7 @@
     </div>
   </div>
 
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js","three/addons/":"./vendor/addons/"}}</script>
   <script src="ws.js"></script>
   <script src="approval_text.js"></script>
   <script src="chat.js"></script>
@@ -825,5 +878,6 @@
   <script src="onboarding.js"></script>
   <script src="titlebar.js"></script>
   <script src="main.js"></script>
+  <script type="module" src="world/tab.js"></script>
 </body>
 </html>

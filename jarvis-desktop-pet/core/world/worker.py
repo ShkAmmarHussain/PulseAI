@@ -74,6 +74,7 @@ def make_worker(
             {"role": "system", "content": worker_prompt(role, allowed)},
             {"role": "user", "content": f"Task: {task.goal}{context}"},
         ]
+        refused = 0
         for _ in range(max_steps):
             raw = await chat(msgs, tier)
             obj = parse_json(raw)
@@ -81,6 +82,18 @@ def make_worker(
                 return str(raw or "").strip()
             if "final" in obj:
                 return str(obj["final"])
+            act = str(obj.get("action", ""))
+            if act != "respond" and act not in allowed:
+                # a model asking for a skill it does not have gets told so and
+                # keeps going with what it has; only repeated asks fail the task
+                refused += 1
+                if refused >= 2:
+                    raise PermissionError(f"not allowed for {role}: {act}")
+                msgs += [
+                    {"role": "assistant", "content": json.dumps(obj)},
+                    {"role": "user", "content": f"You cannot use {act}. Work only with the task and the results above, then reply with the final JSON."},
+                ]
+                continue
             out = await run_step(obj, task.id)
             msgs += [
                 {"role": "assistant", "content": json.dumps(obj)},

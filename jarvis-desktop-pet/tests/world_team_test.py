@@ -104,6 +104,9 @@ async def main():
     tiers = [c[0] for c in chat.calls]
     check("complex: tiers heavy plan, heavy temp, fast report", tiers[0] == "heavy" and "fast" in tiers and tiers.count("heavy") >= 2, tiers)
     await asyncio.sleep(0.05)
+    shown = [e.payload["agent"]["id"] for e in events if e.topic == "world.agent.updated" and e.payload["agent"]["state"] == "working"]
+    check("thinker, reporter and pip are shown working", {"thinker", "remy", "pip"} <= set(shown), set(shown))
+    check("all idle after the job", all(a.state == "idle" for a in w.state.agents.values()))
     check("events reached the bus", any(e.topic == "world.job.closed" for e in events) and any(e.topic == "ui.chat" for e in events))
 
     # a bad plan from the model fails visibly after one retry

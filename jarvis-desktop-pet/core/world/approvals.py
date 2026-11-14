@@ -34,6 +34,8 @@ class ApprovalBridge:
         fut = self._waiting.get(ev.correlation_id or "")
         if fut is not None and not fut.done():
             fut.set_result(bool((ev.payload or {}).get("allow", False)))
+            # answered on one surface: take the same card down on the others
+            await self.bus.publish(create_event("ui.approval_cancelled", "approval_cancelled", {"reason": "answered"}, correlation_id=ev.correlation_id))
 
     async def ask(self, step: dict, risk: int, job_id: str = "") -> bool:
         cid = f"world-{uuid.uuid4().hex[:12]}"
