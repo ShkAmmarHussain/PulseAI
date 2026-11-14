@@ -63,6 +63,8 @@ class Director:
     def _close(self, job_id: str, status: str, answer: str) -> JobInfo:
         job = self.state.close_job(job_id, status, answer)
         self._open.discard(job_id)
+        if not self._open:
+            self._show("director", False)
         self._stopping.discard(job_id)
         if answer:
             self._publish("ui.chat", "chat", {"role": "assistant", "text": answer}, job_id)
@@ -78,8 +80,19 @@ class Director:
         pick = free or cands
         return pick[0].id if pick else None
 
+    def _show(self, role: str, working: bool, label: str = "", task_id=None) -> None:
+        """Make the default agent behind a Director step visible in the world
+        (the Thinker while planning, the Reporter while answering, Pip routing)."""
+        a = next((x for x in self.state.agents.values() if x.role == role and x.kind == "default"), None)
+        if a is not None:
+            self.state.update_agent(a.id, state="working" if working else "idle", label=label if working else "", task_id=None)
+
     async def _think(self, text: str, job_id: str, priority: int):
-        return await self.brain.submit(lambda: self.thinker(text), job_id=job_id, priority=priority)
+        self._show("thinker", True, "planning")
+        try:
+            return await self.brain.submit(lambda: self.thinker(text), job_id=job_id, priority=priority)
+        finally:
+            self._show("thinker", False)
 
     def _end_job(self, job_id: str, status: str, answer: str) -> JobInfo:
         for t in self.state.tasks.values():
@@ -94,6 +107,7 @@ class Director:
         job_id = job_id or uuid.uuid4().hex[:12]
         self.state.open_job(job_id, text)
         self._open.add(job_id)
+        self._show("director", True, "routing")
         try:
             return await self._run_job(text, job_id, priority)
         except asyncio.CancelledError:
@@ -164,7 +178,11 @@ class Director:
         for plan_id, tid in ids.items():
             if self.state.tasks[tid].state == "done":
                 results[plan_id] = self.state.tasks[tid].result
-        answer = await self.brain.submit(lambda: self.reporter(text, results), job_id=job_id, priority=priority)
+        self._show("reporter", True, "writing the answer")
+        try:
+            answer = await self.brain.submit(lambda: self.reporter(text, results), job_id=job_id, priority=priority)
+        finally:
+            self._show("reporter", False)
         failed = any(self.state.tasks[i].state != "done" for i in ids.values())
         return self._end_job(job_id, "partial" if failed else "done", str(answer))
 

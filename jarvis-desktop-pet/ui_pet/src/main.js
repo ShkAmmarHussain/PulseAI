@@ -1,7 +1,7 @@
 // Shell: header tab navigation, "+" menu, pet visibility (single source of
 // truth for pet state stays the backend config).
 
-const PANES = ["chat", "activity", "memory", "settings"];
+const PANES = ["world", "chat", "activity", "memory", "settings"];
 
 function showTab(name) {
   if (PANES.indexOf(name) < 0) name = "chat";
@@ -28,6 +28,7 @@ document.querySelectorAll(".nav-item").forEach((t) => {
 });
 if (location.hash === "#settings") showTab("settings");
 else if (location.hash === "#activity") showTab("activity");
+else if (location.hash === "#world") showTab("world");
 
 // ---- header "+" menu (spec 34 section 4: pet toggle + quick actions moved
 // here when the sidebar was removed) ----

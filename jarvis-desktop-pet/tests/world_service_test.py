@@ -49,6 +49,8 @@ async def main():
     ap = [e for e in seen if e.topic == "ui.approval"][-1]
     check("approval card raised with risk + message", ap.payload["risk"] == 8 and "run_shell" in ap.payload["message"] and ap.correlation_id.startswith("world-"))
     check("allow -> True, duplicate ignored", ok is True and ab.pending() == 0)
+    await asyncio.sleep(0.05)
+    check("answer takes the card down everywhere", any(e.topic == "ui.approval_cancelled" and e.payload.get("reason") == "answered" for e in seen))
     t = asyncio.create_task(answer(False))
     check("deny -> False", await ab.ask({"action": "delete_file"}, 9) is False)
     await t

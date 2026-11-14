@@ -118,6 +118,11 @@ async def main():
     first_user = loop_chat.calls[0][0][1]["content"]
     check("needed results in prompt", "earlier notes" in first_user and "find specs" in first_user, first_user)
     check("tool result fed back", "ran web_search" in loop_chat.calls[1][0][-1]["content"])
+    wc = FakeChat(['{"action": "web_search", "query": "x"}', '{"final": "summary from notes"}'])
+    w = make_worker("writer", {}, chat=wc, execute=execute, approve=None, allowed=[])
+    check("disallowed ask is refused once, then the model finishes", await w(T(), {"t1": "notes"}) == "summary from notes" and "cannot use web_search" in wc.calls[1][0][-1]["content"])
+    w = make_worker("writer", {}, chat=FakeChat(['{"action": "web_search", "query": "x"}']), execute=execute, approve=None, allowed=[])
+    check("repeated disallowed ask fails the task", await expect(PermissionError, w(T(), {}), "not allowed for writer: web_search"))
     w = make_worker("writer", {}, chat=FakeChat(["Plain text answer"]), execute=execute, approve=None, allowed=[])
     check("plain reply is the result", await w(T(), {}) == "Plain text answer")
     w = make_worker("researcher", {}, chat=FakeChat(['{"action": "web_search", "query": "same"}']), execute=execute, approve=None, allowed=ROLE_ACTIONS["researcher"])

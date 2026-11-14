@@ -132,6 +132,14 @@ window.Jarvis = (function () {
     testLm: (url, provider, api_key) =>
       send({ type: "test_lm_studio", payload: { url, provider, api_key } }),
     setPet: (enabled) => send({ type: "set_pet", payload: { enabled } }),
+    // Mini World (doc 36 section 13)
+    world: {
+      say: (text) => send({ type: "world_say", payload: { text } }),
+      stop: () => send({ type: "world_stop", payload: {} }),
+      snapshot: () => send({ type: "world_snapshot", payload: {} }),
+      status: () => send({ type: "world_status", payload: {} }),
+      set: (enabled) => send({ type: "set_world", payload: { enabled: !!enabled } }),
+    },
     voiceListen: (on) => send({ type: "voice_listen", payload: { on: !!on } }),
     voiceWake: (enabled) => send({ type: "voice_wake", payload: { enabled: !!enabled } }),
     voiceDevices: () => send({ type: "voice_devices" }),
