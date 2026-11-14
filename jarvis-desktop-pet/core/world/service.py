@@ -51,9 +51,11 @@ def pick_name(state) -> str:
 
 
 def world_enabled(cfg: dict) -> bool:
-    if os.environ.get("PULSEAI_WORLD") == "1":
-        return True
-    return bool((((cfg or {}).get("config") or {}).get("world") or {}).get("enabled", False))
+    env = os.environ.get("PULSEAI_WORLD")
+    if env in ("0", "1"):
+        return env == "1"
+    # on by default since sprint 8; an explicit `enabled: false` still turns it off
+    return bool((((cfg or {}).get("config") or {}).get("world") or {}).get("enabled", True))
 
 
 class WorldService:

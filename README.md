@@ -19,6 +19,7 @@ Built with a **Tauri (Rust) UI** + a **Python async backend** connected over a W
 - **Main window** — Chat, Activity (task cards and live timers), Memory (search, add, inline edit, forget/undo, export) and Settings, plus a first-run onboarding (Meet Pip → Microphone → Model).
 - **Local or cloud models** — LM Studio by default; OpenAI or Anthropic Claude with your own key, with auto-routing of each task to a fast, heavy or vision model. Cloud keys are stored in **Windows Credential Manager**, never in the config files.
 - **Multi-agent core** — planner / tool-control / perception / memory / safety agents route work through an in-process event bus.
+- **Mini World** — a **World** tab where Pip (the Director) hands your requests to a team of chibi agents working in a 3D, 3-floor HQ building. You watch them plan, research, act and report, approve risky steps, create and delete your own agents, and add new skills that are safety-checked and run in a sandbox. On by default; turn it off in the World tab. See [docs/36](docs/36-MINI-WORLD-MULTI-AGENT-VISION.md).
 - **PC control + vision** — skills for files, shell, browser, keyboard/mouse and screen understanding, gated by a permission/approval system with friendly action names and one risk level.
 - **Tray app, single instance** — closing the window hides Jarvis to the tray (Pip keeps working); **Quit** in the tray menu or Settings → About ends the window and the background service together. Launching Jarvis again just brings the existing window back.
 - **Everything local** — models, config, memory and logs live under `%APPDATA%\JarvisDesktopPet\`.
@@ -212,6 +213,10 @@ Run from `jarvis-desktop-pet\` with the virtualenv active.
 | Credential Manager + diagnostics | `python tests\credentials_test.py` | backend running for the export part |
 | Pet performance (idle FPS, paused when hidden) | `python tests\perf_check.py` | real app with `--remote-debugging-port=9335` |
 | Memory inline edit | `python tests\memory_update_test.py` | backend running |
+| Mini World engine (state, plans, queue, runtime, Director, thinker/workers, agents, skills, service) | `python tests\world_<name>_test.py` (state, plan, brain, runtime, director, thinker, team, service, agents, skills) | – |
+| Mini World UI logic | `node tests\world_store_test.mjs`, `node tests\world_looks_test.mjs` | – |
+| Mini World on the real backend (on, off, live toggle) | `python tests\world_backend_e2e.py` | port 8799 free |
+| Mini World with real models | `python tests\world_live_test.py` | LM Studio running (skips if not) |
 | Full QA on the installed build | `python scripts\qa35_lifecycle.py`, `python scripts\qa35_surfaces.py` | `test_install\` built; see [docs/35](docs/35-FULL-QA-TEST-PLAN.md) |
 
 `voice_e2e` and `wake_e2e` bind port `8765` themselves — stop any running backend first, and never run them in parallel. The full test inventory and gate practice are in [docs/23](docs/23-TESTING.md) and [docs/35](docs/35-FULL-QA-TEST-PLAN.md).

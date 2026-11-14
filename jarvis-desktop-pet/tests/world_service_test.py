@@ -64,10 +64,12 @@ async def main():
     check("timeout from config", ApprovalBridge.timeout_from({"permissions": {"approvals": {"timeout_ms": 12000}}}) == 12.0 and ApprovalBridge.timeout_from({}) == 45.0)
 
     # --- flag ---
-    check("flag off by default", world_enabled({"config": {"world": {"enabled": False}}}) is False and world_enabled({}) is False)
+    check("flag on by default, explicit false wins", world_enabled({"config": {"world": {"enabled": False}}}) is False and world_enabled({}) is True)
     check("flag on via config", world_enabled({"config": {"world": {"enabled": True}}}) is True)
     os.environ["PULSEAI_WORLD"] = "1"
-    check("flag on via env", world_enabled({}) is True)
+    check("flag on via env", world_enabled({"config": {"world": {"enabled": False}}}) is True)
+    os.environ["PULSEAI_WORLD"] = "0"
+    check("flag off via env", world_enabled({}) is False)
     del os.environ["PULSEAI_WORLD"]
 
     # --- service ---
