@@ -23,6 +23,8 @@ class AgentInfo:
     task_id: Optional[str] = None
     label: str = ""
     job_id: Optional[str] = None
+    description: str = ""
+    look_seed: str = ""
 
 
 @dataclass

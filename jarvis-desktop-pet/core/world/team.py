@@ -20,7 +20,7 @@ from core.world.state import AgentInfo, WorldState
 from core.world.thinker import make_thinker
 from core.world.worker import make_worker
 
-DEFAULT_CAPS = {"max_active_temp": 6, "max_temp_per_job": 3, "max_tasks": 8, "max_new_agents": 3, "task_timeout_s": 300}
+DEFAULT_CAPS = {"max_active_temp": 6, "max_temp_per_job": 3, "max_custom": 6, "max_tasks": 8, "max_new_agents": 3, "task_timeout_s": 300}
 
 
 @dataclass
@@ -97,11 +97,19 @@ def build_world(
     }
 
     def temp_worker(role: str):
-        return make_worker(role, cfg, chat=chat, execute=execute, approve=approve, allowed=[], tier=TEMP_TIER)
+        desc = next((a.description for a in state.agents.values() if a.role == role and a.description), "")
+        return make_worker(role, cfg, chat=chat, execute=execute, approve=approve, allowed=[], tier=TEMP_TIER, extra=desc)
+
+    def roles():
+        r = {k: ROLE_ACTIONS[k] for k in WORKING_ROLES}
+        for a in state.agents.values():
+            if a.kind == "custom" and a.role not in r:
+                r[a.role] = f"(custom agent {a.name}) {a.description or 'general helper'}; answers with text"
+        return r
 
     director = Director(
         bus, state, runtime, brain,
-        thinker=make_thinker(cfg, chat=chat, roles={r: ROLE_ACTIONS[r] for r in WORKING_ROLES}),
+        thinker=make_thinker(cfg, chat=chat, roles=roles),
         workers=workers,
         reporter=make_reporter(cfg, chat=chat),
         caps=caps,

@@ -49,8 +49,12 @@ def single(text: str, role: str, steps=None) -> dict:
     return {"intent": text, "tasks": [task], "new_agents": []}
 
 
-def system_prompt(roles: Dict[str, List[str]]) -> str:
-    lines = [f"- {r}: can {', '.join(a) if a else 'answer from memory and general knowledge'}" for r, a in roles.items()]
+def system_prompt(roles) -> str:
+    def can(a):
+        if isinstance(a, str):
+            return a
+        return "can " + (", ".join(a) if a else "answer from memory and general knowledge")
+    lines = [f"- {r}: {can(a)}" for r, a in roles.items()]
     return (
         "You plan work for a team of agents on the user's Windows PC. You never do the work yourself.\n"
         "Team roles:\n" + "\n".join(lines) + "\n\n"
@@ -76,7 +80,7 @@ def make_thinker(cfg: dict, *, chat: Chat, roles: Dict[str, List[str]]):
                 return single(text, role, steps)
             return single(text, "archivist")
         raw = await chat(
-            [{"role": "system", "content": system_prompt(roles)}, {"role": "user", "content": text}],
+            [{"role": "system", "content": system_prompt(roles() if callable(roles) else roles)}, {"role": "user", "content": text}],
             "heavy",
         )
         return parse_json(raw) or {}
