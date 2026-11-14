@@ -13,6 +13,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from core.bus import TOPIC_ALL, MessageBus, create_event  # noqa: E402
 from core.world.approvals import ApprovalBridge  # noqa: E402
+import tempfile  # noqa: E402
+
+from core.world.agents_store import AgentStore  # noqa: E402
 from core.world.service import WorldService, world_enabled  # noqa: E402
 
 results = []
@@ -84,7 +87,7 @@ async def main():
     async def ans(q, needed):
         return "Paris"
 
-    svc = WorldService(bus, {"config": {"world": {"caps": {"task_timeout_s": 3}}}, "permissions": {"approvals": {"timeout_ms": 5000}}}, chat=chat, execute=execute, answer=ans)
+    svc = WorldService(bus, {"config": {"world": {"caps": {"task_timeout_s": 3}}}, "permissions": {"approvals": {"timeout_ms": 5000}}}, chat=chat, execute=execute, answer=ans, store=AgentStore(Path(tempfile.mkdtemp()) / "a.json"))
     svc.start()
     seen.clear()
     job = await (await svc.handle_input("list files in .", "c1"))

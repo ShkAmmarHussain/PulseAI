@@ -96,6 +96,7 @@ export function createScene(host, { lookFor, onPick } = {}) {
     const a = {
       id: agent.id, isPip, model, group, el, tag, queue: [], pos: new THREE.Vector3(), face: 0.3, restFace: 0.3,
       alpha: 1, hop: 0, t0: Math.random() * 10, vis: "idle", label: "", room: agent.room, leaving: false,
+      lookKey: isPip ? "pip" : JSON.stringify(lookFor(agent)),
       approvalRing: ring("#f5a524", 0.36, 0.5, 0.8),
     };
     const s = slotFor(agent.room, 0);
@@ -240,8 +241,19 @@ export function createScene(host, { lookFor, onPick } = {}) {
     const occupied = new Set();
     for (const ag of Object.values(agents)) {
       let a = actors.get(ag.id);
-      if (!a) a = makeActor(ag, fresh && ag.kind === "temp");
+      if (!a) a = makeActor(ag, fresh && ag.kind !== "default");
       else if (a.leaving) continue;
+      if (!a.isPip) {
+        const lk = JSON.stringify(lookFor(ag));
+        if (lk !== a.lookKey) {
+          a.group.remove(a.model.root);
+          a.model = buildChibi(lookFor(ag));
+          a.model.root.traverse((o) => (o.userData.agentId = ag.id));
+          a.group.add(a.model.root);
+          a.lookKey = lk;
+          a.hop = 0.6;
+        }
+      }
       if (ag.room !== a.room) {
         const s = slotFor(ag.room, 0);
         if (s) a.queue.push(...route(a, s));

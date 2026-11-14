@@ -126,10 +126,13 @@ class Director:
 
         try:
             for na in plan.get("new_agents") or []:
+                self._show("builder", True, f"making a {na['role']}")
                 self.runtime.spawn_temp(str(na["role"]), job_id)
         except CapError as e:
+            self._show("builder", False)
             return self._end_job(job_id, "failed", f"I could not staff that: {e}")
 
+        self._show("builder", False)
         ids = {t["id"]: f"{job_id}.{t['id']}" for t in order}
         for t in order:
             self.state.add_task(TaskInfo(
@@ -152,7 +155,7 @@ class Director:
                     continue
                 agent = self._agent_for(task.role, job_id, busy)
                 worker = self.workers.get(task.role)
-                if worker is None and self.make_temp_worker is not None and agent is not None and self.state.agents[agent].kind == "temp":
+                if worker is None and self.make_temp_worker is not None and agent is not None and self.state.agents[agent].kind in ("temp", "custom"):
                     worker = self.workers[task.role] = self.make_temp_worker(task.role)
                 if agent is None or worker is None:
                     self.state.update_task(task.id, state="failed", error=f"no agent for role {task.role}")

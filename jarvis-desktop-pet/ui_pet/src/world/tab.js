@@ -22,15 +22,20 @@ const pane = document.getElementById("pane-world");
 const store = createStore();
 const looks = new Map();
 const logs = new Map();
+const busy = new Set();
 let scene = null, sceneFailed = false, selected = "pip", enabled = null, approval = null, fresh = false;
 
+// a new agent's look comes from its look_seed, so it is the same on every
+// screen and after a restart; Reroll just changes the seed
 function lookFor(agent) {
   if (TEAM_LOOKS[agent.id]) return TEAM_LOOKS[agent.id];
-  if (!looks.has(agent.id)) {
+  const seed = agent.look_seed || agent.id;
+  const key = agent.id + "|" + seed;
+  if (!looks.has(key)) {
     const taken = new Set([...looks.values(), ...Object.values(TEAM_LOOKS)].map((l) => JSON.stringify(l)));
-    looks.set(agent.id, genLook(agent.id, agent.role, taken));
+    looks.set(key, genLook(seed, agent.role, taken));
   }
-  return looks.get(agent.id);
+  return looks.get(key);
 }
 const face = (a) => portrait(a.id + ":" + JSON.stringify(lookFor(a)), lookFor(a), a.id === "pip");
 const roleName = (a) => ROLE_LABEL[a.role] || cap(a.role);
@@ -110,9 +115,60 @@ function renderInspector() {
     <section class="wt-sec"><h3>Now</h3><div class="wt-now"><span class="wt-chip ${chip}">${stateText}</span>
       <p>${esc(t ? t.goal : a.id === "pip" ? "Routing requests to the team" : "Waiting for work")}</p></div></section>
     <section class="wt-sec"><h3>Activity</h3>${lg.length ? `<ol class="wt-log">${lg.map((l) => `<li><time>${l.t}</time><span>${esc(l.text)}</span></li>`).join("")}</ol>` : '<p class="wt-muted">Nothing yet this session.</p>'}</section>
+    ${a.description ? `<section class="wt-sec"><h3>What it's for</h3><p class="wt-desc">${esc(a.description)}</p></section>` : ""}
     ${skills.length ? `<section class="wt-sec"><h3>Skills</h3><div class="wt-skills">${skills.map((s) => `<span class="wt-skill">${esc(s)}</span>`).join("")}</div></section>` : ""}
-    <div class="wt-actions"><button class="wt-btn sm" type="button" id="wt-find"><svg class="ic"><use href="#i-search"/></svg>Find in building</button></div>`;
+    <div class="wt-actions">
+      <button class="wt-btn sm" type="button" id="wt-find"><svg class="ic"><use href="#i-search"/></svg>Find in building</button>
+      ${a.kind !== "default" ? '<button class="wt-btn sm" type="button" id="wt-reroll">Reroll look</button>' : ""}
+      ${a.kind === "custom" ? '<button class="wt-btn sm" type="button" id="wt-edit">Edit</button>' : ""}
+      ${a.kind === "temp" ? '<button class="wt-btn sm" type="button" id="wt-keep">Keep as custom</button>' : ""}
+      ${a.kind !== "default" ? `<button class="wt-btn sm danger" type="button" id="wt-del">${a.kind === "temp" ? "Dismiss" : "Delete"}</button>` : ""}
+    </div>
+    <form class="wt-edit" id="wt-edit-form" hidden>
+      <label for="wt-edit-name">Name</label><input class="wt-field" id="wt-edit-name" maxlength="24" value="${esc(a.name)}" />
+      <label for="wt-edit-desc">What it's for</label><textarea class="wt-field" id="wt-edit-desc" rows="3" maxlength="400">${esc(a.description || "")}</textarea>
+      <div class="wt-form-btns"><button type="button" class="wt-btn sm" id="wt-edit-cancel">Cancel</button><button type="submit" class="wt-btn sm primary">Save</button></div>
+    </form>
+    <div class="wt-confirm" id="wt-confirm" hidden>
+      <p>${a.kind === "temp" ? `Dismiss ${esc(a.name)}? Its current task stops.` : `Delete ${esc(a.name)}? You can bring them back from Recently deleted for 30 days.`}</p>
+      <div class="wt-form-btns"><button type="button" class="wt-btn sm" id="wt-del-no">Keep</button><button type="button" class="wt-btn sm danger" id="wt-del-yes">${a.kind === "temp" ? "Dismiss" : "Delete"}</button></div>
+    </div>`;
+  const J = window.Jarvis;
   $("#wt-find", box).onclick = () => scene && scene.focus(a.id);
+  const on = (id, fn) => {
+    const el = $(id, box);
+    if (el) el.onclick = fn;
+  };
+  on("#wt-reroll", () => J.world.agent({ op: "update", id: a.id, look_seed: a.id + ":" + Date.now().toString(36) }));
+  on("#wt-keep", () => J.world.agent({ op: "keep", id: a.id }));
+  on("#wt-edit", () => {
+    $("#wt-edit-form", box).hidden = false;
+    $("#wt-edit-name", box).focus();
+  });
+  on("#wt-edit-cancel", () => ($("#wt-edit-form", box).hidden = true));
+  on("#wt-del", () => ($("#wt-confirm", box).hidden = false));
+  on("#wt-del-no", () => ($("#wt-confirm", box).hidden = true));
+  on("#wt-del-yes", () => J.world.agent({ op: "delete", id: a.id }));
+  const form = $("#wt-edit-form", box);
+  if (form)
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      J.world.agent({ op: "update", id: a.id, name: $("#wt-edit-name", box).value, description: $("#wt-edit-desc", box).value });
+    };
+}
+
+// roster footer: new agent form + recently deleted
+function renderArchived(list) {
+  const box = $("#wt-archived", pane);
+  if (!list || !list.length) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  box.innerHTML =
+    '<div class="wt-group">Recently deleted</div>' +
+    list.map((r) => `<div class="wt-arch-row"><span>${esc(r.name)} <small>${esc(cap(r.role))}</small></span><button type="button" class="wt-btn sm" data-id="${esc(r.id)}">Bring back</button></div>`).join("");
+  box.querySelectorAll("button").forEach((b) => (b.onclick = () => window.Jarvis.world.agent({ op: "restore", id: b.dataset.id })));
 }
 
 function renderJob() {
@@ -221,14 +277,19 @@ function wire() {
     }
     const p = d.payload || {};
     if (d.topic === "world.agent.updated" && p.agent) {
-      if (p.agent.state === "working") log(p.agent.id, clip((store.state.tasks[p.agent.task_id] || {}).goal || p.agent.label || "Working", 60));
-      else log(p.agent.id, "Finished");
+      if (p.agent.state === "working") {
+        if (!busy.has(p.agent.id)) log(p.agent.id, clip((store.state.tasks[p.agent.task_id] || {}).goal || p.agent.label || "Working", 60));
+        busy.add(p.agent.id);
+      } else if (busy.delete(p.agent.id)) log(p.agent.id, "Finished");
     }
-    if (d.topic === "world.agent.added" && p.agent && p.agent.kind === "temp") log(p.agent.id, "Arrived for job");
+    if (d.topic === "world.agent.added" && p.agent && p.agent.kind !== "default") log(p.agent.id, p.agent.kind === "temp" ? "Arrived for a job" : "Joined the team");
     render();
   };
   ["world.snapshot", "world.agent.added", "world.agent.updated", "world.agent.removed", "world.job.opened", "world.job.closed", "world.task.created", "world.task.updated"].forEach((t) => J.on(t, onWorld));
   J.on("world.status", (d) => setEnabled(!!(d.payload || {}).enabled));
+  J.on("world.archived", (d) => renderArchived((d.payload || {}).agents || []));
+  // keep "Recently deleted" current after agents come and go
+  ["world.agent.added", "world.agent.removed"].forEach((t) => J.on(t, () => J.world.agent({ op: "archived" })));
   J.on("ui.approval", (d) => {
     if (!String(d.correlation_id || "").startsWith("world-")) return;
     approval = Object.assign({ cid: d.correlation_id }, d.payload || {});
@@ -246,6 +307,7 @@ function wire() {
     store.reset();
     J.world.status();
     J.world.snapshot();
+    J.world.agent({ op: "archived" });
   });
   if (J.isConnected && J.isConnected()) {
     J.world.status();
@@ -272,6 +334,30 @@ function wire() {
   $("#wt-allow", pane).onclick = () => answer(true);
   $("#wt-deny", pane).onclick = () => answer(false);
   $("#wt-enable", pane).onclick = () => J.world.set(true);
+  const nf = $("#wt-new-form", pane), addBtn = $("#wt-add", pane);
+  const closeNew = () => {
+    nf.hidden = true;
+    addBtn.hidden = false;
+  };
+  addBtn.onclick = () => {
+    nf.hidden = false;
+    addBtn.hidden = true;
+    $("#wt-new-desc", pane).focus();
+  };
+  $("#wt-new-cancel", pane).onclick = closeNew;
+  pane.querySelectorAll(".wt-preset").forEach((b) => (b.onclick = () => ($("#wt-new-desc", pane).value = b.dataset.text)));
+  nf.onsubmit = (e) => {
+    e.preventDefault();
+    const d = $("#wt-new-desc", pane).value.trim();
+    if (!d) {
+      $("#wt-new-desc", pane).focus();
+      return;
+    }
+    J.world.agent({ op: "create", description: d, name: $("#wt-new-name", pane).value.trim() });
+    $("#wt-new-desc", pane).value = "";
+    $("#wt-new-name", pane).value = "";
+    closeNew();
+  };
   pane.addEventListener("keydown", (e) => {
     if (!approval || e.target.closest("input")) return;
     if (e.key === "y" || e.key === "Y") answer(true);

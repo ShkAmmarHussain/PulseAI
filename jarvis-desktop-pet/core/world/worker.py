@@ -26,11 +26,13 @@ def _policy(cfg: dict) -> str:
     return str((((cfg or {}).get("permissions") or {}).get("default_policy")) or "conservative").lower()
 
 
-def worker_prompt(role: str, allowed: List[str]) -> str:
+def worker_prompt(role: str, allowed: List[str], extra: str = "") -> str:
     acts = ", ".join(allowed) if allowed else "none (answer with text only)"
+    purpose = f"What you are for: {extra}\n" if extra else ""
     return (
         f"You are the {role} agent on the user's Windows PC. Do the task you are given.\n"
-        f"Actions you may use: {acts}.\n"
+        + purpose
+        + f"Actions you may use: {acts}.\n"
         'To use one, reply with ONLY JSON like {"action": "web_search", "query": "..."}. '
         "You will get its result back.\n"
         'When done, reply with ONLY {"final": "<your result for the team>"}. Keep results short and factual.'
@@ -49,6 +51,7 @@ def make_worker(
     max_steps: int = 6,
     answer: Optional[Answer] = None,
     guard: Optional[LoopGuard] = None,
+    extra: str = "",
 ):
     guard = guard or LoopGuard()
 
@@ -71,7 +74,7 @@ def make_worker(
             return await answer(task.goal, needed)
         context = "".join(f"\n\nResult of {k}:\n{v}" for k, v in needed.items() if v)
         msgs = [
-            {"role": "system", "content": worker_prompt(role, allowed)},
+            {"role": "system", "content": worker_prompt(role, allowed, extra)},
             {"role": "user", "content": f"Task: {task.goal}{context}"},
         ]
         refused = 0
