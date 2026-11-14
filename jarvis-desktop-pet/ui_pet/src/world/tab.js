@@ -23,6 +23,10 @@ const store = createStore();
 const looks = new Map();
 const logs = new Map();
 const busy = new Set();
+let theme = "night";
+try {
+  theme = localStorage.getItem("pulseai.world.theme") === "day" ? "day" : "night";
+} catch (e) {}
 let scene = null, sceneFailed = false, selected = "pip", enabled = null, approval = null, fresh = false;
 
 // a new agent's look comes from its look_seed, so it is the same on every
@@ -72,7 +76,10 @@ function approvalAgent() {
 function render() {
   const st = store.state;
   const agents = Object.values(st.agents);
-  if (scene) scene.syncAgents(st.agents, { synced: st.synced, fresh, approvalAgent: approvalAgent(), labelFor });
+  if (scene) {
+    scene.syncAgents(st.agents, { synced: st.synced, fresh, approvalAgent: approvalAgent(), labelFor });
+    renderFloorButtons(scene.floorCount());
+  }
   renderRoster(agents);
   renderInspector();
   renderJob();
@@ -236,6 +243,38 @@ function renderArchived(list) {
   box.querySelectorAll("button").forEach((b) => (b.onclick = () => window.Jarvis.world.agent({ op: "restore", id: b.dataset.id })));
 }
 
+// floor buttons follow the building as it grows (All, then top floor down to 1)
+let shownButtons = 0;
+function renderFloorButtons(n) {
+  if (n === shownButtons) return;
+  shownButtons = n;
+  const seg = $("#wt-floors", pane);
+  const cur = (seg.querySelector('[aria-pressed="true"]') || {}).dataset;
+  const pressed = cur ? cur.floor : "0";
+  const nums = ["0"].concat(Array.from({ length: n }, (_, i) => String(n - i)));
+  seg.innerHTML = nums.map((f) => `<button type="button" aria-pressed="${f === pressed}" data-floor="${f}">${f === "0" ? "All" : f}</button>`).join("");
+  seg.querySelectorAll("button").forEach(
+    (b) =>
+      (b.onclick = () => {
+        seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        scene && scene.setFloor(+b.dataset.floor);
+      })
+  );
+}
+
+function setTheme(t) {
+  theme = t;
+  try {
+    localStorage.setItem("pulseai.world.theme", t);
+  } catch (e) {}
+  if (scene) scene.setTheme(t);
+  const b = $("#wt-theme", pane);
+  b.title = t === "day" ? "Switch to night" : "Switch to day";
+  b.setAttribute("aria-label", t === "day" ? "Switch to night lighting" : "Switch to day lighting");
+}
+
+const sound = (n) => window.Earcons && window.Earcons.play(n);
+
 function renderJob() {
   const jobs = Object.values(store.state.jobs);
   const job = jobs.filter((j) => j.status === "open").pop() || jobs[jobs.length - 1];
@@ -310,6 +349,7 @@ function ensureScene() {
       try {
         scene = createScene($("#wt-stage", pane), { lookFor, onPick: (id) => pick(id, false) });
         scene.select(selected);
+        scene.setTheme(theme);
         scene.setActive(pane.classList.contains("active"));
         render();
       } catch (e) {
@@ -414,6 +454,16 @@ function wire() {
   };
   $("#wt-stop", pane).onclick = () => J.world.stop();
   $("#wt-home", pane).onclick = () => scene && scene.home();
+  $("#wt-theme", pane).onclick = () => setTheme(theme === "day" ? "night" : "day");
+  setTheme(theme);
+  // small sounds for the moments that matter (respects the app's sound setting)
+  J.on("world.job.closed", (d) => {
+    const st = (((d.payload || {}).job) || {}).status;
+    sound(st === "done" ? "snd_success" : st === "stopped" ? "snd_listen_stop" : "snd_error");
+  });
+  J.on("world.agent.added", (d) => {
+    if (fresh && (((d.payload || {}).agent) || {}).kind !== "default") sound("snd_dock_peek");
+  });
   pane.querySelectorAll("#wt-floors button").forEach(
     (b) =>
       (b.onclick = () => {

@@ -60,7 +60,7 @@ export function createScene(host, { lookFor, onPick } = {}) {
 
   const B = buildBuilding(scene);
   const lift = { y: 0, target: 0 };
-  let shownFloors = 3;
+  let shownFloors = 3, floorMode = 0;
   const floorVisible = (y) => Math.floor((y + 0.5) / H) < shownFloors;
 
   const ring = (color, inner, outer, opacity) => {
@@ -237,6 +237,12 @@ export function createScene(host, { lookFor, onPick } = {}) {
   // ---- public sync from the store ----
   function syncAgents(agents, { synced, fresh, approvalAgent, labelFor }) {
     const ids = new Set(Object.keys(agents));
+    // grow the building when someone has a room above floor 3
+    const top = Math.max(3, ...Object.values(agents).map((g) => (roomGeom(g.room) || { f: 1 }).f));
+    if (top > B.floors.length) {
+      B.growTo(top);
+      if (floorMode === 0) setFloor(0);
+    }
     for (const [id, a] of actors) if (!ids.has(id)) leave(a);
     const occupied = new Set();
     for (const ag of Object.values(agents)) {
@@ -287,10 +293,12 @@ export function createScene(host, { lookFor, onPick } = {}) {
     };
   }
   function setFloor(n) {
-    shownFloors = n === 0 ? 3 : n;
+    floorMode = n;
+    shownFloors = n === 0 ? B.floors.length : n;
     B.floors.forEach((g, i) => (g.visible = i < shownFloors));
     B.roof.visible = n === 0;
-    if (n === 0) flyTo(HOME.target.clone(), HOME.pos.clone());
+    const extra = (B.floors.length - 3) * H;
+    if (n === 0) flyTo(HOME.target.clone().add(new THREE.Vector3(0, extra / 2, 0)), HOME.pos.clone().add(new THREE.Vector3(0, extra * 0.8, extra * 1.2)));
     else {
       const tgt = new THREE.Vector3(6.2, (n - 1) * H + 0.9, 5.6);
       flyTo(tgt, tgt.clone().add(new THREE.Vector3(10, 11, 19)));
@@ -355,8 +363,25 @@ export function createScene(host, { lookFor, onPick } = {}) {
   }
   raf = requestAnimationFrame(frame);
 
+  // night (default) and day lighting for the same building
+  const THEMES = {
+    night: { bg: "#060607", hemi: 0.55, key: 1.5, exposure: 1.05, ground: "#0b0a09" },
+    day: { bg: "#a9c3dc", hemi: 1.15, key: 2.6, exposure: 1.0, ground: "#3d4a3f" },
+  };
+  const hemi = scene.children.find((o) => o.isHemisphereLight);
+  function setTheme(name) {
+    const t = THEMES[name] || THEMES.night;
+    scene.background.set(t.bg);
+    scene.fog.color.set(t.bg);
+    if (hemi) hemi.intensity = t.hemi;
+    key.intensity = t.key;
+    renderer.toneMappingExposure = t.exposure;
+    B.setGround && B.setGround(t.ground);
+  }
+
   return {
-    syncAgents, setFloor, focus, select,
+    syncAgents, setFloor, focus, select, setTheme,
+    floorCount: () => B.floors.length,
     home: () => setFloor(0),
     setActive(on) {
       active = !!on;
