@@ -1,4 +1,4 @@
-// First-run onboarding (spec 32, section 5): a 3-step modal over index.html —
+// First-run onboarding (spec 32, section 5): a 4-step modal over index.html —
 // companion style -> microphone check -> local model verification. Shown when
 // the backend says this install has not completed setup yet (config
 // runtime.first_run is not false AND data/onboarded.json is absent).
@@ -6,7 +6,7 @@
   const root = document.getElementById("onboarding");
   if (!root) return;
 
-  const steps = [1, 2, 3].map((n) => document.getElementById("ob-step-" + n));
+  const steps = [1, 2, 3, 4].map((n) => document.getElementById("ob-step-" + n));
   const stepbar = document.getElementById("ob-stepbar");
   const backBtn = document.getElementById("ob-back");
   const nextBtn = document.getElementById("ob-next");
@@ -30,7 +30,7 @@
   let provTestT = null;
 
   function setStep(n) {
-    step = Math.max(1, Math.min(3, n));
+    step = Math.max(1, Math.min(4, n));
     // the character reacts per step (spec 34 section 6): wave / listen / celebrate
     root.dataset.step = String(step);
     steps.forEach((s) => {
@@ -45,8 +45,8 @@
       });
     }
     if (backBtn) backBtn.hidden = step === 1;
-    if (nextBtn) nextBtn.hidden = step === 3;
-    if (finishBtn) finishBtn.hidden = step !== 3;
+    if (nextBtn) nextBtn.hidden = step === 4;
+    if (finishBtn) finishBtn.hidden = step !== 4;
   }
 
   function open() {
@@ -187,6 +187,9 @@
     finishBtn.onclick = () => {
       finishBtn.disabled = true;
       Jarvis.send({ type: "onboarding_done", payload: { pet_style: petStyle } });
+      // step 4 (doc 37 sprint 7): Mini World on/off
+      const worldBox = document.getElementById("ob-world");
+      if (worldBox && Jarvis.world) Jarvis.world.set(worldBox.checked);
       // persist the chosen companion style + provider with the settings payload
       let saved = false;
       const once = (d) => {

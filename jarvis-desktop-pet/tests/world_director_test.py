@@ -155,7 +155,7 @@ async def main():
     # config flag (task 1.6)
     from core.config import load_config
     world = load_config()["config"].get("world") or {}
-    check("config: world.enabled is false", world.get("enabled") is False, world)
+    check("config: world.enabled is on (sprint 8)", world.get("enabled") is True, world)
     check("config: caps", world.get("caps") == {"max_active_temp": 6, "max_temp_per_job": 3, "max_tasks": 8, "task_timeout_s": 300}, world.get("caps"))
     import core.world as cw
     check("package exports", all(hasattr(cw, n) for n in ("WorldState", "Brain", "AgentRuntime", "Director", "validate_plan")))

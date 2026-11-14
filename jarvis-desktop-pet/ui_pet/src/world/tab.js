@@ -23,6 +23,10 @@ const store = createStore();
 const looks = new Map();
 const logs = new Map();
 const busy = new Set();
+let theme = "night";
+try {
+  theme = localStorage.getItem("pulseai.world.theme") === "day" ? "day" : "night";
+} catch (e) {}
 let scene = null, sceneFailed = false, selected = "pip", enabled = null, approval = null, fresh = false;
 
 // a new agent's look comes from its look_seed, so it is the same on every
@@ -72,7 +76,10 @@ function approvalAgent() {
 function render() {
   const st = store.state;
   const agents = Object.values(st.agents);
-  if (scene) scene.syncAgents(st.agents, { synced: st.synced, fresh, approvalAgent: approvalAgent(), labelFor });
+  if (scene) {
+    scene.syncAgents(st.agents, { synced: st.synced, fresh, approvalAgent: approvalAgent(), labelFor });
+    renderFloorButtons(scene.floorCount());
+  }
   renderRoster(agents);
   renderInspector();
   renderJob();
@@ -157,6 +164,71 @@ function renderInspector() {
     };
 }
 
+// ---------- skills drawer (sprint 6) ----------
+let skills = [], skillsOpen = false, openSkill = null, drafting = false;
+const STATUS = { draft: "Draft", enabled: "On", disabled: "Off" };
+function riskWord(r) {
+  return r >= 6 ? "High risk" : r >= 4 ? "Medium risk" : "Low risk";
+}
+function renderSkills() {
+  const list = $("#wt-sk-list", pane);
+  $("#wt-sk-draft", pane).disabled = drafting;
+  $("#wt-sk-draft", pane).textContent = drafting ? "Bodie is drafting…" : "Ask Bodie to draft it";
+  if (!skills.length) {
+    list.innerHTML = '<p class="wt-muted">No skills yet. Describe one above and Bodie will draft it for you to review.</p>';
+    return;
+  }
+  list.innerHTML = skills
+    .map((s) => {
+      const open = openSkill === s.name;
+      const bad = (s.check || []).length > 0;
+      const acts =
+        s.status === "enabled"
+          ? `<button type="button" class="wt-btn sm" data-op="disable">Turn off</button><button type="button" class="wt-btn sm" data-op="test">Run example</button>`
+          : `${bad ? "" : `<button type="button" class="wt-btn sm primary" data-op="enable">Turn on</button>`}<button type="button" class="wt-btn sm danger" data-op="delete">Delete</button>`;
+      return `<article class="wt-skill-card${open ? " open" : ""}" data-name="${esc(s.name)}">
+        <button type="button" class="wt-sk-top" aria-expanded="${open}">
+          <span class="wt-sk-name">${esc(s.name)}</span>
+          <span class="wt-badge ${s.status === "enabled" ? "on" : ""}">${STATUS[s.status] || s.status}</span>
+          <span class="wt-badge">v${s.version}</span>
+        </button>
+        <p class="wt-sk-desc">${esc(s.description)}</p>
+        ${open ? `<div class="wt-sk-body">
+          <div class="wt-kv"><span>Can use</span><b>${s.permissions && s.permissions.length ? esc(s.permissions.join(", ")) : "nothing outside its own code"}</b></div>
+          <div class="wt-kv"><span>Risk</span><b>${riskWord(s.risk)} (${s.risk}/10)</b></div>
+          ${bad ? `<div class="wt-sk-problems"><b>Why it can't be turned on</b><ul>${s.check.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></div>` : `<div class="wt-kv"><span>Example result</span><b>${esc(s.test_output || "(empty)")}</b></div>`}
+          <pre class="wt-code"><code>${esc(s.code)}</code></pre>
+          <div class="wt-actions">${acts}</div>
+        </div>` : ""}
+      </article>`;
+    })
+    .join("");
+  list.querySelectorAll(".wt-skill-card").forEach((card) => {
+    const name = card.dataset.name;
+    card.querySelector(".wt-sk-top").onclick = () => {
+      openSkill = openSkill === name ? null : name;
+      renderSkills();
+    };
+    card.querySelectorAll("[data-op]").forEach((b) => {
+      b.onclick = () => {
+        const op = b.dataset.op;
+        const s = skills.find((x) => x.name === name) || {};
+        window.Jarvis.world.skill(op === "test" ? { op, name, params: s.example || {} } : { op, name });
+      };
+    });
+  });
+}
+function setSkillsOpen(on) {
+  skillsOpen = on;
+  $("#wt-skillpanel", pane).hidden = !on;
+  $("#wt-insp", pane).hidden = on;
+  $("#wt-skills-btn", pane).setAttribute("aria-pressed", String(on));
+  if (on) {
+    window.Jarvis.world.skill({ op: "list" });
+    renderSkills();
+  }
+}
+
 // roster footer: new agent form + recently deleted
 function renderArchived(list) {
   const box = $("#wt-archived", pane);
@@ -170,6 +242,38 @@ function renderArchived(list) {
     list.map((r) => `<div class="wt-arch-row"><span>${esc(r.name)} <small>${esc(cap(r.role))}</small></span><button type="button" class="wt-btn sm" data-id="${esc(r.id)}">Bring back</button></div>`).join("");
   box.querySelectorAll("button").forEach((b) => (b.onclick = () => window.Jarvis.world.agent({ op: "restore", id: b.dataset.id })));
 }
+
+// floor buttons follow the building as it grows (All, then top floor down to 1)
+let shownButtons = 0;
+function renderFloorButtons(n) {
+  if (n === shownButtons) return;
+  shownButtons = n;
+  const seg = $("#wt-floors", pane);
+  const cur = (seg.querySelector('[aria-pressed="true"]') || {}).dataset;
+  const pressed = cur ? cur.floor : "0";
+  const nums = ["0"].concat(Array.from({ length: n }, (_, i) => String(n - i)));
+  seg.innerHTML = nums.map((f) => `<button type="button" aria-pressed="${f === pressed}" data-floor="${f}">${f === "0" ? "All" : f}</button>`).join("");
+  seg.querySelectorAll("button").forEach(
+    (b) =>
+      (b.onclick = () => {
+        seg.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        scene && scene.setFloor(+b.dataset.floor);
+      })
+  );
+}
+
+function setTheme(t) {
+  theme = t;
+  try {
+    localStorage.setItem("pulseai.world.theme", t);
+  } catch (e) {}
+  if (scene) scene.setTheme(t);
+  const b = $("#wt-theme", pane);
+  b.title = t === "day" ? "Switch to night" : "Switch to day";
+  b.setAttribute("aria-label", t === "day" ? "Switch to night lighting" : "Switch to day lighting");
+}
+
+const sound = (n) => window.Earcons && window.Earcons.play(n);
 
 function renderJob() {
   const jobs = Object.values(store.state.jobs);
@@ -222,6 +326,7 @@ function answer(allow) {
 
 function pick(id, focus) {
   selected = id;
+  if (skillsOpen) setSkillsOpen(false);
   if (scene) {
     scene.select(id);
     if (focus) scene.focus(id);
@@ -229,7 +334,11 @@ function pick(id, focus) {
   render();
 }
 
+let landed = false;
 function setEnabled(on) {
+  // the World tab is home when the Mini World is on (doc 36): land there once
+  if (on && !landed && !location.hash && window.showTab) window.showTab("world");
+  landed = true;
   enabled = on;
   $("#wt-off", pane).hidden = on !== false;
   $("#wt-body", pane).classList.toggle("is-off", on === false);
@@ -244,6 +353,7 @@ function ensureScene() {
       try {
         scene = createScene($("#wt-stage", pane), { lookFor, onPick: (id) => pick(id, false) });
         scene.select(selected);
+        scene.setTheme(theme);
         scene.setActive(pane.classList.contains("active"));
         render();
       } catch (e) {
@@ -288,6 +398,30 @@ function wire() {
   ["world.snapshot", "world.agent.added", "world.agent.updated", "world.agent.removed", "world.job.opened", "world.job.closed", "world.task.created", "world.task.updated"].forEach((t) => J.on(t, onWorld));
   J.on("world.status", (d) => setEnabled(!!(d.payload || {}).enabled));
   J.on("world.archived", (d) => renderArchived((d.payload || {}).agents || []));
+  J.on("world.skills", (d) => {
+    skills = (d.payload || {}).skills || [];
+    drafting = false;
+    renderSkills();
+  });
+  J.on("world.skill.test", (d) => {
+    const p = d.payload || {};
+    const s = skills.find((x) => x.name === p.name);
+    if (s) {
+      s.test_output = p.output;
+      renderSkills();
+    }
+  });
+  $("#wt-skills-btn", pane).onclick = () => setSkillsOpen(!skillsOpen);
+  $("#wt-sp-close", pane).onclick = () => setSkillsOpen(false);
+  $("#wt-sk-form", pane).onsubmit = (e) => {
+    e.preventDefault();
+    const d = $("#wt-sk-desc", pane).value.trim();
+    if (!d || drafting) return;
+    drafting = true;
+    J.world.skill({ op: "draft", description: d });
+    $("#wt-sk-desc", pane).value = "";
+    renderSkills();
+  };
   // keep "Recently deleted" current after agents come and go
   ["world.agent.added", "world.agent.removed"].forEach((t) => J.on(t, () => J.world.agent({ op: "archived" })));
   J.on("ui.approval", (d) => {
@@ -324,6 +458,16 @@ function wire() {
   };
   $("#wt-stop", pane).onclick = () => J.world.stop();
   $("#wt-home", pane).onclick = () => scene && scene.home();
+  $("#wt-theme", pane).onclick = () => setTheme(theme === "day" ? "night" : "day");
+  setTheme(theme);
+  // small sounds for the moments that matter (respects the app's sound setting)
+  J.on("world.job.closed", (d) => {
+    const st = (((d.payload || {}).job) || {}).status;
+    sound(st === "done" ? "snd_success" : st === "stopped" ? "snd_listen_stop" : "snd_error");
+  });
+  J.on("world.agent.added", (d) => {
+    if (fresh && (((d.payload || {}).agent) || {}).kind !== "default") sound("snd_dock_peek");
+  });
   pane.querySelectorAll("#wt-floors button").forEach(
     (b) =>
       (b.onclick = () => {

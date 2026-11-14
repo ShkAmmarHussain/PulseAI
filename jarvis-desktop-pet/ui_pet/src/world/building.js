@@ -168,7 +168,11 @@ export function buildBuilding(scene) {
     box(12.5, 0.05, 0.05, M.amber, 6, y - 0.06, DEPTH + 0.12, 0, g).castShadow = false;
   };
 
-  for (let f = 0; f < 3; f++) {
+  const shellFloor = (f) => {
+    if (!floors[f]) {
+      floors[f] = new THREE.Group();
+      scene.add(floors[f]);
+    }
     const g = floors[f], y = f * H;
     slab(y, g);
     box(12.2, H, 0.2, M.wall, 6, y + H / 2, -0.1, 0, g);
@@ -193,7 +197,8 @@ export function buildBuilding(scene) {
         }
       }
     }
-  }
+  };
+  for (let f = 0; f < 3; f++) shellFloor(f);
   slab(9, roof);
   box(12.5, 0.4, 0.14, M.edge, 6, 9.2, 0.07, 0.03, roof);
   const signMat = new THREE.MeshStandardMaterial({ color: "#000", emissive: "#fff", emissiveMap: textTex("PULSEAI HQ", 1024, 180, 92, "#f5a524"), emissiveIntensity: 2.2, transparent: true, alphaMap: textTex("PULSEAI HQ", 1024, 180, 92, "#fff", "#000") });
@@ -233,16 +238,17 @@ export function buildBuilding(scene) {
 
   // per-row lights (9 total) + per-room ceiling panels and LED lines
   const rowLights = [];
-  for (let f = 0; f < 3; f++) {
+  const lightFloor = (f) => {
     for (let r = 1; r <= 3; r++) {
       const L = new THREE.PointLight("#ffe2b8", r === 1 ? 9 : 6, 10, 1.7);
       L.position.set(6, f * H + H - 0.5, (3 - r) * DR + DR / 2);
       floors[f].add(L);
       rowLights.push(L);
     }
-  }
+  };
+  for (let f = 0; f < 3; f++) lightFloor(f);
 
-  for (const R of ALL_ROOMS) {
+  const buildRoom = (R) => {
     const g = floors[R.f - 1], y = R.y, x0 = R.x0, cx = R.cx, zb = R.zBack;
     const fl = new THREE.Mesh(new THREE.PlaneGeometry(W - 0.02, DR), new THREE.MeshStandardMaterial({ map: wood, color: mix("#ffffff", R.color, R.spare ? 0.0 : 0.06), roughness: 0.62 }));
     fl.rotation.x = -Math.PI / 2;
@@ -313,7 +319,8 @@ export function buildBuilding(scene) {
     label.visible = !R.spare;
     g.add(label);
     rooms[R.id] = Object.assign({}, R, { panelMat, led, label });
-  }
+  };
+  ALL_ROOMS.forEach(buildRoom);
 
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), std("#0b0a09", { roughness: 1 }));
   ground.rotation.x = -Math.PI / 2;
@@ -321,8 +328,24 @@ export function buildBuilding(scene) {
   ground.receiveShadow = true;
   scene.add(ground);
 
+  // the building grows a floor at a time when agents need rooms up there
+  // (doc 36 section 11.2); the roof and the lift shaft move up with it
+  function growTo(n) {
+    n = Math.min(6, Math.max(3, n));
+    while (floors.length < n) {
+      const f = floors.length;
+      shellFloor(f);
+      lightFloor(f);
+      for (let r = 1; r <= 3; r++) for (let c = 1; c <= 3; c++) buildRoom(roomGeom(`f${f + 1}r${r}c${c}`));
+    }
+    roof.position.y = (floors.length - 3) * H;
+    shaft.scale.y = floors.length / 3;
+    return floors.length;
+  }
+
   return {
-    floors, roof, car, beacon, rooms,
+    floors, roof, car, beacon, rooms, growTo,
+    setGround: (c) => ground.material.color.set(c),
     // light a spare room while someone uses it
     setOccupied(id, on) {
       const R = rooms[id];

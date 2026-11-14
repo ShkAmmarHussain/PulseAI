@@ -99,6 +99,17 @@ async def main():
     check("8 default rooms, disjoint from spare", len(set(DEFAULT_ROOMS.values())) == 8 and not set(DEFAULT_ROOMS.values()) & set(SPARE_ROOMS))
     check("studio (f2r1c3) is the first spare room", SPARE_ROOMS[0] == "f2r1c3")
 
+    # growth: once all 19 spare rooms are taken, new agents go to floor 4
+    st2 = WorldState()
+    rt2 = AgentRuntime(st2, {"max_custom": 30})
+    ids2 = [rt2.spawn_custom(f"A{i}", "helper", "") for i in range(20)]
+    floors = [st2.agents[i].room[:2] for i in ids2]
+    check("first 19 customs fill floors 1-3", set(floors[:19]) <= {"f1", "f2", "f3"}, floors[:19])
+    check("20th agent opens floor 4", floors[19] == "f4", floors[19])
+    freed = st2.agents[ids2[3]].room
+    rt2.remove(ids2[3])
+    check("a freed room on floors 1-3 is reused before floor 4", st2.agents[rt2.spawn_custom("B", "helper", "")].room == freed, freed)
+
 
 asyncio.run(main())
 print(f"\n{sum(results)}/{len(results)} passed")
