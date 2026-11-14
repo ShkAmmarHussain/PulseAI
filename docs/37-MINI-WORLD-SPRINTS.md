@@ -338,3 +338,9 @@ When the world is off, the World tab shows an empty state with **Turn on Mini Wo
 - **Sounds** through the app's existing earcons (and its mute setting): a soft swoosh when an agent arrives, success or error when a job closes.
 - **Look generator** moved to `world/looks.js` (no three.js), so node can test it: ten generated agents all differ, a look is rerolled when taken, and the role tint shows.
 - Tests: `tests/world_looks_test.mjs` (8) and runtime growth checks (24), plus every earlier suite. Browser pass at 4 floors with 29 agents, in both themes.
+
+---
+
+## Sprint 8: QA and release (done)
+
+On by default, the World tab is home, skills run in the packaged app through `backend.exe --run-skill`, and the README and tests table are updated. Results are in [docs/38](./38-MINI-WORLD-QA.md). The old pipeline is kept as the "off" path instead of being removed (reason in doc 38).

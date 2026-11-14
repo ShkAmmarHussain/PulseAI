@@ -334,7 +334,11 @@ function pick(id, focus) {
   render();
 }
 
+let landed = false;
 function setEnabled(on) {
+  // the World tab is home when the Mini World is on (doc 36): land there once
+  if (on && !landed && !location.hash && window.showTab) window.showTab("world");
+  landed = true;
   enabled = on;
   $("#wt-off", pane).hidden = on !== false;
   $("#wt-body", pane).classList.toggle("is-off", on === false);
